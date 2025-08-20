@@ -4,7 +4,7 @@ SHELL = pwsh.exe
 .PHONY: all clean build debug release run
 
 CC      = cl
-CFLAGS  = -nologo -EHsc
+CFLAGS  = -EHsc
 DEBUG_FLAGS   = -Zi -Od
 RELEASE_FLAGS = -O2
 
