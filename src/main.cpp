@@ -1,8 +1,11 @@
 #pragma comment(lib, "user32.lib")
 #pragma comment(lib, "gdi32.lib")
+#pragma comment(lib, "Xinput.lib")
 
 #include <cstdint>
 #include <windows.h>
+#include <Xinput.h>
+
 
 typedef int8_t int8;
 typedef int16_t int16;
@@ -14,9 +17,12 @@ typedef uint16_t uint16;
 typedef uint32_t uint32;
 typedef uint64_t uint64;
 
+
+
 #define global static
 #define internal static
 #define local_persist static
+
 
 typedef struct {
     BITMAPINFO Info;
@@ -33,10 +39,13 @@ typedef struct {
     int Height;
 } CanvasDimensions;
 
+
 global bool GlobalRunning;
 global CanvasBitMap GlobalCanvas;
 
-internal CanvasDimensions CanvasGetDimensions(HWND WindowHandle) {
+
+internal CanvasDimensions
+CanvasGetDimensions(HWND WindowHandle) {
     RECT ClientRect;
     GetClientRect(WindowHandle, &ClientRect);
 
@@ -46,7 +55,9 @@ internal CanvasDimensions CanvasGetDimensions(HWND WindowHandle) {
     return CanvasDimensions{Width, Height};
 }
 
-internal void CanvasDraw(int XOff, int YOff) {
+
+internal void
+CanvasDraw(int XOff, int YOff) {
 
     uint8 *Row = (uint8 *)GlobalCanvas.Memory;
 
@@ -61,8 +72,8 @@ internal void CanvasDraw(int XOff, int YOff) {
             uint8 red = 0;
             uint8 pad = 0;
 
-            *Pixel = ((uint32)pad << 24) | ((uint32)red << 16) |
-                     ((uint32)green << 8) | ((uint32)blue);
+            *Pixel =
+                ((uint32)pad << 24) | ((uint32)red << 16) | ((uint32)green << 8) | ((uint32)blue);
 
             Pixel += 1;
         }
@@ -71,7 +82,9 @@ internal void CanvasDraw(int XOff, int YOff) {
     }
 }
 
-internal void CanvasCreateDibSection(int Width, int Height) {
+
+internal void
+CanvasCreateDibSection(int Width, int Height) {
 
     if (GlobalCanvas.Memory) {
         VirtualFree(GlobalCanvas.Memory, 0, MEM_RELEASE);
@@ -91,33 +104,43 @@ internal void CanvasCreateDibSection(int Width, int Height) {
 
     GlobalCanvas.BytesPerPixel = 4;
 
-    GlobalCanvas.Size =
-        GlobalCanvas.Width * GlobalCanvas.Height * GlobalCanvas.BytesPerPixel;
+    GlobalCanvas.Size = GlobalCanvas.Width * GlobalCanvas.Height * GlobalCanvas.BytesPerPixel;
 
-    GlobalCanvas.Memory =
-        VirtualAlloc(0, GlobalCanvas.Size, MEM_COMMIT, PAGE_READWRITE);
+    GlobalCanvas.Memory = VirtualAlloc(0, GlobalCanvas.Size, MEM_COMMIT, PAGE_READWRITE);
 
     GlobalCanvas.Pitch = GlobalCanvas.Width * GlobalCanvas.BytesPerPixel;
     CanvasDraw(0, 0);
 }
 
-internal void CanvasDisplayBitmap(HDC DeviceCtx, int WindowWidth,
-                                  int WindowHeight) {
 
-    int DestX = 10;
-    int DestY = 10;
-    int DestWidth = WindowWidth - 20;
-    int DestHeight = WindowHeight - 20;
 
-    StretchDIBits(
-        DeviceCtx,                                     //
-        DestX, DestY, DestWidth, DestHeight,           // Destination Dimensions
-        0, 0, GlobalCanvas.Width, GlobalCanvas.Height, // Source Dimensions
-        GlobalCanvas.Memory, &GlobalCanvas.Info, DIB_RGB_COLORS, SRCCOPY);
+internal void
+CanvasDisplayBitmap(HDC DeviceCtx, int WindowWidth, int WindowHeight) {
+
+    int DestWidth = WindowWidth;
+    int DestHeight = WindowHeight;
+
+    // float AspectRatio = (float)GlobalCanvas.Width /
+    //    (float)GlobalCanvas.Height;
+    //
+    // if (WindowWidth > WindowHeight) { DestHeight = (int)((float)WindowWidth /
+    // AspectRatio); } else { 	DestWidth = (int)((float)WindowHeight *
+    // AspectRatio);
+    // }
+
+    int DestX = 0;
+    int DestY = 0;
+
+    StretchDIBits(DeviceCtx,                                     //
+                  DestX, DestY, DestWidth, DestHeight,           // Destination Dimensions
+                  0, 0, GlobalCanvas.Width, GlobalCanvas.Height, // Source Dimensions
+                  GlobalCanvas.Memory, &GlobalCanvas.Info, DIB_RGB_COLORS, SRCCOPY);
 }
 
-LRESULT CanvasWindowCallBack(HWND WindowHandle, UINT Message, WPARAM wParam,
-                             LPARAM lParam) {
+
+
+LRESULT
+CanvasWindowCallBack(HWND WindowHandle, UINT Message, WPARAM wParam, LPARAM lParam) {
     LRESULT Result = 0;
 
     switch (Message) {
@@ -142,6 +165,14 @@ LRESULT CanvasWindowCallBack(HWND WindowHandle, UINT Message, WPARAM wParam,
             PAINTSTRUCT Paint;
             HDC DeviceCtx = BeginPaint(WindowHandle, &Paint);
 
+            { // Flushing the window with BLACKNESS
+                int X = Paint.rcPaint.left;
+                int Y = Paint.rcPaint.top;
+                int Width = Paint.rcPaint.right - X;
+                int Height = Paint.rcPaint.bottom - Y;
+                PatBlt(DeviceCtx, X, Y, Width, Height, BLACKNESS);
+            }
+
             CanvasDimensions Dimensions = CanvasGetDimensions(WindowHandle);
             CanvasDisplayBitmap(DeviceCtx, Dimensions.Width, Dimensions.Height);
 
@@ -156,8 +187,9 @@ LRESULT CanvasWindowCallBack(HWND WindowHandle, UINT Message, WPARAM wParam,
     return Result;
 }
 
-int32 WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine,
-              int ShowCmd) {
+
+int32
+WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd) {
 
     CanvasCreateDibSection(1280, 720);
 
@@ -171,18 +203,18 @@ int32 WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine,
 
     if (RegisterClassA(&WindowClass)) {
 
-        HWND WindowHandle = CreateWindowExA(
-            0, WindowClassName,
+        HWND WindowHandle =
+            CreateWindowExA(0, WindowClassName,
 
-            "Canvas", // Title/Caption
+                            "Canvas", // Title/Caption
 
-            WS_OVERLAPPEDWINDOW | WS_VISIBLE, // Style
+                            WS_OVERLAPPEDWINDOW | WS_VISIBLE, // Style
 
-            // Position and Size
-            CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
+                            // Position and Size
+                            CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
 
-            // Other stuff
-            0, 0, Instance, 0);
+                            // Other stuff
+                            0, 0, Instance, 0);
 
         if (WindowHandle) {
 
@@ -202,18 +234,79 @@ int32 WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine,
                     DispatchMessageA(&Message);
                 }
 
-                CanvasDraw(XOff, YOff);
+                // Gamepad
+                for (DWORD ControllerIdx = 0; ControllerIdx < XUSER_MAX_COUNT; ControllerIdx += 1) {
 
+                    XINPUT_STATE ControllerState;
+                    if (XInputGetState(ControllerIdx, &ControllerState) == ERROR_SUCCESS) {
+                        XINPUT_GAMEPAD *Pad = &ControllerState.Gamepad;
+
+                        bool Up = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_UP);
+                        bool Down = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_DOWN);
+                        bool Left = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_LEFT);
+                        bool Right = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_RIGHT);
+
+                        bool Start = (Pad->wButtons & XINPUT_GAMEPAD_START);
+                        bool Back = (Pad->wButtons & XINPUT_GAMEPAD_BACK);
+
+                        bool LeftThumb = (Pad->wButtons & XINPUT_GAMEPAD_LEFT_THUMB);
+                        bool RightThumb = (Pad->wButtons & XINPUT_GAMEPAD_RIGHT_THUMB);
+
+                        bool LeftShoulder = (Pad->wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER);
+                        bool RightShoulder = (Pad->wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER);
+
+                        bool AButton = (Pad->wButtons & XINPUT_GAMEPAD_A);
+                        bool BButton = (Pad->wButtons & XINPUT_GAMEPAD_B);
+                        bool XButton = (Pad->wButtons & XINPUT_GAMEPAD_X);
+                        bool YButton = (Pad->wButtons & XINPUT_GAMEPAD_Y);
+
+                        int16 LStickX = Pad->sThumbLX;
+                        int16 LStickY = Pad->sThumbLY;
+
+                        int16 RStickX = Pad->sThumbRX;
+                        int16 RStickY = Pad->sThumbRY;
+
+                        uint8 LeftTrigger = Pad->bLeftTrigger;
+                        uint8 RightTrigger = Pad->bRightTrigger;
+
+                        if (Up) {
+                            YOff -= 1;
+                        }
+
+                        if (Down) {
+                            YOff += 1;
+                        }
+
+                        if (Left) {
+                            XOff -= 1;
+                        }
+
+                        if (Right) {
+                            XOff += 1;
+                        }
+
+                        if (Back) {
+                            GlobalRunning = false;
+                        }
+
+                        XINPUT_VIBRATION Vibration;
+						// Vibration.wLeftMotorSpeed = 60000;
+						// Vibration.wRightMotorSpeed = 60000;
+                        XInputSetState(ControllerIdx, &Vibration);
+                    } else {
+
+                        // Controller not found
+                    }
+                }
+
+                CanvasDraw(XOff, YOff);
                 HDC DeviceCtx = GetDC(WindowHandle);
 
                 CanvasDimensions Dimensions = CanvasGetDimensions(WindowHandle);
-                CanvasDisplayBitmap(DeviceCtx, Dimensions.Width,
-                                    Dimensions.Height);
+                CanvasDisplayBitmap(DeviceCtx, Dimensions.Width, Dimensions.Height);
+
 
                 ReleaseDC(WindowHandle, DeviceCtx);
-
-                XOff += 1;
-                YOff += 1;
             }
 
         } else {
