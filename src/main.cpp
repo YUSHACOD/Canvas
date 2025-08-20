@@ -1,6 +1,5 @@
 #pragma comment(lib, "user32.lib")
 #pragma comment(lib, "gdi32.lib")
-#pragma comment(lib, "Xinput.lib")
 
 #include <cstdint>
 #include <windows.h>
@@ -23,6 +22,32 @@ typedef uint64_t uint64;
 #define internal static
 #define local_persist static
 
+
+// Think about this, learn this --------------------------------------------- //
+
+#define XINPUT_GET(name) DWORD WINAPI name(DWORD UserIndex, XINPUT_STATE *State)
+typedef XINPUT_GET(xinput_get_state);
+XINPUT_GET(xInputGetStateStub) { return 0; }
+global xinput_get_state *XInputGetState_ = xInputGetStateStub;
+#define XInputGetState XInputGetState_
+
+#define XINPUT_SET(name) DWORD WINAPI name(DWORD UserIndex, XINPUT_VIBRATION *State)
+typedef XINPUT_SET(xinput_set_state);
+XINPUT_SET(xInputSetStateStub) { return 0; }
+global xinput_set_state *XInputSetState_ = xInputSetStateStub;
+#define XInputSetState XInputSetState_
+
+internal void
+CanvasLoadXInput() {
+    HMODULE XInputLibrary = LoadLibraryA("xinput1_3.dll");
+
+    if (XInputLibrary) {
+        XInputGetState = (xinput_get_state *)GetProcAddress(XInputLibrary, "XInputGetState");
+        XInputSetState = (xinput_set_state *)GetProcAddress(XInputLibrary, "XInputSetState");
+    }
+}
+
+// -------------------------------------------------------------------------- //
 
 typedef struct {
     BITMAPINFO Info;
@@ -191,6 +216,7 @@ CanvasWindowCallBack(HWND WindowHandle, UINT Message, WPARAM wParam, LPARAM lPar
 int32
 WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd) {
 
+	CanvasLoadXInput();
     CanvasCreateDibSection(1280, 720);
 
     LPCSTR WindowClassName = "CanvasWindowClass";
@@ -290,8 +316,8 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd) 
                         }
 
                         XINPUT_VIBRATION Vibration;
-						// Vibration.wLeftMotorSpeed = 60000;
-						// Vibration.wRightMotorSpeed = 60000;
+                        // Vibration.wLeftMotorSpeed = 60000;
+                        // Vibration.wRightMotorSpeed = 60000;
                         XInputSetState(ControllerIdx, &Vibration);
                     } else {
 
