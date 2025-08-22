@@ -4,8 +4,10 @@
 #include <cstdint>
 #include <windows.h>
 #include <Xinput.h>
+#include <dsound.h>
 
 
+// Sugars ---------------------------------------------------- //
 typedef int8_t int8;
 typedef int16_t int16;
 typedef int32_t int32;
@@ -16,38 +18,11 @@ typedef uint16_t uint16;
 typedef uint32_t uint32;
 typedef uint64_t uint64;
 
-
-
 #define global static
 #define internal static
 #define local_persist static
+// Sugars ---------------------------------------------------- //
 
-
-// Think about this, learn this --------------------------------------------- //
-
-#define XINPUT_GET(name) DWORD WINAPI name(DWORD UserIndex, XINPUT_STATE *State)
-typedef XINPUT_GET(xinput_get_state);
-XINPUT_GET(xInputGetStateStub) { return 0; }
-global xinput_get_state *XInputGetState_ = xInputGetStateStub;
-#define XInputGetState XInputGetState_
-
-#define XINPUT_SET(name) DWORD WINAPI name(DWORD UserIndex, XINPUT_VIBRATION *State)
-typedef XINPUT_SET(xinput_set_state);
-XINPUT_SET(xInputSetStateStub) { return 0; }
-global xinput_set_state *XInputSetState_ = xInputSetStateStub;
-#define XInputSetState XInputSetState_
-
-internal void
-CanvasLoadXInput() {
-    HMODULE XInputLibrary = LoadLibraryA("xinput1_3.dll");
-
-    if (XInputLibrary) {
-        XInputGetState = (xinput_get_state *)GetProcAddress(XInputLibrary, "XInputGetState");
-        XInputSetState = (xinput_set_state *)GetProcAddress(XInputLibrary, "XInputSetState");
-    }
-}
-
-// -------------------------------------------------------------------------- //
 
 typedef struct {
     BITMAPINFO Info;
@@ -65,8 +40,123 @@ typedef struct {
 } CanvasDimensions;
 
 
+// Globals --------------------------------------------------//
 global bool GlobalRunning;
 global CanvasBitMap GlobalCanvas;
+global LPDIRECTSOUNDBUFFER GlobalSoundBuffer;
+// Globals --------------------------------------------------//
+
+
+// Think about this, learn this --------------------------------------------- //
+
+#define XINPUT_GET(name) DWORD WINAPI name(DWORD UserIndex, XINPUT_STATE *State)
+typedef XINPUT_GET(xinput_get_state);
+XINPUT_GET(xInputGetStateStub) { return ERROR_DEVICE_NOT_CONNECTED; }
+global xinput_get_state *XInputGetState_ = xInputGetStateStub;
+#define XInputGetState XInputGetState_
+
+#define XINPUT_SET(name) DWORD WINAPI name(DWORD UserIndex, XINPUT_VIBRATION *State)
+typedef XINPUT_SET(xinput_set_state);
+XINPUT_SET(xInputSetStateStub) { return ERROR_DEVICE_NOT_CONNECTED; }
+global xinput_set_state *XInputSetState_ = xInputSetStateStub;
+#define XInputSetState XInputSetState_
+
+internal void
+CanvasLoadXInput() {
+    HMODULE XInputLibrary = LoadLibraryA("xinput1_3.dll");
+
+    if (XInputLibrary) {
+        XInputGetState = (xinput_get_state *)GetProcAddress(XInputLibrary, "XInputGetState");
+        XInputSetState = (xinput_set_state *)GetProcAddress(XInputLibrary, "XInputSetState");
+    } else {
+        // logging
+    }
+}
+// -------------------------------------------------------------------------- //
+
+// Same shenanigans as above for DirectSound -------------------------------- //
+#define DSOUND_CREATE(name)                                                                        \
+    HRESULT WINAPI name(LPCGUID pcGuidDevice, LPDIRECTSOUND *ppDS, LPUNKNOWN pUnkOuter)
+typedef DSOUND_CREATE(dsound_create);
+
+internal void
+CanvasInitDSound(HWND WindowHandle, int32 BufferSize, int32 SamplesPerSec) {
+    // Load the library
+    HMODULE DSoundLibrary = LoadLibraryA("dsound.dll");
+
+    if (DSoundLibrary) {
+
+        // Create the Direct Sound object
+        dsound_create *DirectSoundCreate =
+            (dsound_create *)GetProcAddress(DSoundLibrary, "DirectSoundCreate");
+
+        LPDIRECTSOUND DirectSound;
+        if (DirectSoundCreate) {
+            if (SUCCEEDED(DirectSoundCreate(0, &DirectSound, 0))) {
+
+                WAVEFORMATEX BufferFormat = {};
+
+                BufferFormat.wFormatTag = WAVE_FORMAT_PCM;
+                BufferFormat.nChannels = 2;
+                BufferFormat.nSamplesPerSec = SamplesPerSec;
+                BufferFormat.wBitsPerSample = 16;
+                BufferFormat.nBlockAlign =
+                    (BufferFormat.nChannels * BufferFormat.wBitsPerSample) / 8;
+                BufferFormat.nAvgBytesPerSec =
+                    BufferFormat.nSamplesPerSec * BufferFormat.nBlockAlign;
+
+                BufferFormat.cbSize = 0;
+                if (SUCCEEDED(DirectSound->SetCooperativeLevel(WindowHandle, DSSCL_PRIORITY))) {
+                    // "Create" a primary buffer
+                    DSBUFFERDESC DSBufferDesc = {};
+
+                    DSBufferDesc.dwSize = sizeof(DSBufferDesc);
+                    DSBufferDesc.dwFlags = DSBCAPS_PRIMARYBUFFER;
+
+                    LPDIRECTSOUNDBUFFER DSPrimaryBuffer;
+                    if (SUCCEEDED(
+                            DirectSound->CreateSoundBuffer(&DSBufferDesc, &DSPrimaryBuffer, 0))) {
+
+
+                        if (SUCCEEDED(DSPrimaryBuffer->SetFormat(&BufferFormat))) {
+                        }
+                    } else {
+                        // logging
+                    }
+
+                } else {
+                    // logging
+                }
+
+
+                // "Create" a secondary buffer
+                DSBUFFERDESC DSBufferDesc = {};
+
+                DSBufferDesc.dwSize = sizeof(DSBufferDesc);
+                DSBufferDesc.dwBufferBytes = BufferSize;
+                DSBufferDesc.lpwfxFormat = &BufferFormat;
+
+                if (SUCCEEDED(
+                        DirectSound->CreateSoundBuffer(&DSBufferDesc, &GlobalSoundBuffer, 0))) {
+
+                    if (SUCCEEDED(GlobalSoundBuffer->SetFormat(&BufferFormat))) {
+                    }
+                } else {
+                    // logging
+                }
+            } else {
+				// logging
+			}
+        } else {
+            // logging
+        }
+
+    } else {
+        // logging
+    }
+}
+// -------------------------------------------------------------------------- //
+
 
 
 internal CanvasDimensions
@@ -79,6 +169,7 @@ CanvasGetDimensions(HWND WindowHandle) {
 
     return CanvasDimensions{Width, Height};
 }
+
 
 
 internal void
@@ -108,6 +199,7 @@ CanvasDraw(int XOff, int YOff) {
 }
 
 
+
 internal void
 CanvasCreateDibSection(int Width, int Height) {
 
@@ -131,7 +223,8 @@ CanvasCreateDibSection(int Width, int Height) {
 
     GlobalCanvas.Size = GlobalCanvas.Width * GlobalCanvas.Height * GlobalCanvas.BytesPerPixel;
 
-    GlobalCanvas.Memory = VirtualAlloc(0, GlobalCanvas.Size, MEM_COMMIT, PAGE_READWRITE);
+    GlobalCanvas.Memory =
+        VirtualAlloc(0, GlobalCanvas.Size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 
     GlobalCanvas.Pitch = GlobalCanvas.Width * GlobalCanvas.BytesPerPixel;
     CanvasDraw(0, 0);
@@ -178,6 +271,31 @@ CanvasWindowCallBack(HWND WindowHandle, UINT Message, WPARAM wParam, LPARAM lPar
             GlobalRunning = false;
         } break;
 
+        case WM_KEYDOWN:
+        case WM_KEYUP:
+        case WM_SYSKEYDOWN:
+        case WM_SYSKEYUP: {
+            uint32 VKCode = wParam;
+            bool WasDown = ((lParam & (1 << 30)) != 0);
+            bool IsDown = ((lParam & (1 << 31)) == 0);
+
+            if (VKCode == VK_ESCAPE) {
+                GlobalRunning = false;
+            }
+
+            if (VKCode == 'W') {
+            }
+            if (VKCode == 'A') {
+            }
+            if (VKCode == 'S') {
+            }
+            if (VKCode == 'D') {
+            }
+
+            if (VKCode == VK_SPACE) {
+            }
+        } break;
+
         case WM_CLOSE: {
             GlobalRunning = false;
         } break;
@@ -213,10 +331,11 @@ CanvasWindowCallBack(HWND WindowHandle, UINT Message, WPARAM wParam, LPARAM lPar
 }
 
 
+
 int32
 WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd) {
 
-	CanvasLoadXInput();
+    CanvasLoadXInput();
     CanvasCreateDibSection(1280, 720);
 
     LPCSTR WindowClassName = "CanvasWindowClass";
@@ -229,23 +348,38 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd) 
 
     if (RegisterClassA(&WindowClass)) {
 
-        HWND WindowHandle =
-            CreateWindowExA(0, WindowClassName,
-
-                            "Canvas", // Title/Caption
-
-                            WS_OVERLAPPEDWINDOW | WS_VISIBLE, // Style
-
-                            // Position and Size
-                            CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
-
-                            // Other stuff
-                            0, 0, Instance, 0);
+        HWND WindowHandle = CreateWindowExA(0, WindowClassName,
+                                            "Canvas",                         // Title/Caption
+                                            WS_OVERLAPPEDWINDOW | WS_VISIBLE, // Style
+                                            // Position and Size
+                                            CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
+                                            CW_USEDEFAULT, 0, 0, Instance, 0); // Other stuff
 
         if (WindowHandle) {
 
-            int XOff = 0;
-            int YOff = 0;
+            // Graphic Test
+            int32 XOff = 0;
+            int32 YOff = 0;
+
+            // Sound Test
+            int32 Channels = 2;
+            int32 SamplesPerSec = 48000;
+            int32 ToneHz = 256;
+            int32 SquareWaveCounter = 0;
+            int32 SquareWavePeriod = SamplesPerSec / ToneHz;
+            int32 HalfSquareWavePeriod = SquareWavePeriod / 2;
+            int32 BytesPerSample = sizeof(int16) * Channels;
+            int32 GlobalSoundBufferSize = SamplesPerSec * BytesPerSample;
+            uint32 RunningSampleIndex = 0;
+
+            int32 ToneVolume = 16000;
+
+
+
+            // Sound init after a window is created
+            CanvasInitDSound(WindowHandle, SamplesPerSec, SamplesPerSec * BytesPerSample);
+
+            GlobalSoundBuffer->Play(0, 0, DSBPLAY_LOOPING);
 
             GlobalRunning = true;
             while (GlobalRunning) {
@@ -295,30 +429,33 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd) 
                         uint8 LeftTrigger = Pad->bLeftTrigger;
                         uint8 RightTrigger = Pad->bRightTrigger;
 
+                        XOff += LStickX >> 12;
+                        YOff += LStickY >> 12;
+
                         if (Up) {
-                            YOff -= 1;
+                            YOff -= 2;
                         }
 
                         if (Down) {
-                            YOff += 1;
+                            YOff += 2;
                         }
 
                         if (Left) {
-                            XOff -= 1;
+                            XOff -= 2;
                         }
 
                         if (Right) {
-                            XOff += 1;
+                            XOff += 2;
                         }
 
                         if (Back) {
                             GlobalRunning = false;
                         }
 
-                        XINPUT_VIBRATION Vibration;
+                        // XINPUT_VIBRATION Vibration;
                         // Vibration.wLeftMotorSpeed = 60000;
                         // Vibration.wRightMotorSpeed = 60000;
-                        XInputSetState(ControllerIdx, &Vibration);
+                        // XInputSetState(ControllerIdx, &Vibration);
                     } else {
 
                         // Controller not found
@@ -326,13 +463,80 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd) 
                 }
 
                 CanvasDraw(XOff, YOff);
-                HDC DeviceCtx = GetDC(WindowHandle);
 
+                // Sound Writting is pretty tough ---------------------------- //
+
+                DWORD PlayCursor = 0;
+                DWORD WriteCursor = 0;
+
+                if (SUCCEEDED(GlobalSoundBuffer->GetCurrentPosition(&PlayCursor, &WriteCursor))) {
+
+                    // DirectSound test
+                    VOID *Region1;
+                    DWORD Region1Size;
+                    VOID *Region2;
+                    DWORD Region2Size;
+
+                    DWORD BytesToLock =
+                        (RunningSampleIndex * BytesPerSample) % GlobalSoundBufferSize;
+                    DWORD BytesToWrite = 0;
+                    if (BytesToLock > PlayCursor) {
+                        BytesToWrite = GlobalSoundBufferSize - BytesToLock;
+                        BytesToWrite += PlayCursor;
+                    } else {
+                        BytesToWrite = PlayCursor + BytesToLock;
+                    }
+
+                    if (SUCCEEDED(GlobalSoundBuffer->Lock(BytesToLock, BytesToWrite, //
+                                                          &Region1, &Region1Size,    //
+                                                          &Region2, &Region2Size,    //
+                                                          0))) {
+
+                        int16 *SampleOut = (int16 *)Region1;
+                        DWORD Region1SampleCount = Region1Size / BytesPerSample;
+                        for (DWORD SampleIdx = 0; SampleIdx < Region1SampleCount; SampleIdx += 1) {
+
+                            int16 SampleValue = ((RunningSampleIndex / HalfSquareWavePeriod) % 2)
+                                                    ? ToneVolume
+                                                    : -ToneVolume;
+
+                            *SampleOut = SampleValue;
+                            SampleOut += 1;
+
+                            *SampleOut = SampleValue;
+                            SampleOut += 1;
+
+                            RunningSampleIndex += 1;
+                        }
+
+                        DWORD Region2SampleCount = Region2Size / BytesPerSample;
+                        SampleOut = (int16 *)Region2;
+                        for (DWORD SampleIdx = 0; SampleIdx < Region2SampleCount; SampleIdx += 1) {
+                            int16 SampleValue = ((RunningSampleIndex / HalfSquareWavePeriod) % 2)
+                                                    ? ToneVolume
+                                                    : -ToneVolume;
+
+                            *SampleOut = SampleValue;
+                            SampleOut += 1;
+
+                            *SampleOut = SampleValue;
+                            SampleOut += 1;
+
+                            RunningSampleIndex += 1;
+                        }
+
+                        GlobalSoundBuffer->Unlock(Region1, Region1Size, Region2, Region2Size);
+                    }
+                }
+                // Sound Writting is pretty tough ---------------------------- //
+
+                // --------------------------------------------------------------- //
+                HDC DeviceCtx = GetDC(WindowHandle);
                 CanvasDimensions Dimensions = CanvasGetDimensions(WindowHandle);
                 CanvasDisplayBitmap(DeviceCtx, Dimensions.Width, Dimensions.Height);
 
-
                 ReleaseDC(WindowHandle, DeviceCtx);
+                // --------------------------------------------------------------- //
             }
 
         } else {
