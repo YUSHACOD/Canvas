@@ -5,9 +5,16 @@
 #include <windows.h>
 #include <Xinput.h>
 #include <dsound.h>
+#include <math.h>
 
 
 // Sugars ---------------------------------------------------- //
+#define global static
+#define internal static
+#define local_persist static
+
+#define Pi32 3.1415926536f
+
 typedef int8_t int8;
 typedef int16_t int16;
 typedef int32_t int32;
@@ -18,9 +25,8 @@ typedef uint16_t uint16;
 typedef uint32_t uint32;
 typedef uint64_t uint64;
 
-#define global static
-#define internal static
-#define local_persist static
+typedef float real32;
+typedef double real64;
 // Sugars ---------------------------------------------------- //
 
 
@@ -38,6 +44,18 @@ typedef struct {
     int Width;
     int Height;
 } CanvasDimensions;
+
+typedef struct {
+    int32 Channels;
+    int32 SamplesPerSec;
+    int32 ToneHz;
+    int32 SquareWaveCounter;
+    int32 WavePeriod;
+    int32 BytesPerSample;
+    int32 BufferSize;
+    uint32 RunningSampleIndex;
+    int32 ToneVolume;
+} CanvasSound;
 
 
 // Globals --------------------------------------------------//
@@ -145,8 +163,8 @@ CanvasInitDSound(HWND WindowHandle, int32 BufferSize, int32 SamplesPerSec) {
                     // logging
                 }
             } else {
-				// logging
-			}
+                // logging
+            }
         } else {
             // logging
         }
@@ -157,6 +175,78 @@ CanvasInitDSound(HWND WindowHandle, int32 BufferSize, int32 SamplesPerSec) {
 }
 // -------------------------------------------------------------------------- //
 
+internal CanvasSound
+CanvasInitSound() {
+    CanvasSound Sound = {};
+
+    Sound.Channels = 2;
+    Sound.SamplesPerSec = 48000;
+    Sound.ToneHz = 256;
+    Sound.SquareWaveCounter = 0;
+    Sound.WavePeriod = Sound.SamplesPerSec / Sound.ToneHz;
+    Sound.BytesPerSample = sizeof(int16) * Sound.Channels;
+    Sound.BufferSize = Sound.SamplesPerSec * Sound.BytesPerSample;
+    Sound.RunningSampleIndex = 0;
+
+    Sound.ToneVolume = 3000;
+
+    return Sound;
+}
+
+
+internal void
+CanvasSoundFill(CanvasSound *Sound, DWORD ByteToLock, DWORD BytesToWrite) {
+
+    VOID *Region1;
+    DWORD Region1Size;
+    VOID *Region2;
+    DWORD Region2Size;
+
+
+    if (SUCCEEDED(GlobalSoundBuffer->Lock(ByteToLock, BytesToWrite, //
+                                          &Region1, &Region1Size,   //
+                                          &Region2, &Region2Size,   //
+                                          0))) {
+
+        int16 *SampleOut = (int16 *)Region1;
+        DWORD Region1SampleCount = Region1Size / Sound->BytesPerSample;
+        for (DWORD SampleIdx = 0; SampleIdx < Region1SampleCount; SampleIdx += 1) {
+            real32 t =
+                ((real32)Sound->RunningSampleIndex / (real32)Sound->WavePeriod) * Pi32 * 2.0f;
+            real32 SineValue = sinf(t);
+
+            int16 SampleValue = (int16)(SineValue * (real32)Sound->ToneVolume);
+
+            *SampleOut = SampleValue;
+            SampleOut += 1;
+
+            *SampleOut = SampleValue;
+            SampleOut += 1;
+
+            Sound->RunningSampleIndex += 1;
+        }
+
+        DWORD Region2SampleCount = Region2Size / Sound->BytesPerSample;
+        SampleOut = (int16 *)Region2;
+        for (DWORD SampleIdx = 0; SampleIdx < Region2SampleCount; SampleIdx += 1) {
+            real32 t =
+                ((real32)Sound->RunningSampleIndex / (real32)Sound->WavePeriod) * Pi32 * 2.0f;
+            real32 SineValue = sinf(t);
+
+            int16 SampleValue = (int16)(SineValue * (real32)Sound->ToneVolume);
+
+            *SampleOut = SampleValue;
+            SampleOut += 1;
+
+            *SampleOut = SampleValue;
+            SampleOut += 1;
+
+            Sound->RunningSampleIndex += 1;
+        }
+
+        GlobalSoundBuffer->Unlock(Region1, Region1Size, Region2, Region2Size);
+    }
+}
 
 
 internal CanvasDimensions
@@ -362,24 +452,15 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd) 
             int32 YOff = 0;
 
             // Sound Test
-            int32 Channels = 2;
-            int32 SamplesPerSec = 48000;
-            int32 ToneHz = 256;
-            int32 SquareWaveCounter = 0;
-            int32 SquareWavePeriod = SamplesPerSec / ToneHz;
-            int32 HalfSquareWavePeriod = SquareWavePeriod / 2;
-            int32 BytesPerSample = sizeof(int16) * Channels;
-            int32 GlobalSoundBufferSize = SamplesPerSec * BytesPerSample;
-            uint32 RunningSampleIndex = 0;
+			// ----------------------------------------------------- //
+            CanvasSound Sound = CanvasInitSound();
 
-            int32 ToneVolume = 16000;
-
-
-
-            // Sound init after a window is created
-            CanvasInitDSound(WindowHandle, SamplesPerSec, SamplesPerSec * BytesPerSample);
+			// Sound init after a window is created
+            CanvasInitDSound(WindowHandle, Sound.BufferSize, Sound.SamplesPerSec);
+			CanvasSoundFill(&Sound, 0, Sound.BufferSize);
 
             GlobalSoundBuffer->Play(0, 0, DSBPLAY_LOOPING);
+			// ----------------------------------------------------- //
 
             GlobalRunning = true;
             while (GlobalRunning) {
@@ -471,62 +552,20 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd) 
 
                 if (SUCCEEDED(GlobalSoundBuffer->GetCurrentPosition(&PlayCursor, &WriteCursor))) {
 
-                    // DirectSound test
-                    VOID *Region1;
-                    DWORD Region1Size;
-                    VOID *Region2;
-                    DWORD Region2Size;
-
-                    DWORD BytesToLock =
-                        (RunningSampleIndex * BytesPerSample) % GlobalSoundBufferSize;
+                    DWORD ByteToLock =
+                        (Sound.RunningSampleIndex * Sound.BytesPerSample) % Sound.BufferSize;
                     DWORD BytesToWrite = 0;
-                    if (BytesToLock > PlayCursor) {
-                        BytesToWrite = GlobalSoundBufferSize - BytesToLock;
+
+                    if (ByteToLock > PlayCursor) {
+
+                        BytesToWrite = Sound.BufferSize - ByteToLock;
                         BytesToWrite += PlayCursor;
                     } else {
-                        BytesToWrite = PlayCursor + BytesToLock;
+
+                        BytesToWrite = PlayCursor - ByteToLock;
                     }
 
-                    if (SUCCEEDED(GlobalSoundBuffer->Lock(BytesToLock, BytesToWrite, //
-                                                          &Region1, &Region1Size,    //
-                                                          &Region2, &Region2Size,    //
-                                                          0))) {
-
-                        int16 *SampleOut = (int16 *)Region1;
-                        DWORD Region1SampleCount = Region1Size / BytesPerSample;
-                        for (DWORD SampleIdx = 0; SampleIdx < Region1SampleCount; SampleIdx += 1) {
-
-                            int16 SampleValue = ((RunningSampleIndex / HalfSquareWavePeriod) % 2)
-                                                    ? ToneVolume
-                                                    : -ToneVolume;
-
-                            *SampleOut = SampleValue;
-                            SampleOut += 1;
-
-                            *SampleOut = SampleValue;
-                            SampleOut += 1;
-
-                            RunningSampleIndex += 1;
-                        }
-
-                        DWORD Region2SampleCount = Region2Size / BytesPerSample;
-                        SampleOut = (int16 *)Region2;
-                        for (DWORD SampleIdx = 0; SampleIdx < Region2SampleCount; SampleIdx += 1) {
-                            int16 SampleValue = ((RunningSampleIndex / HalfSquareWavePeriod) % 2)
-                                                    ? ToneVolume
-                                                    : -ToneVolume;
-
-                            *SampleOut = SampleValue;
-                            SampleOut += 1;
-
-                            *SampleOut = SampleValue;
-                            SampleOut += 1;
-
-                            RunningSampleIndex += 1;
-                        }
-
-                        GlobalSoundBuffer->Unlock(Region1, Region1Size, Region2, Region2Size);
-                    }
+					CanvasSoundFill(&Sound, ByteToLock, BytesToWrite);
                 }
                 // Sound Writting is pretty tough ---------------------------- //
 
