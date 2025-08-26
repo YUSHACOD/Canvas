@@ -9,7 +9,7 @@ DEBUG_FLAGS   = -Zi -Od
 RELEASE_FLAGS = -O2
 
 SRC_DIR = src
-SRC     = $(wildcard $(SRC_DIR)/main.cpp)
+SRC     = $(wildcard $(SRC_DIR)/canvas_win.cpp)
 OUTDIR  = build
 DBGDIR  = $(OUTDIR)/debug
 RELDIR  = $(OUTDIR)/release

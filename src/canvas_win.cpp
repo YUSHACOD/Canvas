@@ -1,66 +1,68 @@
+/*
+ *  TODO(Ayush): Seperating the Platform layer
+ *   - Save Location
+ *   - Getting the Handle to our own executable???
+ *   - Asset Loading Path
+ *   - Threading
+ *   - Raw Input
+ *   - Sleep / TimeBeginPeriod
+ *   - FullScreen support
+ *   - WM_SETCURSOR
+ *   - QueryCancelAutoPlay
+ *   - WM_ACTIVATEAPP
+ *   - Blt speed improvements
+ *   - Hardware Accelearation (OpenGl or DirectX)
+ *
+ *
+ *   Just a PARTIAL LIST!!!!
+ */
+
+#include "canvas.hpp"
 #pragma comment(lib, "user32.lib")
 #pragma comment(lib, "gdi32.lib")
 
-#include <cstdint>
+#include <stdio.h>
 #include <windows.h>
 #include <Xinput.h>
 #include <dsound.h>
 #include <math.h>
 
+#include "canvas_sugars.hpp"
 
-// Sugars ---------------------------------------------------- //
-#define global static
-#define internal static
-#define local_persist static
-
-#define Pi32 3.1415926536f
-
-typedef int8_t int8;
-typedef int16_t int16;
-typedef int32_t int32;
-typedef int64_t int64;
-
-typedef uint8_t uint8;
-typedef uint16_t uint16;
-typedef uint32_t uint32;
-typedef uint64_t uint64;
-
-typedef float real32;
-typedef double real64;
-// Sugars ---------------------------------------------------- //
-
+#include "canvas.cpp"
 
 typedef struct {
     BITMAPINFO Info;
     void *Memory;
-    int Width;
-    int Height;
-    int Size;
-    int Pitch;
-    int BytesPerPixel;
-} CanvasBitMap;
+    int32 Width;
+    int32 Height;
+    int32 Size;
+    int32 Pitch;
+    int32 BytesPerPixel;
+} WinCanvasBitMap;
 
 typedef struct {
-    int Width;
-    int Height;
-} CanvasDimensions;
+    int32 Width;
+    int32 Height;
+} WinCanvasDimensions;
 
 typedef struct {
     int32 Channels;
     int32 SamplesPerSec;
     int32 ToneHz;
-    int32 SquareWaveCounter;
     int32 WavePeriod;
     int32 BytesPerSample;
     int32 BufferSize;
     uint32 RunningSampleIndex;
     int32 ToneVolume;
-} CanvasSound;
+    int32 LatencySampleCount;
+    real32 tSine;
+} WinCanvasSound;
 
 
 // Globals --------------------------------------------------//
 global bool GlobalRunning;
-global CanvasBitMap GlobalCanvas;
+global WinCanvasBitMap GlobalWinCanvas;
 global LPDIRECTSOUNDBUFFER GlobalSoundBuffer;
 // Globals --------------------------------------------------//
 
@@ -80,7 +82,7 @@ global xinput_set_state *XInputSetState_ = xInputSetStateStub;
 #define XInputSetState XInputSetState_
 
 internal void
-CanvasLoadXInput() {
+WinCanvasLoadXInput() {
     HMODULE XInputLibrary = LoadLibraryA("xinput1_3.dll");
 
     if (XInputLibrary) {
@@ -98,7 +100,7 @@ CanvasLoadXInput() {
 typedef DSOUND_CREATE(dsound_create);
 
 internal void
-CanvasInitDSound(HWND WindowHandle, int32 BufferSize, int32 SamplesPerSec) {
+WinCanvasInitDSound(HWND WindowHandle, int32 BufferSize, int32 SamplesPerSec) {
     // Load the library
     HMODULE DSoundLibrary = LoadLibraryA("dsound.dll");
 
@@ -175,18 +177,18 @@ CanvasInitDSound(HWND WindowHandle, int32 BufferSize, int32 SamplesPerSec) {
 }
 // -------------------------------------------------------------------------- //
 
-internal CanvasSound
-CanvasInitSound() {
-    CanvasSound Sound = {};
+internal WinCanvasSound
+WinCanvasInitSound() {
+    WinCanvasSound Sound = {};
 
     Sound.Channels = 2;
     Sound.SamplesPerSec = 48000;
     Sound.ToneHz = 256;
-    Sound.SquareWaveCounter = 0;
     Sound.WavePeriod = Sound.SamplesPerSec / Sound.ToneHz;
     Sound.BytesPerSample = sizeof(int16) * Sound.Channels;
     Sound.BufferSize = Sound.SamplesPerSec * Sound.BytesPerSample;
     Sound.RunningSampleIndex = 0;
+    Sound.LatencySampleCount = Sound.SamplesPerSec / 15;
 
     Sound.ToneVolume = 3000;
 
@@ -195,7 +197,7 @@ CanvasInitSound() {
 
 
 internal void
-CanvasSoundFill(CanvasSound *Sound, DWORD ByteToLock, DWORD BytesToWrite) {
+WinCanvasSoundFill(WinCanvasSound *Sound, DWORD ByteToLock, DWORD BytesToWrite) {
 
     VOID *Region1;
     DWORD Region1Size;
@@ -211,9 +213,10 @@ CanvasSoundFill(CanvasSound *Sound, DWORD ByteToLock, DWORD BytesToWrite) {
         int16 *SampleOut = (int16 *)Region1;
         DWORD Region1SampleCount = Region1Size / Sound->BytesPerSample;
         for (DWORD SampleIdx = 0; SampleIdx < Region1SampleCount; SampleIdx += 1) {
-            real32 t =
-                ((real32)Sound->RunningSampleIndex / (real32)Sound->WavePeriod) * Pi32 * 2.0f;
-            real32 SineValue = sinf(t);
+            // real32 t =
+            //     ((real32)Sound->RunningSampleIndex / (real32)Sound->WavePeriod) * Pi32 * 2.0f;
+
+            real32 SineValue = sinf(Sound->tSine);
 
             int16 SampleValue = (int16)(SineValue * (real32)Sound->ToneVolume);
 
@@ -223,15 +226,17 @@ CanvasSoundFill(CanvasSound *Sound, DWORD ByteToLock, DWORD BytesToWrite) {
             *SampleOut = SampleValue;
             SampleOut += 1;
 
+            Sound->tSine += (1.0f * Pi32 * 2.0f) / (real32)Sound->WavePeriod;
             Sound->RunningSampleIndex += 1;
         }
 
         DWORD Region2SampleCount = Region2Size / Sound->BytesPerSample;
         SampleOut = (int16 *)Region2;
         for (DWORD SampleIdx = 0; SampleIdx < Region2SampleCount; SampleIdx += 1) {
-            real32 t =
-                ((real32)Sound->RunningSampleIndex / (real32)Sound->WavePeriod) * Pi32 * 2.0f;
-            real32 SineValue = sinf(t);
+            // real32 t =
+            //     ((real32)Sound->RunningSampleIndex / (real32)Sound->WavePeriod) * Pi32 * 2.0f;
+
+            real32 SineValue = sinf(Sound->tSine);
 
             int16 SampleValue = (int16)(SineValue * (real32)Sound->ToneVolume);
 
@@ -241,6 +246,7 @@ CanvasSoundFill(CanvasSound *Sound, DWORD ByteToLock, DWORD BytesToWrite) {
             *SampleOut = SampleValue;
             SampleOut += 1;
 
+            Sound->tSine += (1.0f * Pi32 * 2.0f) / (real32)Sound->WavePeriod;
             Sound->RunningSampleIndex += 1;
         }
 
@@ -249,87 +255,59 @@ CanvasSoundFill(CanvasSound *Sound, DWORD ByteToLock, DWORD BytesToWrite) {
 }
 
 
-internal CanvasDimensions
-CanvasGetDimensions(HWND WindowHandle) {
+internal WinCanvasDimensions
+WinCanvasGetDimensions(HWND WindowHandle) {
     RECT ClientRect;
     GetClientRect(WindowHandle, &ClientRect);
 
     int Width = ClientRect.right - ClientRect.left;
     int Height = ClientRect.bottom - ClientRect.top;
 
-    return CanvasDimensions{Width, Height};
+    return WinCanvasDimensions{Width, Height};
 }
 
 
 
 internal void
-CanvasDraw(int XOff, int YOff) {
+WinCanvasCreateDibSection(int Width, int Height) {
 
-    uint8 *Row = (uint8 *)GlobalCanvas.Memory;
-
-    for (int Y = 0; Y < GlobalCanvas.Height; Y += 1) {
-
-        uint32 *Pixel = (uint32 *)Row;
-        for (int X = 0; X < GlobalCanvas.Width; X += 1) {
-
-            // Blue
-            uint8 blue = (uint8)(X + XOff);
-            uint8 green = (uint8)(Y + YOff);
-            uint8 red = 0;
-            uint8 pad = 0;
-
-            *Pixel =
-                ((uint32)pad << 24) | ((uint32)red << 16) | ((uint32)green << 8) | ((uint32)blue);
-
-            Pixel += 1;
-        }
-
-        Row += GlobalCanvas.Pitch;
-    }
-}
-
-
-
-internal void
-CanvasCreateDibSection(int Width, int Height) {
-
-    if (GlobalCanvas.Memory) {
-        VirtualFree(GlobalCanvas.Memory, 0, MEM_RELEASE);
+    if (GlobalWinCanvas.Memory) {
+        VirtualFree(GlobalWinCanvas.Memory, 0, MEM_RELEASE);
     }
 
-    GlobalCanvas.Width = Width;
-    GlobalCanvas.Height = Height;
+    GlobalWinCanvas.Width = Width;
+    GlobalWinCanvas.Height = Height;
 
-    GlobalCanvas.Info.bmiHeader.biSize = sizeof(GlobalCanvas.Info.bmiHeader);
-    GlobalCanvas.Info.bmiHeader.biWidth = GlobalCanvas.Width;
-    GlobalCanvas.Info.bmiHeader.biHeight = -GlobalCanvas.Height; // Windows
-                                                                 // Convention
-                                                                 // Bullshit
-    GlobalCanvas.Info.bmiHeader.biPlanes = 1;
-    GlobalCanvas.Info.bmiHeader.biBitCount = 32;
-    GlobalCanvas.Info.bmiHeader.biCompression = BI_RGB;
+    GlobalWinCanvas.Info.bmiHeader.biSize = sizeof(GlobalWinCanvas.Info.bmiHeader);
+    GlobalWinCanvas.Info.bmiHeader.biWidth = GlobalWinCanvas.Width;
+    GlobalWinCanvas.Info.bmiHeader.biHeight = -GlobalWinCanvas.Height; // Windows
+                                                                       // Convention
+                                                                       // Bullshit
+    GlobalWinCanvas.Info.bmiHeader.biPlanes = 1;
+    GlobalWinCanvas.Info.bmiHeader.biBitCount = 32;
+    GlobalWinCanvas.Info.bmiHeader.biCompression = BI_RGB;
 
-    GlobalCanvas.BytesPerPixel = 4;
+    GlobalWinCanvas.BytesPerPixel = 4;
 
-    GlobalCanvas.Size = GlobalCanvas.Width * GlobalCanvas.Height * GlobalCanvas.BytesPerPixel;
+    GlobalWinCanvas.Size =
+        GlobalWinCanvas.Width * GlobalWinCanvas.Height * GlobalWinCanvas.BytesPerPixel;
 
-    GlobalCanvas.Memory =
-        VirtualAlloc(0, GlobalCanvas.Size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+    GlobalWinCanvas.Memory =
+        VirtualAlloc(0, GlobalWinCanvas.Size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 
-    GlobalCanvas.Pitch = GlobalCanvas.Width * GlobalCanvas.BytesPerPixel;
-    CanvasDraw(0, 0);
+    GlobalWinCanvas.Pitch = GlobalWinCanvas.Width * GlobalWinCanvas.BytesPerPixel;
 }
 
 
 
 internal void
-CanvasDisplayBitmap(HDC DeviceCtx, int WindowWidth, int WindowHeight) {
+WinCanvasDisplayBitmap(HDC DeviceCtx, int WindowWidth, int WindowHeight) {
 
     int DestWidth = WindowWidth;
     int DestHeight = WindowHeight;
 
-    // float AspectRatio = (float)GlobalCanvas.Width /
-    //    (float)GlobalCanvas.Height;
+    // float AspectRatio = (float)GlobalWinCanvas.Width /
+    //    (float)GlobalWinCanvas.Height;
     //
     // if (WindowWidth > WindowHeight) { DestHeight = (int)((float)WindowWidth /
     // AspectRatio); } else { 	DestWidth = (int)((float)WindowHeight *
@@ -339,16 +317,16 @@ CanvasDisplayBitmap(HDC DeviceCtx, int WindowWidth, int WindowHeight) {
     int DestX = 0;
     int DestY = 0;
 
-    StretchDIBits(DeviceCtx,                                     //
-                  DestX, DestY, DestWidth, DestHeight,           // Destination Dimensions
-                  0, 0, GlobalCanvas.Width, GlobalCanvas.Height, // Source Dimensions
-                  GlobalCanvas.Memory, &GlobalCanvas.Info, DIB_RGB_COLORS, SRCCOPY);
+    StretchDIBits(DeviceCtx,                                           //
+                  DestX, DestY, DestWidth, DestHeight,                 // Destination Dimensions
+                  0, 0, GlobalWinCanvas.Width, GlobalWinCanvas.Height, // Source Dimensions
+                  GlobalWinCanvas.Memory, &GlobalWinCanvas.Info, DIB_RGB_COLORS, SRCCOPY);
 }
 
 
 
 LRESULT
-CanvasWindowCallBack(HWND WindowHandle, UINT Message, WPARAM wParam, LPARAM lParam) {
+WinCanvasWindowCallBack(HWND WindowHandle, UINT Message, WPARAM wParam, LPARAM lParam) {
     LRESULT Result = 0;
 
     switch (Message) {
@@ -406,8 +384,8 @@ CanvasWindowCallBack(HWND WindowHandle, UINT Message, WPARAM wParam, LPARAM lPar
                 PatBlt(DeviceCtx, X, Y, Width, Height, BLACKNESS);
             }
 
-            CanvasDimensions Dimensions = CanvasGetDimensions(WindowHandle);
-            CanvasDisplayBitmap(DeviceCtx, Dimensions.Width, Dimensions.Height);
+            WinCanvasDimensions Dimensions = WinCanvasGetDimensions(WindowHandle);
+            WinCanvasDisplayBitmap(DeviceCtx, Dimensions.Width, Dimensions.Height);
 
             EndPaint(WindowHandle, &Paint);
         } break;
@@ -425,21 +403,26 @@ CanvasWindowCallBack(HWND WindowHandle, UINT Message, WPARAM wParam, LPARAM lPar
 int32
 WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd) {
 
-    CanvasLoadXInput();
-    CanvasCreateDibSection(1280, 720);
+    LARGE_INTEGER FreqStructResult = {};
+    QueryPerformanceFrequency(&FreqStructResult);
+    int64 PerfCounterFrequency = FreqStructResult.QuadPart;
 
-    LPCSTR WindowClassName = "CanvasWindowClass";
+    WinCanvasLoadXInput();
+    WinCanvasCreateDibSection(1280, 720);
+
+    LPCSTR WindowClassName = "WinCanvasWindowClass";
 
     WNDCLASSA WindowClass = {};
     WindowClass.style = CS_HREDRAW | CS_VREDRAW;
-    WindowClass.lpfnWndProc = CanvasWindowCallBack;
+    WindowClass.lpfnWndProc = WinCanvasWindowCallBack;
     WindowClass.hInstance = Instance;
     WindowClass.lpszClassName = WindowClassName;
+
 
     if (RegisterClassA(&WindowClass)) {
 
         HWND WindowHandle = CreateWindowExA(0, WindowClassName,
-                                            "Canvas",                         // Title/Caption
+                                            "WinCanvas",                      // Title/Caption
                                             WS_OVERLAPPEDWINDOW | WS_VISIBLE, // Style
                                             // Position and Size
                                             CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
@@ -452,18 +435,27 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd) 
             int32 YOff = 0;
 
             // Sound Test
-			// ----------------------------------------------------- //
-            CanvasSound Sound = CanvasInitSound();
+            // ----------------------------------------------------- //
+            WinCanvasSound Sound = WinCanvasInitSound();
 
-			// Sound init after a window is created
-            CanvasInitDSound(WindowHandle, Sound.BufferSize, Sound.SamplesPerSec);
-			CanvasSoundFill(&Sound, 0, Sound.BufferSize);
+            // Sound init after a window is created
+            WinCanvasInitDSound(WindowHandle, Sound.BufferSize, Sound.SamplesPerSec);
+            WinCanvasSoundFill(&Sound, 0, Sound.LatencySampleCount * Sound.BytesPerSample);
 
             GlobalSoundBuffer->Play(0, 0, DSBPLAY_LOOPING);
-			// ----------------------------------------------------- //
+            // ----------------------------------------------------- //
 
             GlobalRunning = true;
+
+            LARGE_INTEGER LastCounter;
+            QueryPerformanceCounter(&LastCounter);
+
+            uint64 LastCycleCount = __rdtsc();
             while (GlobalRunning) {
+
+                LARGE_INTEGER BeginCounter;
+                QueryPerformanceCounter(&BeginCounter);
+
 
                 MSG Message;
                 while (PeekMessageA(&Message, 0, 0, 0, PM_REMOVE)) {
@@ -510,8 +502,8 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd) 
                         uint8 LeftTrigger = Pad->bLeftTrigger;
                         uint8 RightTrigger = Pad->bRightTrigger;
 
-                        XOff += LStickX >> 12;
-                        YOff += LStickY >> 12;
+                        XOff += LStickX / 4096;
+                        YOff -= LStickY / 4096;
 
                         if (Up) {
                             YOff -= 2;
@@ -533,6 +525,17 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd) 
                             GlobalRunning = false;
                         }
 
+                        if (RightShoulder) {
+                            Sound.ToneHz += 1;
+                        }
+
+                        if (LeftShoulder) {
+                            Sound.ToneHz -= 1;
+                        }
+
+                        Sound.WavePeriod = Sound.SamplesPerSec / (Sound.ToneHz + RightTrigger);
+                        // Sound.ToneVolume = (int32)((3000.0f) * ((real32)LeftTrigger / 255.0f));
+
                         // XINPUT_VIBRATION Vibration;
                         // Vibration.wLeftMotorSpeed = 60000;
                         // Vibration.wRightMotorSpeed = 60000;
@@ -543,7 +546,15 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd) 
                     }
                 }
 
-                CanvasDraw(XOff, YOff);
+                CanvasBitMap BitMap = {};
+                BitMap.Memory = GlobalWinCanvas.Memory;
+                BitMap.Width = GlobalWinCanvas.Width;
+                BitMap.Height = GlobalWinCanvas.Height;
+                BitMap.Size = GlobalWinCanvas.Size;
+                BitMap.Pitch = GlobalWinCanvas.Pitch;
+                BitMap.BytesPerPixel = GlobalWinCanvas.BytesPerPixel;
+
+                CanvasUpdateAndRender(BitMap, XOff, YOff);
 
                 // Sound Writting is pretty tough ---------------------------- //
 
@@ -552,30 +563,54 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd) 
 
                 if (SUCCEEDED(GlobalSoundBuffer->GetCurrentPosition(&PlayCursor, &WriteCursor))) {
 
+                    DWORD TargetCursor =
+                        (PlayCursor + (Sound.LatencySampleCount * Sound.BytesPerSample)) %
+                        Sound.BufferSize;
+
                     DWORD ByteToLock =
                         (Sound.RunningSampleIndex * Sound.BytesPerSample) % Sound.BufferSize;
                     DWORD BytesToWrite = 0;
 
-                    if (ByteToLock > PlayCursor) {
+
+                    if (ByteToLock > TargetCursor) {
 
                         BytesToWrite = Sound.BufferSize - ByteToLock;
-                        BytesToWrite += PlayCursor;
+                        BytesToWrite += TargetCursor;
                     } else {
 
-                        BytesToWrite = PlayCursor - ByteToLock;
+                        BytesToWrite = TargetCursor - ByteToLock;
                     }
 
-					CanvasSoundFill(&Sound, ByteToLock, BytesToWrite);
+                    WinCanvasSoundFill(&Sound, ByteToLock, BytesToWrite);
                 }
                 // Sound Writting is pretty tough ---------------------------- //
 
                 // --------------------------------------------------------------- //
                 HDC DeviceCtx = GetDC(WindowHandle);
-                CanvasDimensions Dimensions = CanvasGetDimensions(WindowHandle);
-                CanvasDisplayBitmap(DeviceCtx, Dimensions.Width, Dimensions.Height);
+                WinCanvasDimensions Dimensions = WinCanvasGetDimensions(WindowHandle);
+                WinCanvasDisplayBitmap(DeviceCtx, Dimensions.Width, Dimensions.Height);
 
                 ReleaseDC(WindowHandle, DeviceCtx);
                 // --------------------------------------------------------------- //
+
+                uint64 EndCycleCount = __rdtsc();
+
+                LARGE_INTEGER EndCounter;
+                QueryPerformanceCounter(&EndCounter);
+
+                int64 CounterElapsed = EndCounter.QuadPart - LastCounter.QuadPart;
+                real64 MSPerFrame =
+                    (1000.0f * (real64)CounterElapsed) / (real64)PerfCounterFrequency;
+                real64 FPS = 1000.0f / MSPerFrame;
+                real64 MegaCyclesElapsed =
+                    (((real64)EndCycleCount - (real64)LastCycleCount) / (1000.0f * 1000.0f));
+                char Buffer[256];
+                sprintf(Buffer, "%.03fms, %.03ffps, %.03fMC/F \n", MSPerFrame, FPS,
+                        MegaCyclesElapsed);
+                OutputDebugStringA(Buffer);
+
+                LastCounter = EndCounter;
+                LastCycleCount = EndCycleCount;
             }
 
         } else {
