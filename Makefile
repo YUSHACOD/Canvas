@@ -13,7 +13,7 @@ SRC     = $(wildcard $(SRC_DIR)/canvas_win.cpp)
 OUTDIR  = build
 DBGDIR  = $(OUTDIR)/debug
 RELDIR  = $(OUTDIR)/release
-DEBUGGER = devenv
+DEBUGGER = raddbg
 
 NAME = Canvas
 
@@ -36,6 +36,3 @@ FORCE:
 
 $(DBGDIR) $(RELDIR):
 	mkdir -Force $@
-
-clean:
-	Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $(DBGDIR),$(RELDIR)

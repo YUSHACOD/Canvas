@@ -13,7 +13,13 @@ typedef struct {
     int32 BytesPerPixel;
 } CanvasBitMap;
 
-internal void CanvasUpdateAndRender(CanvasBitMap BitMap, int32 XOff, int32 YOff);
+typedef struct {
+    int16 *SampleOut;
+    int32 SamplesPerSecond;
+    int32 SampleCount;
+} CanvasSoundBuffer;
+
+internal void CanvasUpdateAndRender(CanvasBitMap *BitMap, int32 XOff, int32 YOff, CanvasSoundBuffer *SoundBuffer, int32 ToneHz);
 
 // ---------------------------------------------------------------------------------------------- //
 #endif
