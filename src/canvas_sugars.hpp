@@ -22,6 +22,8 @@ typedef uint64_t uint64;
 
 typedef float real32;
 typedef double real64;
+
+#define ArrayLen(ARRAY) (sizeof(ARRAY) / sizeof((ARRAY)[0]))
 // Sugars ---------------------------------------------------- //
 
 #endif

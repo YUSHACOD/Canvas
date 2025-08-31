@@ -16,46 +16,12 @@
  *
  *   Just a PARTIAL LIST!!!!
  */
+#include "canvas.hpp"
 #pragma comment(lib, "user32.lib")
 #pragma comment(lib, "gdi32.lib")
 
-#include "canvas_sugars.hpp"
-#include "canvas.cpp"
+#include "windows_structs.hpp"
 
-#include <stdio.h>
-#include <windows.h>
-#include <Xinput.h>
-#include <dsound.h>
-#include <malloc.h>
-
-
-typedef struct {
-    BITMAPINFO Info;
-    void *Memory;
-    int32 Width;
-    int32 Height;
-    int32 Size;
-    int32 Pitch;
-    int32 BytesPerPixel;
-} WinCanvasBitMap;
-
-typedef struct {
-    int32 Width;
-    int32 Height;
-} WinCanvasDimensions;
-
-typedef struct {
-    int32 Channels;
-    int32 SamplesPerSec;
-    int32 ToneHz;
-    int32 WavePeriod;
-    int32 BytesPerSample;
-    int32 BufferSize;
-    uint32 RunningSampleIndex;
-    int32 ToneVolume;
-    int32 LatencySampleCount;
-    real32 tSine;
-} WinCanvasSound;
 
 
 // Globals --------------------------------------------------//
@@ -92,9 +58,12 @@ WinCanvasLoadXInput() {
 }
 // -------------------------------------------------------------------------- //
 
+
+
 // Same shenanigans as above for DirectSound -------------------------------- //
 #define DSOUND_CREATE(name)                                                                        \
     HRESULT WINAPI name(LPCGUID pcGuidDevice, LPDIRECTSOUND *ppDS, LPUNKNOWN pUnkOuter)
+
 typedef DSOUND_CREATE(dsound_create);
 
 internal void
@@ -175,23 +144,22 @@ WinCanvasInitDSound(HWND WindowHandle, int32 BufferSize, int32 SamplesPerSec) {
 }
 // -------------------------------------------------------------------------- //
 
+
+
 internal WinCanvasSound
 WinCanvasInitSound() {
     WinCanvasSound Sound = {};
 
     Sound.Channels = 2;
     Sound.SamplesPerSec = 48000;
-    Sound.ToneHz = 256;
-    Sound.WavePeriod = Sound.SamplesPerSec / Sound.ToneHz;
     Sound.BytesPerSample = sizeof(int16) * Sound.Channels;
     Sound.BufferSize = Sound.SamplesPerSec * Sound.BytesPerSample;
     Sound.RunningSampleIndex = 0;
     Sound.LatencySampleCount = Sound.SamplesPerSec / 15;
 
-    Sound.ToneVolume = 3000;
-
     return Sound;
 }
+
 
 
 internal void
@@ -203,9 +171,12 @@ WinCanvasSoundClear(WinCanvasSound *Sound) {
     DWORD Region2Size;
 
 
-    if (SUCCEEDED(GlobalSoundBuffer->Lock(0, Sound->BufferSize,   //
-                                          &Region1, &Region1Size, //
-                                          &Region2, &Region2Size, //
+    if (SUCCEEDED(GlobalSoundBuffer->Lock(0,
+                                          Sound->BufferSize, //
+                                          &Region1,
+                                          &Region1Size, //
+                                          &Region2,
+                                          &Region2Size, //
                                           0))) {
 
         DWORD Region1SampleCount = Region1Size / Sound->BytesPerSample;
@@ -228,9 +199,12 @@ WinCanvasSoundClear(WinCanvasSound *Sound) {
 }
 
 
+
 internal void
-WinCanvasSoundFill(WinCanvasSound *Sound, DWORD ByteToLock, DWORD BytesToWrite,
-                   CanvasSoundBuffer *GameSound) {
+WinCanvasSoundFill(WinCanvasSound *Sound,
+                   DWORD ByteToLock,
+                   DWORD BytesToWrite,
+                   CanvasSound *GameSound) {
 
     VOID *Region1;
     DWORD Region1Size;
@@ -238,9 +212,12 @@ WinCanvasSoundFill(WinCanvasSound *Sound, DWORD ByteToLock, DWORD BytesToWrite,
     DWORD Region2Size;
 
 
-    if (SUCCEEDED(GlobalSoundBuffer->Lock(ByteToLock, BytesToWrite, //
-                                          &Region1, &Region1Size,   //
-                                          &Region2, &Region2Size,   //
+    if (SUCCEEDED(GlobalSoundBuffer->Lock(ByteToLock,
+                                          BytesToWrite, //
+                                          &Region1,
+                                          &Region1Size, //
+                                          &Region2,
+                                          &Region2Size, //
                                           0))) {
 
         DWORD Region1SampleCount = Region1Size / Sound->BytesPerSample;
@@ -270,6 +247,21 @@ WinCanvasSoundFill(WinCanvasSound *Sound, DWORD ByteToLock, DWORD BytesToWrite,
         GlobalSoundBuffer->Unlock(Region1, Region1Size, Region2, Region2Size);
     }
 }
+
+
+
+internal void
+WinCanvasProcessXInputButton(CanvasButtonState *Old, CanvasButtonState *New, bool IsSet) {
+    New->EndedDown = IsSet;
+    New->Transitions += (Old->EndedDown ^ New->EndedDown) ? 1 : 0;
+}
+
+internal void
+WinCanvasProcessXInputAnalog(CanvasAnalogState *Old, CanvasAnalogState *New, real32 Val) {
+    New->End = New->Min = New->Max = Val;
+    New->Start = Old->End;
+}
+
 
 
 internal WinCanvasDimensions
@@ -334,10 +326,19 @@ WinCanvasDisplayBitmap(HDC DeviceCtx, int WindowWidth, int WindowHeight) {
     int DestX = 0;
     int DestY = 0;
 
-    StretchDIBits(DeviceCtx,                                           //
-                  DestX, DestY, DestWidth, DestHeight,                 // Destination Dimensions
-                  0, 0, GlobalWinCanvas.Width, GlobalWinCanvas.Height, // Source Dimensions
-                  GlobalWinCanvas.Memory, &GlobalWinCanvas.Info, DIB_RGB_COLORS, SRCCOPY);
+    StretchDIBits(DeviceCtx, //
+                  DestX,
+                  DestY,
+                  DestWidth,
+                  DestHeight, // Destination Dimensions
+                  0,
+                  0,
+                  GlobalWinCanvas.Width,
+                  GlobalWinCanvas.Height, // Source Dimensions
+                  GlobalWinCanvas.Memory,
+                  &GlobalWinCanvas.Info,
+                  DIB_RGB_COLORS,
+                  SRCCOPY);
 }
 
 
@@ -438,40 +439,51 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd) 
 
     if (RegisterClassA(&WindowClass)) {
 
-        HWND WindowHandle = CreateWindowExA(0, WindowClassName,
-                                            "WinCanvas",                      // Title/Caption
+        HWND WindowHandle = CreateWindowExA(0,
+                                            WindowClassName,
+                                            "Canvas",                         // Title/Caption
                                             WS_OVERLAPPEDWINDOW | WS_VISIBLE, // Style
                                             // Position and Size
-                                            CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
-                                            CW_USEDEFAULT, 0, 0, Instance, 0); // Other stuff
+                                            CW_USEDEFAULT,
+                                            CW_USEDEFAULT,
+                                            CW_USEDEFAULT,
+                                            CW_USEDEFAULT,
+                                            0,
+                                            0,
+                                            Instance,
+                                            0); // Other stuff
 
         if (WindowHandle) {
 
-            // Graphic Test
-            int32 XOff = 0;
-            int32 YOff = 0;
+            // Sound ---------------------------------------------------------------------------- //
+            WinCanvasSound WinCanvasSound = WinCanvasInitSound(); // Config
 
-            // Sound Test
-            // ----------------------------------------------------- //
-            WinCanvasSound WinCanvasSound = WinCanvasInitSound();
-
-            // Sound init after a window is created
-            WinCanvasInitDSound(WindowHandle, WinCanvasSound.BufferSize,
-                                WinCanvasSound.SamplesPerSec);
+            // Direct Sound init after a window is created
+            WinCanvasInitDSound(
+                WindowHandle, WinCanvasSound.BufferSize, WinCanvasSound.SamplesPerSec);
 
             WinCanvasSoundClear(&WinCanvasSound);
 
             GlobalSoundBuffer->Play(0, 0, DSBPLAY_LOOPING);
-            int16 *Samples = (int16 *)VirtualAlloc(0, WinCanvasSound.BufferSize,
-                                                   MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
-            // ----------------------------------------------------- //
+
+            int16 *CanvasSampleBuffer = (int16 *)VirtualAlloc(0,
+                                                              WinCanvasSound.BufferSize, //
+                                                              MEM_RESERVE | MEM_COMMIT,  //
+                                                              PAGE_READWRITE);
+            // --------------------------------------------------------------------------------- //
 
             GlobalRunning = true;
 
+            // Perf Metrics ------------------------------------------- //
             LARGE_INTEGER LastCounter;
             QueryPerformanceCounter(&LastCounter);
-
             uint64 LastCycleCount = __rdtsc();
+            // -------------------------------------------------------- //
+
+            CanvasInput Inputs[2] = {};
+            CanvasInput *OldInput = &Inputs[0];
+            CanvasInput *NewInput = &Inputs[1];
+
             while (GlobalRunning) {
 
                 LARGE_INTEGER BeginCounter;
@@ -489,10 +501,17 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd) 
                 }
 
                 // Gamepad
-                for (DWORD ControllerIdx = 0; ControllerIdx < XUSER_MAX_COUNT; ControllerIdx += 1) {
+                int32 MaxControllerCount = XUSER_MAX_COUNT;
+                if (MaxControllerCount > ArrayLen(Inputs[0].Controllers)) {
+                    MaxControllerCount = ArrayLen(Inputs[0].Controllers);
+                }
+                for (DWORD ControllerIdx = 0; ControllerIdx < MaxControllerCount;
+                     ControllerIdx += 1) {
 
                     XINPUT_STATE ControllerState;
                     if (XInputGetState(ControllerIdx, &ControllerState) == ERROR_SUCCESS) {
+
+                        // Unpacking of Gamepad Inputs ------------------------------------------ //
                         XINPUT_GAMEPAD *Pad = &ControllerState.Gamepad;
 
                         bool Up = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_UP);
@@ -501,64 +520,87 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd) 
                         bool Right = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_RIGHT);
 
                         bool Start = (Pad->wButtons & XINPUT_GAMEPAD_START);
-                        bool Back = (Pad->wButtons & XINPUT_GAMEPAD_BACK);
+                        bool Stop = (Pad->wButtons & XINPUT_GAMEPAD_BACK);
 
-                        bool LeftThumb = (Pad->wButtons & XINPUT_GAMEPAD_LEFT_THUMB);
-                        bool RightThumb = (Pad->wButtons & XINPUT_GAMEPAD_RIGHT_THUMB);
+                        bool LT = (Pad->wButtons & XINPUT_GAMEPAD_LEFT_THUMB);
+                        bool RT = (Pad->wButtons & XINPUT_GAMEPAD_RIGHT_THUMB);
 
-                        bool LeftShoulder = (Pad->wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER);
-                        bool RightShoulder = (Pad->wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER);
+                        bool LS = (Pad->wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER);
+                        bool RS = (Pad->wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER);
 
-                        bool AButton = (Pad->wButtons & XINPUT_GAMEPAD_A);
-                        bool BButton = (Pad->wButtons & XINPUT_GAMEPAD_B);
-                        bool XButton = (Pad->wButtons & XINPUT_GAMEPAD_X);
-                        bool YButton = (Pad->wButtons & XINPUT_GAMEPAD_Y);
+                        bool A = (Pad->wButtons & XINPUT_GAMEPAD_A);
+                        bool B = (Pad->wButtons & XINPUT_GAMEPAD_B);
+                        bool X = (Pad->wButtons & XINPUT_GAMEPAD_X);
+                        bool Y = (Pad->wButtons & XINPUT_GAMEPAD_Y);
 
-                        int16 LStickX = Pad->sThumbLX;
-                        int16 LStickY = Pad->sThumbLY;
 
-                        int16 RStickX = Pad->sThumbRX;
-                        int16 RStickY = Pad->sThumbRY;
+                        real32 LStickX = (real32)Pad->sThumbLX;
+                        real32 LStickY = (real32)Pad->sThumbLY;
+                        real32 RStickX = (real32)Pad->sThumbRX;
+                        real32 RStickY = (real32)Pad->sThumbRY;
 
-                        uint8 LeftTrigger = Pad->bLeftTrigger;
-                        uint8 RightTrigger = Pad->bRightTrigger;
+                        // Normalization of sticks
+                        LStickX = (LStickX < 0) ? (LStickX / 32768.0f) : (LStickX / 32767.0f);
+                        LStickY = (LStickY < 0) ? (LStickY / 32768.0f) : (LStickY / 32767.0f);
+                        RStickX = (RStickX < 0) ? (RStickX / 32768.0f) : (RStickX / 32767.0f);
+                        RStickY = (RStickY < 0) ? (RStickY / 32768.0f) : (RStickY / 32767.0f);
 
-                        XOff += LStickX / 4096;
-                        YOff -= LStickY / 4096;
+                        real32 LeftTrigger = (real32)Pad->bLeftTrigger / 255.0f;
+                        real32 RightTrigger = (real32)Pad->bRightTrigger / 255.0f;
+                        // ---------------------------------------------------------------------- //
 
-                        if (Up) {
-                            YOff -= 2;
-                        }
 
-                        if (Down) {
-                            YOff += 2;
-                        }
+                        // Process Input for use ------------------------------------------------ //
+                        CanvasControllerInput *OldController =
+                            &OldInput->Controllers[ControllerIdx];
+                        CanvasControllerInput *NewController =
+                            &NewInput->Controllers[ControllerIdx];
 
-                        if (Left) {
-                            XOff -= 2;
-                        }
+                        WinCanvasProcessXInputButton(&OldController->Up, &NewController->Up, Up);
+                        WinCanvasProcessXInputButton(
+                            &OldController->Down, &NewController->Down, Down);
+                        WinCanvasProcessXInputButton(
+                            &OldController->Left, &NewController->Left, Left);
+                        WinCanvasProcessXInputButton(
+                            &OldController->Right, &NewController->Right, Right);
 
-                        if (Right) {
-                            XOff += 2;
-                        }
+                        WinCanvasProcessXInputButton(
+                            &OldController->Start, &NewController->Start, Start);
+                        WinCanvasProcessXInputButton(
+                            &OldController->Stop, &NewController->Stop, Stop);
 
-                        if (Back) {
-                            GlobalRunning = false;
-                        }
+                        WinCanvasProcessXInputButton(&OldController->LT, &NewController->LT, LT);
+                        WinCanvasProcessXInputButton(&OldController->RT, &NewController->RT, RT);
 
-                        if (RightShoulder) {
-                            WinCanvasSound.ToneHz += 1;
-                        }
+                        WinCanvasProcessXInputButton(&OldController->LS, &NewController->LS, LS);
+                        WinCanvasProcessXInputButton(&OldController->RS, &NewController->RS, RS);
 
-                        if (LeftShoulder) {
-                            WinCanvasSound.ToneHz -= 1;
-                        }
+                        WinCanvasProcessXInputButton(&OldController->A, &NewController->A, A);
+                        WinCanvasProcessXInputButton(&OldController->B, &NewController->B, B);
+                        WinCanvasProcessXInputButton(&OldController->X, &NewController->X, X);
+                        WinCanvasProcessXInputButton(&OldController->Y, &NewController->Y, Y);
 
-                        // WinCanvasSound.WavePeriod =
-                        //     WinCanvasSound.SamplesPerSec / (WinCanvasSound.ToneHz +
-                        //     RightTrigger);
-                        // WinCanvasSound.ToneVolume =
-                        //     (int32)((3000.0f) * ((real32)LeftTrigger / 255.0f));
+                        WinCanvasProcessXInputAnalog(
+                            &OldController->LeftTrigger, &NewController->LeftTrigger, LeftTrigger);
+
+                        WinCanvasProcessXInputAnalog(&OldController->RightTrigger,
+                                                     &NewController->RightTrigger,
+                                                     RightTrigger);
+
+
+                        WinCanvasProcessXInputAnalog(
+                            &OldController->LeftStickY, &NewController->LeftStickY, LStickY);
+                        WinCanvasProcessXInputAnalog(
+                            &OldController->LeftStickX, &NewController->LeftStickX, LStickX);
+
+                        WinCanvasProcessXInputAnalog(
+                            &OldController->RightStickY, &NewController->RightStickY, RStickY);
+                        WinCanvasProcessXInputAnalog(
+                            &OldController->RightStickX, &NewController->RightStickX, RStickX);
+
+                        // ---------------------------------------------------------------------- //
+
+
 
                         // XINPUT_VIBRATION Vibration;
                         // Vibration.wLeftMotorSpeed = 60000;
@@ -588,9 +630,8 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd) 
                     ByteToLock =
                         (WinCanvasSound.RunningSampleIndex * WinCanvasSound.BytesPerSample) %
                         WinCanvasSound.BufferSize;
+
                     BytesToWrite = 0;
-
-
                     if (ByteToLock > TargetCursor) {
 
                         BytesToWrite = WinCanvasSound.BufferSize - ByteToLock;
@@ -613,12 +654,12 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd) 
                 BitMap.Pitch = GlobalWinCanvas.Pitch;
                 BitMap.BytesPerPixel = GlobalWinCanvas.BytesPerPixel;
 
-                CanvasSoundBuffer GameSound = {};
+                CanvasSound GameSound = {};
                 GameSound.SamplesPerSecond = WinCanvasSound.SamplesPerSec;
                 GameSound.SampleCount = BytesToWrite / WinCanvasSound.BytesPerSample;
-                GameSound.SampleOut = Samples;
+                GameSound.SampleOut = CanvasSampleBuffer;
 
-                CanvasUpdateAndRender(&BitMap, XOff, YOff, &GameSound, WinCanvasSound.ToneHz);
+                CanvasUpdateAndRender(&BitMap, &GameSound, NewInput, &GlobalRunning);
 
                 if (SoundIsValid) {
                     WinCanvasSoundFill(&WinCanvasSound, ByteToLock, BytesToWrite, &GameSound);
@@ -645,14 +686,21 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd) 
                 real64 FPS = 1000.0f / MSPerFrame;
                 real64 MegaCyclesElapsed =
                     (((real64)EndCycleCount - (real64)LastCycleCount) / (1000.0f * 1000.0f));
-                char Buffer[256];
-                sprintf(Buffer, "%.03fms, %.03ffps, %.03fMC/F \n", MSPerFrame, FPS,
-                        MegaCyclesElapsed);
-                OutputDebugStringA(Buffer);
+
+                // char Buffer[256];
+                //
+                // sprintf(
+                //     Buffer, "%.03fms, %.03ffps, %.03fMC/F \n", MSPerFrame, FPS,
+                //     MegaCyclesElapsed);
+                // OutputDebugStringA(Buffer);
 
                 LastCounter = EndCounter;
                 LastCycleCount = EndCycleCount;
                 // --------------------------------------------------------------- //
+
+                CanvasInput *T = OldInput;
+                OldInput = NewInput;
+                NewInput = T;
             }
 
         } else {
