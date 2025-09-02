@@ -4,6 +4,16 @@
 
 #include "canvas_sugars.hpp"
 
+#ifdef DEBUG
+typedef struct {
+	void *Memory;
+	uint64 Size;
+} DEBUGFileStruct;
+DEBUGFileStruct DEBUGPlatformReadEntireFile(char *FileName);
+void DEBUGPlatformFreeFileMemory(void *Memory);
+bool DEBUGPlatformWriteEntireFile(char *FileName, void *Memory, uint32 MemorySize);
+#endif
+
 typedef struct {
     void *Memory;
     int32 Width;
@@ -76,12 +86,31 @@ typedef struct {
     CanvasControllerInput Controllers[4];
 } CanvasInput;
 
+typedef struct {
+    bool IsValid;
+
+    uint64 PermaSize;
+    void *PermaStore;
+
+    uint64 TransSize;
+    void *TransStore;
+} CanvasMemmory;
 
 
-internal void CanvasUpdateAndRender(CanvasBitMap *BitMap,
+
+internal void CanvasUpdateAndRender(CanvasMemmory *Memmory,
+                                    CanvasBitMap *BitMap,
                                     CanvasSound *SoundBuffer,
                                     CanvasInput *Input,
                                     bool *Running);
+
+
+
+typedef struct {
+    int32 XOff;
+    int32 YOff;
+    int32 ToneHz;
+} CanvasState;
 
 // ---------------------------------------------------------------------------------------------- //
 #endif

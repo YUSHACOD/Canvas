@@ -20,7 +20,7 @@ NAME = Canvas
 all: debug
 
 debug: $(DBGDIR) $(RELDIR)
-	$(CC) $(CFLAGS) $(DEBUG_FLAGS) /Fe$(DBGDIR)/$(NAME).exe $(SRC)
+	$(CC) -DDEBUG=1 $(CFLAGS) $(DEBUG_FLAGS) /Fe$(DBGDIR)/$(NAME).exe $(SRC)
 
 release: $(DBGDIR) $(RELDIR)
 	$(CC) $(CFLAGS) $(RELEASE_FLAGS) /Fe$(DBGDIR)/$(NAME).exe $(SRC)

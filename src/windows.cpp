@@ -17,6 +17,7 @@
  *   Just a PARTIAL LIST!!!!
  */
 #include "canvas.hpp"
+#include "canvas_sugars.hpp"
 #pragma comment(lib, "user32.lib")
 #pragma comment(lib, "gdi32.lib")
 
@@ -31,7 +32,7 @@ global LPDIRECTSOUNDBUFFER GlobalSoundBuffer;
 // Globals --------------------------------------------------//
 
 
-// Think about this, learn this --------------------------------------------- //
+// XInput Shenanigans ------------------------------------------------------- //
 
 #define XINPUT_GET(name) DWORD WINAPI name(DWORD UserIndex, XINPUT_STATE *State)
 typedef XINPUT_GET(xinput_get_state);
@@ -341,6 +342,84 @@ WinCanvasDisplayBitmap(HDC DeviceCtx, int WindowWidth, int WindowHeight) {
                   SRCCOPY);
 }
 
+internal DEBUGFileStruct
+DEBUGPlatformReadEntireFile(char *FileName) {
+
+    DEBUGFileStruct Result = {};
+
+    HANDLE FileHandle =
+        CreateFileA(FileName, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
+
+    if (FileHandle != INVALID_HANDLE_VALUE) {
+
+        LARGE_INTEGER FileSize;
+        if (GetFileSizeEx(FileHandle, &FileSize)) {
+
+            Result.Memory =
+                VirtualAlloc(0, FileSize.QuadPart, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+
+            if (Result.Memory) {
+                uint32 FileSize32 = SafeTruncateU64(FileSize.QuadPart);
+                DWORD BytesToRead;
+                if (ReadFile(FileHandle, Result.Memory, FileSize32, &BytesToRead, 0) &&
+                    (FileSize32 == BytesToRead)) {
+
+                    Result.Size = FileSize32;
+
+                } else {
+                    if (Result.Memory) {
+                        VirtualFree(Result.Memory, 0, MEM_RELEASE);
+                    }
+                }
+            }
+        }
+        CloseHandle(FileHandle);
+    } else {
+    }
+
+    return Result;
+}
+
+
+
+internal void
+DEBUGPlatformFreeFileMemory(void *Memory) {
+    if (Memory) {
+        VirtualFree(Memory, 0, MEM_RELEASE);
+    }
+}
+
+
+
+internal bool
+DEBUGPlatformWriteEntireFile(char *FileName, void *Memory, uint32 MemorySize) {
+
+    bool Result = false;
+
+    HANDLE FileHandle = CreateFileA(FileName, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, 0, 0);
+    if (FileHandle != INVALID_HANDLE_VALUE) {
+
+        if (Memory) {
+
+            uint32 MemmorySize32 = SafeTruncateU64(MemorySize);
+            DWORD BytesToWrite;
+
+            if (WriteFile(FileHandle, Memory, MemmorySize32, &BytesToWrite, 0)) {
+                Result = true;
+            } else {
+                OutputDebugStringA("Couldn't Write the File");
+            }
+        } else {
+            OutputDebugStringA("The Memory is Null");
+        }
+        CloseHandle(FileHandle);
+    } else {
+        OutputDebugStringA("File, not opened");
+    }
+
+    return Result;
+}
+
 
 
 LRESULT
@@ -472,7 +551,19 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd) 
                                                               PAGE_READWRITE);
             // --------------------------------------------------------------------------------- //
 
-            GlobalRunning = true;
+            CanvasMemmory Memmory = {};
+
+            Memmory.IsValid = false;
+            Memmory.PermaSize = MegaBytes(64);
+            Memmory.PermaStore =
+                VirtualAlloc(0, Memmory.PermaSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+
+            Memmory.TransSize = GigaBytes((uint64)2);
+            Memmory.TransStore =
+                VirtualAlloc(0, Memmory.TransSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+
+
+            GlobalRunning = (CanvasSampleBuffer && Memmory.PermaStore && Memmory.TransStore);
 
             // Perf Metrics ------------------------------------------- //
             LARGE_INTEGER LastCounter;
@@ -659,7 +750,7 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd) 
                 GameSound.SampleCount = BytesToWrite / WinCanvasSound.BytesPerSample;
                 GameSound.SampleOut = CanvasSampleBuffer;
 
-                CanvasUpdateAndRender(&BitMap, &GameSound, NewInput, &GlobalRunning);
+                CanvasUpdateAndRender(&Memmory, &BitMap, &GameSound, NewInput, &GlobalRunning);
 
                 if (SoundIsValid) {
                     WinCanvasSoundFill(&WinCanvasSound, ByteToLock, BytesToWrite, &GameSound);

@@ -56,40 +56,55 @@ CanvasWeirdRender(CanvasBitMap *BitMap, int32 XOff, int32 YOff) {
 
 
 internal void
-CanvasUpdateAndRender(CanvasBitMap *BitMap, CanvasSound *Sound, CanvasInput *Input, bool *Running) {
+CanvasUpdateAndRender(CanvasMemmory *Memmory,
+                      CanvasBitMap *BitMap,
+                      CanvasSound *Sound,
+                      CanvasInput *Input,
+                      bool *Running) {
 
-    local_persist int32 XOff = 0;
-    local_persist int32 YOff = 0;
-    local_persist int32 ToneHz = 256;
+#ifdef DEBUG
+    Assert(sizeof(CanvasState) <= Memmory->PermaSize);
+#endif
+
+    CanvasState *State = (CanvasState *)Memmory->PermaStore;
+    if (!Memmory->IsValid) {
+
+        char *FileName = Text(__FILE__);
+        DEBUGFileStruct File = DEBUGPlatformReadEntireFile(FileName);
+        if (File.Memory) {
+			DEBUGPlatformWriteEntireFile(Text("./rama.txt"), File.Memory, File.Size);
+            DEBUGPlatformFreeFileMemory(File.Memory);
+        }
+
+
+        State->ToneHz = 256;
+        Memmory->IsValid = true;
+    }
 
     // Input Handling ------------------------------------------ //
     CanvasControllerInput *Input1 = &Input->Controllers[0];
 
-    XOff += (int32)(4.0f * Input1->LeftStickX.End);
-    YOff -= (int32)(4.0f * Input1->LeftStickY.End);
+    State->XOff += (int32)(4.0f * Input1->LeftStickX.End);
+    State->YOff -= (int32)(4.0f * Input1->LeftStickY.End);
 
-    XOff -= (Input1->Left.EndedDown) ? 2 : 0;
-    XOff += (Input1->Right.EndedDown) ? 2 : 0;
+    State->XOff -= (Input1->Left.EndedDown) ? 2 : 0;
+    State->XOff += (Input1->Right.EndedDown) ? 2 : 0;
 
-    YOff -= (Input1->Up.EndedDown) ? 2 : 0;
-    YOff += (Input1->Down.EndedDown) ? 2 : 0;
+    State->YOff -= (Input1->Up.EndedDown) ? 2 : 0;
+    State->YOff += (Input1->Down.EndedDown) ? 2 : 0;
 
-    ToneHz += (Input1->RS.EndedDown) ? 1 : 0;
-    ToneHz -= (Input1->LS.EndedDown) ? 1 : 0;
+    State->ToneHz += (Input1->RS.EndedDown) ? 1 : 0;
+    State->ToneHz -= (Input1->LS.EndedDown) ? 1 : 0;
 
-    *Running = !(Input1->Stop.EndedDown);
+    if (Input1->Stop.EndedDown) {
+        *Running = false;
+    }
 
-    // WinCanvasSound.WavePeriod =
-    //     WinCanvasSound.SamplesPerSec / (WinCanvasSound.ToneHz +
-    //     RightTrigger);
     int32 ExtraToneHz = (int32)(Input1->RightTrigger.End * 256.0f);
 
-    // WinCanvasSound.ToneVolume =
-    //     (int32)((3000.0f) * ((real32)LeftTrigger / 255.0f));
-    // --------------------------------------------------------- //
     int32 ToneVolume = (int32)(3000.0f * Input1->LeftTrigger.End);
 
     // Todo: Allow sample offsets here for more robust platform options.
-    CanvasOutputSound(Sound, ToneVolume, ToneHz, ExtraToneHz);
-    CanvasWeirdRender(BitMap, XOff, YOff);
+    CanvasOutputSound(Sound, ToneVolume, State->ToneHz, ExtraToneHz);
+    CanvasWeirdRender(BitMap, State->XOff, State->YOff);
 }
