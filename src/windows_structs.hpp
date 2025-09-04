@@ -19,12 +19,12 @@ typedef struct {
     int32 Size;
     int32 Pitch;
     int32 BytesPerPixel;
-} WinCanvasBitMap;
+} WinPlatBitMap;
 
 typedef struct {
     int32 Width;
     int32 Height;
-} WinCanvasDimensions;
+} WinPlatDimensions;
 
 typedef struct {
     int32 Channels;
@@ -33,7 +33,7 @@ typedef struct {
     int32 BufferSize;
     uint32 RunningSampleIndex;
     int32 LatencySampleCount;
-} WinCanvasSound;
+} WinPlatSound;
 
 // --------------------------------------------------------------------------------------------- //
 #endif

@@ -1,7 +1,7 @@
-#include <math.h>
-
 #include "canvas.hpp"
 #include "canvas_sugars.hpp"
+
+#include <math.h>
 
 internal void
 CanvasOutputSound(CanvasSound *Sound, int32 ToneVolume, int32 ToneHz, int32 ExtraToneHz) {
@@ -69,12 +69,14 @@ CanvasUpdateAndRender(CanvasMemmory *Memmory,
     CanvasState *State = (CanvasState *)Memmory->PermaStore;
     if (!Memmory->IsValid) {
 
+#ifdef DEBUG
         char *FileName = Text(__FILE__);
         DEBUGFileStruct File = DEBUGPlatformReadEntireFile(FileName);
         if (File.Memory) {
-			DEBUGPlatformWriteEntireFile(Text("./rama.txt"), File.Memory, File.Size);
+            DEBUGPlatformWriteEntireFile(Text("./rama.txt"), File.Memory, (uint32)File.Size);
             DEBUGPlatformFreeFileMemory(File.Memory);
         }
+#endif
 
 
         State->ToneHz = 256;

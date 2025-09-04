@@ -1,3 +1,6 @@
+#pragma comment(lib, "user32.lib")
+#pragma comment(lib, "gdi32.lib")
+
 /*
  *  TODO(Ayush): Seperating the Platform layer
  *   - Save Location
@@ -16,10 +19,9 @@
  *
  *   Just a PARTIAL LIST!!!!
  */
-#include "canvas.hpp"
+
 #include "canvas_sugars.hpp"
-#pragma comment(lib, "user32.lib")
-#pragma comment(lib, "gdi32.lib")
+#include "canvas.hpp"
 
 #include "windows_structs.hpp"
 
@@ -27,8 +29,7 @@
 
 // Globals --------------------------------------------------//
 global bool GlobalRunning;
-global WinCanvasBitMap GlobalWinCanvas;
-global LPDIRECTSOUNDBUFFER GlobalSoundBuffer;
+global WinPlatBitMap GlobalBitMap;
 // Globals --------------------------------------------------//
 
 
@@ -47,14 +48,14 @@ global xinput_set_state *XInputSetState_ = xInputSetStateStub;
 #define XInputSetState XInputSetState_
 
 internal void
-WinCanvasLoadXInput() {
+WinPlatLoadXInput() {
     HMODULE XInputLibrary = LoadLibraryA("xinput1_3.dll");
 
     if (XInputLibrary) {
         XInputGetState = (xinput_get_state *)GetProcAddress(XInputLibrary, "XInputGetState");
         XInputSetState = (xinput_set_state *)GetProcAddress(XInputLibrary, "XInputSetState");
     } else {
-        // logging
+        OutputDebugStringA("Couldn't Load XInput\n");
     }
 }
 // -------------------------------------------------------------------------- //
@@ -68,7 +69,10 @@ WinCanvasLoadXInput() {
 typedef DSOUND_CREATE(dsound_create);
 
 internal void
-WinCanvasInitDSound(HWND WindowHandle, int32 BufferSize, int32 SamplesPerSec) {
+WinPlatInitDSound(HWND WindowHandle,
+                  int32 BufferSize,
+                  int32 SamplesPerSec,
+                  LPDIRECTSOUNDBUFFER *WinPlatSoundBuffer) {
     // Load the library
     HMODULE DSoundLibrary = LoadLibraryA("dsound.dll");
 
@@ -125,9 +129,9 @@ WinCanvasInitDSound(HWND WindowHandle, int32 BufferSize, int32 SamplesPerSec) {
                 DSBufferDesc.lpwfxFormat = &BufferFormat;
 
                 if (SUCCEEDED(
-                        DirectSound->CreateSoundBuffer(&DSBufferDesc, &GlobalSoundBuffer, 0))) {
+                        DirectSound->CreateSoundBuffer(&DSBufferDesc, WinPlatSoundBuffer, 0))) {
 
-                    if (SUCCEEDED(GlobalSoundBuffer->SetFormat(&BufferFormat))) {
+                    if (SUCCEEDED((*WinPlatSoundBuffer)->SetFormat(&BufferFormat))) {
                     }
                 } else {
                     // logging
@@ -147,9 +151,9 @@ WinCanvasInitDSound(HWND WindowHandle, int32 BufferSize, int32 SamplesPerSec) {
 
 
 
-internal WinCanvasSound
-WinCanvasInitSound() {
-    WinCanvasSound Sound = {};
+internal WinPlatSound
+WinPlatInitSound() {
+    WinPlatSound Sound = {};
 
     Sound.Channels = 2;
     Sound.SamplesPerSec = 48000;
@@ -164,7 +168,7 @@ WinCanvasInitSound() {
 
 
 internal void
-WinCanvasSoundClear(WinCanvasSound *Sound) {
+WinPlatSoundClear(WinPlatSound *Sound, LPDIRECTSOUNDBUFFER WinPlatSoundBuffer) {
 
     VOID *Region1;
     DWORD Region1Size;
@@ -172,15 +176,14 @@ WinCanvasSoundClear(WinCanvasSound *Sound) {
     DWORD Region2Size;
 
 
-    if (SUCCEEDED(GlobalSoundBuffer->Lock(0,
-                                          Sound->BufferSize, //
-                                          &Region1,
-                                          &Region1Size, //
-                                          &Region2,
-                                          &Region2Size, //
-                                          0))) {
+    if (SUCCEEDED(WinPlatSoundBuffer->Lock(0,
+                                           Sound->BufferSize, //
+                                           &Region1,
+                                           &Region1Size, //
+                                           &Region2,
+                                           &Region2Size, //
+                                           0))) {
 
-        DWORD Region1SampleCount = Region1Size / Sound->BytesPerSample;
 
         uint8 *DestSamples = (uint8 *)Region1;
 
@@ -188,24 +191,24 @@ WinCanvasSoundClear(WinCanvasSound *Sound) {
             *DestSamples++ = 0;
         }
 
-        DWORD Region2SampleCount = Region2Size / Sound->BytesPerSample;
         DestSamples = (uint8 *)Region2;
 
         for (DWORD ByteIdx = 0; ByteIdx < Region2Size; ByteIdx += 1) {
             *DestSamples++ = 0;
         }
 
-        GlobalSoundBuffer->Unlock(Region1, Region1Size, Region2, Region2Size);
+        WinPlatSoundBuffer->Unlock(Region1, Region1Size, Region2, Region2Size);
     }
 }
 
 
 
 internal void
-WinCanvasSoundFill(WinCanvasSound *Sound,
-                   DWORD ByteToLock,
-                   DWORD BytesToWrite,
-                   CanvasSound *GameSound) {
+WinPlatSoundFill(WinPlatSound *Sound,
+                 DWORD ByteToLock,
+                 DWORD BytesToWrite,
+                 CanvasSound *GameSound,
+                 LPDIRECTSOUNDBUFFER GlobalSoundBuffer) {
 
     VOID *Region1;
     DWORD Region1Size;
@@ -252,72 +255,71 @@ WinCanvasSoundFill(WinCanvasSound *Sound,
 
 
 internal void
-WinCanvasProcessXInputButton(CanvasButtonState *Old, CanvasButtonState *New, bool IsSet) {
+WinPlatProcessXInputButton(CanvasButtonState *Old, CanvasButtonState *New, bool IsSet) {
     New->EndedDown = IsSet;
     New->Transitions += (Old->EndedDown ^ New->EndedDown) ? 1 : 0;
 }
 
 internal void
-WinCanvasProcessXInputAnalog(CanvasAnalogState *Old, CanvasAnalogState *New, real32 Val) {
+WinPlatProcessXInputAnalog(CanvasAnalogState *Old, CanvasAnalogState *New, real32 Val) {
     New->End = New->Min = New->Max = Val;
     New->Start = Old->End;
 }
 
 
 
-internal WinCanvasDimensions
-WinCanvasGetDimensions(HWND WindowHandle) {
+internal WinPlatDimensions
+WinPlatGetDimensions(HWND WindowHandle) {
     RECT ClientRect;
     GetClientRect(WindowHandle, &ClientRect);
 
     int Width = ClientRect.right - ClientRect.left;
     int Height = ClientRect.bottom - ClientRect.top;
 
-    return WinCanvasDimensions{Width, Height};
+    return WinPlatDimensions{Width, Height};
 }
 
 
 
 internal void
-WinCanvasCreateDibSection(int Width, int Height) {
+WinPlatCreateDibSection(int Width, int Height) {
 
-    if (GlobalWinCanvas.Memory) {
-        VirtualFree(GlobalWinCanvas.Memory, 0, MEM_RELEASE);
+    if (GlobalBitMap.Memory) {
+        VirtualFree(GlobalBitMap.Memory, 0, MEM_RELEASE);
     }
 
-    GlobalWinCanvas.Width = Width;
-    GlobalWinCanvas.Height = Height;
+    GlobalBitMap.Width = Width;
+    GlobalBitMap.Height = Height;
 
-    GlobalWinCanvas.Info.bmiHeader.biSize = sizeof(GlobalWinCanvas.Info.bmiHeader);
-    GlobalWinCanvas.Info.bmiHeader.biWidth = GlobalWinCanvas.Width;
-    GlobalWinCanvas.Info.bmiHeader.biHeight = -GlobalWinCanvas.Height; // Windows
-                                                                       // Convention
-                                                                       // Bullshit
-    GlobalWinCanvas.Info.bmiHeader.biPlanes = 1;
-    GlobalWinCanvas.Info.bmiHeader.biBitCount = 32;
-    GlobalWinCanvas.Info.bmiHeader.biCompression = BI_RGB;
+    GlobalBitMap.Info.bmiHeader.biSize = sizeof(GlobalBitMap.Info.bmiHeader);
+    GlobalBitMap.Info.bmiHeader.biWidth = GlobalBitMap.Width;
+    GlobalBitMap.Info.bmiHeader.biHeight = -GlobalBitMap.Height; // Windows
+                                                                 // Convention
+                                                                 // Bullshit
+    GlobalBitMap.Info.bmiHeader.biPlanes = 1;
+    GlobalBitMap.Info.bmiHeader.biBitCount = 32;
+    GlobalBitMap.Info.bmiHeader.biCompression = BI_RGB;
 
-    GlobalWinCanvas.BytesPerPixel = 4;
+    GlobalBitMap.BytesPerPixel = 4;
 
-    GlobalWinCanvas.Size =
-        GlobalWinCanvas.Width * GlobalWinCanvas.Height * GlobalWinCanvas.BytesPerPixel;
+    GlobalBitMap.Size = GlobalBitMap.Width * GlobalBitMap.Height * GlobalBitMap.BytesPerPixel;
 
-    GlobalWinCanvas.Memory =
-        VirtualAlloc(0, GlobalWinCanvas.Size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+    GlobalBitMap.Memory =
+        VirtualAlloc(0, GlobalBitMap.Size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 
-    GlobalWinCanvas.Pitch = GlobalWinCanvas.Width * GlobalWinCanvas.BytesPerPixel;
+    GlobalBitMap.Pitch = GlobalBitMap.Width * GlobalBitMap.BytesPerPixel;
 }
 
 
 
 internal void
-WinCanvasDisplayBitmap(HDC DeviceCtx, int WindowWidth, int WindowHeight) {
+WinPlatDisplayBitmap(HDC DeviceCtx, int WindowWidth, int WindowHeight) {
 
     int DestWidth = WindowWidth;
     int DestHeight = WindowHeight;
 
-    // float AspectRatio = (float)GlobalWinCanvas.Width /
-    //    (float)GlobalWinCanvas.Height;
+    // float AspectRatio = (float)GlobalWinPlat.Width /
+    //    (float)GlobalWinPlat.Height;
     //
     // if (WindowWidth > WindowHeight) { DestHeight = (int)((float)WindowWidth /
     // AspectRatio); } else { 	DestWidth = (int)((float)WindowHeight *
@@ -334,15 +336,15 @@ WinCanvasDisplayBitmap(HDC DeviceCtx, int WindowWidth, int WindowHeight) {
                   DestHeight, // Destination Dimensions
                   0,
                   0,
-                  GlobalWinCanvas.Width,
-                  GlobalWinCanvas.Height, // Source Dimensions
-                  GlobalWinCanvas.Memory,
-                  &GlobalWinCanvas.Info,
+                  GlobalBitMap.Width,
+                  GlobalBitMap.Height, // Source Dimensions
+                  GlobalBitMap.Memory,
+                  &GlobalBitMap.Info,
                   DIB_RGB_COLORS,
                   SRCCOPY);
 }
 
-internal DEBUGFileStruct
+DEBUGFileStruct
 DEBUGPlatformReadEntireFile(char *FileName) {
 
     DEBUGFileStruct Result = {};
@@ -382,7 +384,7 @@ DEBUGPlatformReadEntireFile(char *FileName) {
 
 
 
-internal void
+void
 DEBUGPlatformFreeFileMemory(void *Memory) {
     if (Memory) {
         VirtualFree(Memory, 0, MEM_RELEASE);
@@ -391,7 +393,7 @@ DEBUGPlatformFreeFileMemory(void *Memory) {
 
 
 
-internal bool
+bool
 DEBUGPlatformWriteEntireFile(char *FileName, void *Memory, uint32 MemorySize) {
 
     bool Result = false;
@@ -407,14 +409,14 @@ DEBUGPlatformWriteEntireFile(char *FileName, void *Memory, uint32 MemorySize) {
             if (WriteFile(FileHandle, Memory, MemmorySize32, &BytesToWrite, 0)) {
                 Result = true;
             } else {
-                OutputDebugStringA("Couldn't Write the File");
+                OutputDebugStringA("Couldn't Write the File\n");
             }
         } else {
-            OutputDebugStringA("The Memory is Null");
+            OutputDebugStringA("The Memory is Null\n");
         }
         CloseHandle(FileHandle);
     } else {
-        OutputDebugStringA("File, not opened");
+        OutputDebugStringA("File, not opened\n");
     }
 
     return Result;
@@ -422,8 +424,200 @@ DEBUGPlatformWriteEntireFile(char *FileName, void *Memory, uint32 MemorySize) {
 
 
 
-LRESULT
-WinCanvasWindowCallBack(HWND WindowHandle, UINT Message, WPARAM wParam, LPARAM lParam) {
+internal void
+WinPlatProcessXInput(CanvasInput *Inputs, CanvasInput *OldInput, CanvasInput *NewInput) {
+    uint32 MaxControllerCount = XUSER_MAX_COUNT;
+    if (MaxControllerCount > ArrayLen(Inputs[0].Controllers)) {
+        MaxControllerCount = ArrayLen(Inputs[0].Controllers);
+    }
+
+    for (DWORD ControllerIdx = 0; ControllerIdx < MaxControllerCount; ControllerIdx += 1) {
+
+        XINPUT_STATE ControllerState;
+        if (XInputGetState(ControllerIdx, &ControllerState) == ERROR_SUCCESS) {
+
+            // Unpacking of Gamepad Inputs ------------------------------------------ //
+            XINPUT_GAMEPAD *Pad = &ControllerState.Gamepad;
+
+            bool Up = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_UP);
+            bool Down = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_DOWN);
+            bool Left = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_LEFT);
+            bool Right = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_RIGHT);
+
+            bool Start = (Pad->wButtons & XINPUT_GAMEPAD_START);
+            bool Stop = (Pad->wButtons & XINPUT_GAMEPAD_BACK);
+
+            bool LT = (Pad->wButtons & XINPUT_GAMEPAD_LEFT_THUMB);
+            bool RT = (Pad->wButtons & XINPUT_GAMEPAD_RIGHT_THUMB);
+
+            bool LS = (Pad->wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER);
+            bool RS = (Pad->wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER);
+
+            bool A = (Pad->wButtons & XINPUT_GAMEPAD_A);
+            bool B = (Pad->wButtons & XINPUT_GAMEPAD_B);
+            bool X = (Pad->wButtons & XINPUT_GAMEPAD_X);
+            bool Y = (Pad->wButtons & XINPUT_GAMEPAD_Y);
+
+
+            real32 LStickX = (real32)Pad->sThumbLX;
+            real32 LStickY = (real32)Pad->sThumbLY;
+            real32 RStickX = (real32)Pad->sThumbRX;
+            real32 RStickY = (real32)Pad->sThumbRY;
+
+            // Normalization of sticks
+            LStickX = (LStickX < 0) ? (LStickX / 32768.0f) : (LStickX / 32767.0f);
+            LStickY = (LStickY < 0) ? (LStickY / 32768.0f) : (LStickY / 32767.0f);
+            RStickX = (RStickX < 0) ? (RStickX / 32768.0f) : (RStickX / 32767.0f);
+            RStickY = (RStickY < 0) ? (RStickY / 32768.0f) : (RStickY / 32767.0f);
+
+            real32 LeftTrigger = (real32)Pad->bLeftTrigger / 255.0f;
+            real32 RightTrigger = (real32)Pad->bRightTrigger / 255.0f;
+            // ---------------------------------------------------------------------- //
+
+
+            // Process Input for use ------------------------------------------------ //
+            CanvasControllerInput *OldController = &(OldInput->Controllers[ControllerIdx]);
+            CanvasControllerInput *NewController = &(NewInput->Controllers[ControllerIdx]);
+
+			// Digital ------------------------------------------------------------------- //
+            WinPlatProcessXInputButton(&OldController->Up, &NewController->Up, Up);
+            WinPlatProcessXInputButton(&OldController->Down, &NewController->Down, Down);
+            WinPlatProcessXInputButton(&OldController->Left, &NewController->Left, Left);
+            WinPlatProcessXInputButton(&OldController->Right, &NewController->Right, Right);
+
+            WinPlatProcessXInputButton(&OldController->Start, &NewController->Start, Start);
+            WinPlatProcessXInputButton(&OldController->Stop, &NewController->Stop, Stop);
+
+            WinPlatProcessXInputButton(&OldController->LT, &NewController->LT, LT);
+            WinPlatProcessXInputButton(&OldController->RT, &NewController->RT, RT);
+
+            WinPlatProcessXInputButton(&OldController->LS, &NewController->LS, LS);
+            WinPlatProcessXInputButton(&OldController->RS, &NewController->RS, RS);
+
+            WinPlatProcessXInputButton(&OldController->A, &NewController->A, A);
+            WinPlatProcessXInputButton(&OldController->B, &NewController->B, B);
+            WinPlatProcessXInputButton(&OldController->X, &NewController->X, X);
+            WinPlatProcessXInputButton(&OldController->Y, &NewController->Y, Y);
+			// --------------------------------------------------------------------------- //
+
+			// Analog -------------------------------------------------------------------- //
+            WinPlatProcessXInputAnalog(
+                &OldController->LeftTrigger, &NewController->LeftTrigger, LeftTrigger);
+
+            WinPlatProcessXInputAnalog(
+                &OldController->RightTrigger, &NewController->RightTrigger, RightTrigger);
+
+
+            WinPlatProcessXInputAnalog(
+                &OldController->LeftStickY, &NewController->LeftStickY, LStickY);
+            WinPlatProcessXInputAnalog(
+                &OldController->LeftStickX, &NewController->LeftStickX, LStickX);
+
+            WinPlatProcessXInputAnalog(
+                &OldController->RightStickY, &NewController->RightStickY, RStickY);
+            WinPlatProcessXInputAnalog(
+                &OldController->RightStickX, &NewController->RightStickX, RStickX);
+
+            // ---------------------------------------------------------------------- //
+
+
+
+            // XINPUT_VIBRATION Vibration;
+            // Vibration.wLeftMotorSpeed = 60000;
+            // Vibration.wRightMotorSpeed = 60000;
+            // XInputSetState(ControllerIdx, &Vibration);
+        } else {
+            OutputDebugStringA("Couldn't Get GamePad State\n");
+        }
+    }
+}
+
+
+
+internal void
+WinPlatProcessWindowMessages(void) {
+    MSG Message;
+    while (PeekMessageA(&Message, 0, 0, 0, PM_REMOVE)) {
+        WPARAM wParam = Message.wParam;
+        // LPARAM lParam = Message.lParam;
+        switch (Message.message) {
+            case WM_QUIT: {
+                GlobalRunning = false;
+            } break;
+
+                // case WM_SIZE: {
+                //
+                // } break;
+
+            case WM_DESTROY: {
+                GlobalRunning = false;
+            } break;
+
+            case WM_KEYDOWN:
+            case WM_KEYUP:
+            case WM_SYSKEYDOWN:
+            case WM_SYSKEYUP: {
+                uint32 VKCode = (uint32)wParam;
+                // bool WasDown = ((lParam & (uint64)(1 << 30)) != 0);
+                // bool IsDown = ((lParam & (uint64)(1 << 31)) == 0);
+
+                if (VKCode == VK_ESCAPE) {
+                    GlobalRunning = false;
+                }
+
+                if (VKCode == 'W') {
+                }
+                if (VKCode == 'A') {
+                }
+                if (VKCode == 'S') {
+                }
+                if (VKCode == 'D') {
+                }
+
+                if (VKCode == VK_SPACE) {
+                }
+            } break;
+
+            case WM_CLOSE: {
+                GlobalRunning = false;
+            } break;
+
+                // case WM_ACTIVATEAPP: {
+                //
+                // } break;
+
+                // case WM_PAINT: {
+                //     PAINTSTRUCT Paint;
+                //     HDC DeviceCtx = BeginPaint(WindowHandle, &Paint);
+                //
+                //     { // Flushing the window with BLACKNESS
+                //         int X = Paint.rcPaint.left;
+                //         int Y = Paint.rcPaint.top;
+                //         int Width = Paint.rcPaint.right - X;
+                //         int Height = Paint.rcPaint.bottom - Y;
+                //         PatBlt(DeviceCtx, X, Y, Width, Height, BLACKNESS);
+                //     }
+                //
+                //     WinPlatDimensions Dimensions =
+                //     WinPlatGetDimensions(WindowHandle);
+                //     WinPlatDisplayBitmap(DeviceCtx, Dimensions.Width,
+                //     Dimensions.Height);
+                //
+                //     EndPaint(WindowHandle, &Paint);
+                // } break;
+
+            default: {
+                TranslateMessage(&Message);
+                DispatchMessageA(&Message);
+            } break;
+        }
+    }
+}
+
+
+
+internal LRESULT
+WinPlatWindowCallBack(HWND WindowHandle, UINT Message, WPARAM wParam, LPARAM lParam) {
     LRESULT Result = 0;
 
     switch (Message) {
@@ -440,25 +634,27 @@ WinCanvasWindowCallBack(HWND WindowHandle, UINT Message, WPARAM wParam, LPARAM l
         case WM_KEYUP:
         case WM_SYSKEYDOWN:
         case WM_SYSKEYUP: {
-            uint32 VKCode = wParam;
-            bool WasDown = ((lParam & (1 << 30)) != 0);
-            bool IsDown = ((lParam & (1 << 31)) == 0);
-
-            if (VKCode == VK_ESCAPE) {
-                GlobalRunning = false;
-            }
-
-            if (VKCode == 'W') {
-            }
-            if (VKCode == 'A') {
-            }
-            if (VKCode == 'S') {
-            }
-            if (VKCode == 'D') {
-            }
-
-            if (VKCode == VK_SPACE) {
-            }
+            Assert(!"Wrong Channel to get Keyboard input, should be from Message dispatches in "
+                    "Main Loop");
+            // uint32 VKCode = wParam;
+            // bool WasDown = ((lParam & (uint64)(1 << 30)) != 0);
+            // bool IsDown = ((lParam & (uint64)(1 << 31)) == 0);
+            //
+            // if (VKCode == VK_ESCAPE) {
+            //     GlobalRunning = false;
+            // }
+            //
+            // if (VKCode == 'W') {
+            // }
+            // if (VKCode == 'A') {
+            // }
+            // if (VKCode == 'S') {
+            // }
+            // if (VKCode == 'D') {
+            // }
+            //
+            // if (VKCode == VK_SPACE) {
+            // }
         } break;
 
         case WM_CLOSE: {
@@ -481,8 +677,8 @@ WinCanvasWindowCallBack(HWND WindowHandle, UINT Message, WPARAM wParam, LPARAM l
                 PatBlt(DeviceCtx, X, Y, Width, Height, BLACKNESS);
             }
 
-            WinCanvasDimensions Dimensions = WinCanvasGetDimensions(WindowHandle);
-            WinCanvasDisplayBitmap(DeviceCtx, Dimensions.Width, Dimensions.Height);
+            WinPlatDimensions Dimensions = WinPlatGetDimensions(WindowHandle);
+            WinPlatDisplayBitmap(DeviceCtx, Dimensions.Width, Dimensions.Height);
 
             EndPaint(WindowHandle, &Paint);
         } break;
@@ -500,18 +696,20 @@ WinCanvasWindowCallBack(HWND WindowHandle, UINT Message, WPARAM wParam, LPARAM l
 int32
 WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd) {
 
+#ifdef DEBUG
     LARGE_INTEGER FreqStructResult = {};
     QueryPerformanceFrequency(&FreqStructResult);
     int64 PerfCounterFrequency = FreqStructResult.QuadPart;
+#endif
 
-    WinCanvasLoadXInput();
-    WinCanvasCreateDibSection(1280, 720);
+    WinPlatLoadXInput();
+    WinPlatCreateDibSection(1280, 720);
 
-    LPCSTR WindowClassName = "WinCanvasWindowClass";
+    LPCSTR WindowClassName = "WinPlatWindowClass";
 
     WNDCLASSA WindowClass = {};
     WindowClass.style = CS_HREDRAW | CS_VREDRAW;
-    WindowClass.lpfnWndProc = WinCanvasWindowCallBack;
+    WindowClass.lpfnWndProc = WinPlatWindowCallBack;
     WindowClass.hInstance = Instance;
     WindowClass.lpszClassName = WindowClassName;
 
@@ -530,46 +728,63 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd) 
                                             0,
                                             0,
                                             Instance,
-                                            0); // Other stuff
+                                            0);
 
         if (WindowHandle) {
 
             // Sound ---------------------------------------------------------------------------- //
-            WinCanvasSound WinCanvasSound = WinCanvasInitSound(); // Config
+            WinPlatSound WinPlatSound = WinPlatInitSound(); // Config
 
+            LPDIRECTSOUNDBUFFER WinPlatSoundBuffer = {};
             // Direct Sound init after a window is created
-            WinCanvasInitDSound(
-                WindowHandle, WinCanvasSound.BufferSize, WinCanvasSound.SamplesPerSec);
+            WinPlatInitDSound(WindowHandle,
+                              WinPlatSound.BufferSize,
+                              WinPlatSound.SamplesPerSec,
+                              &WinPlatSoundBuffer);
 
-            WinCanvasSoundClear(&WinCanvasSound);
+            WinPlatSoundClear(&WinPlatSound, WinPlatSoundBuffer);
 
-            GlobalSoundBuffer->Play(0, 0, DSBPLAY_LOOPING);
+            WinPlatSoundBuffer->Play(0, 0, DSBPLAY_LOOPING);
 
             int16 *CanvasSampleBuffer = (int16 *)VirtualAlloc(0,
-                                                              WinCanvasSound.BufferSize, //
-                                                              MEM_RESERVE | MEM_COMMIT,  //
+                                                              WinPlatSound.BufferSize,  //
+                                                              MEM_RESERVE | MEM_COMMIT, //
                                                               PAGE_READWRITE);
             // --------------------------------------------------------------------------------- //
 
+
+
+            // Game Arena Allocations ---------------------------------------------------------- //
             CanvasMemmory Memmory = {};
 
             Memmory.IsValid = false;
             Memmory.PermaSize = MegaBytes(64);
-            Memmory.PermaStore =
-                VirtualAlloc(0, Memmory.PermaSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 
-            Memmory.TransSize = GigaBytes((uint64)2);
-            Memmory.TransStore =
-                VirtualAlloc(0, Memmory.TransSize, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+#ifdef DEBUG
+            LPVOID BaseAdress = (LPVOID)TeraBytes(2);
+#else
+            LPVOID BaseAdress = 0;
+#endif
+
+            Memmory.TransSize = GigaBytes(1);
+
+            Memmory.PermaStore = VirtualAlloc(BaseAdress,
+                                              Memmory.PermaSize + Memmory.TransSize,
+                                              MEM_RESERVE | MEM_COMMIT,
+                                              PAGE_READWRITE);
+            Memmory.TransStore = (uint8 *)Memmory.PermaStore + Memmory.PermaSize;
+            // --------------------------------------------------------------------------------- //
 
 
             GlobalRunning = (CanvasSampleBuffer && Memmory.PermaStore && Memmory.TransStore);
 
+#ifdef DEBUG
             // Perf Metrics ------------------------------------------- //
             LARGE_INTEGER LastCounter;
             QueryPerformanceCounter(&LastCounter);
             uint64 LastCycleCount = __rdtsc();
             // -------------------------------------------------------- //
+#endif
 
             CanvasInput Inputs[2] = {};
             CanvasInput *OldInput = &Inputs[0];
@@ -577,132 +792,15 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd) 
 
             while (GlobalRunning) {
 
+#ifdef DEBUG
                 LARGE_INTEGER BeginCounter;
                 QueryPerformanceCounter(&BeginCounter);
+#endif
 
 
-                MSG Message;
-                while (PeekMessageA(&Message, 0, 0, 0, PM_REMOVE)) {
-                    if (Message.message == WM_QUIT) {
-                        GlobalRunning = false;
-                    }
+                WinPlatProcessWindowMessages();
 
-                    TranslateMessage(&Message);
-                    DispatchMessageA(&Message);
-                }
-
-                // Gamepad
-                int32 MaxControllerCount = XUSER_MAX_COUNT;
-                if (MaxControllerCount > ArrayLen(Inputs[0].Controllers)) {
-                    MaxControllerCount = ArrayLen(Inputs[0].Controllers);
-                }
-                for (DWORD ControllerIdx = 0; ControllerIdx < MaxControllerCount;
-                     ControllerIdx += 1) {
-
-                    XINPUT_STATE ControllerState;
-                    if (XInputGetState(ControllerIdx, &ControllerState) == ERROR_SUCCESS) {
-
-                        // Unpacking of Gamepad Inputs ------------------------------------------ //
-                        XINPUT_GAMEPAD *Pad = &ControllerState.Gamepad;
-
-                        bool Up = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_UP);
-                        bool Down = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_DOWN);
-                        bool Left = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_LEFT);
-                        bool Right = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_RIGHT);
-
-                        bool Start = (Pad->wButtons & XINPUT_GAMEPAD_START);
-                        bool Stop = (Pad->wButtons & XINPUT_GAMEPAD_BACK);
-
-                        bool LT = (Pad->wButtons & XINPUT_GAMEPAD_LEFT_THUMB);
-                        bool RT = (Pad->wButtons & XINPUT_GAMEPAD_RIGHT_THUMB);
-
-                        bool LS = (Pad->wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER);
-                        bool RS = (Pad->wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER);
-
-                        bool A = (Pad->wButtons & XINPUT_GAMEPAD_A);
-                        bool B = (Pad->wButtons & XINPUT_GAMEPAD_B);
-                        bool X = (Pad->wButtons & XINPUT_GAMEPAD_X);
-                        bool Y = (Pad->wButtons & XINPUT_GAMEPAD_Y);
-
-
-                        real32 LStickX = (real32)Pad->sThumbLX;
-                        real32 LStickY = (real32)Pad->sThumbLY;
-                        real32 RStickX = (real32)Pad->sThumbRX;
-                        real32 RStickY = (real32)Pad->sThumbRY;
-
-                        // Normalization of sticks
-                        LStickX = (LStickX < 0) ? (LStickX / 32768.0f) : (LStickX / 32767.0f);
-                        LStickY = (LStickY < 0) ? (LStickY / 32768.0f) : (LStickY / 32767.0f);
-                        RStickX = (RStickX < 0) ? (RStickX / 32768.0f) : (RStickX / 32767.0f);
-                        RStickY = (RStickY < 0) ? (RStickY / 32768.0f) : (RStickY / 32767.0f);
-
-                        real32 LeftTrigger = (real32)Pad->bLeftTrigger / 255.0f;
-                        real32 RightTrigger = (real32)Pad->bRightTrigger / 255.0f;
-                        // ---------------------------------------------------------------------- //
-
-
-                        // Process Input for use ------------------------------------------------ //
-                        CanvasControllerInput *OldController =
-                            &OldInput->Controllers[ControllerIdx];
-                        CanvasControllerInput *NewController =
-                            &NewInput->Controllers[ControllerIdx];
-
-                        WinCanvasProcessXInputButton(&OldController->Up, &NewController->Up, Up);
-                        WinCanvasProcessXInputButton(
-                            &OldController->Down, &NewController->Down, Down);
-                        WinCanvasProcessXInputButton(
-                            &OldController->Left, &NewController->Left, Left);
-                        WinCanvasProcessXInputButton(
-                            &OldController->Right, &NewController->Right, Right);
-
-                        WinCanvasProcessXInputButton(
-                            &OldController->Start, &NewController->Start, Start);
-                        WinCanvasProcessXInputButton(
-                            &OldController->Stop, &NewController->Stop, Stop);
-
-                        WinCanvasProcessXInputButton(&OldController->LT, &NewController->LT, LT);
-                        WinCanvasProcessXInputButton(&OldController->RT, &NewController->RT, RT);
-
-                        WinCanvasProcessXInputButton(&OldController->LS, &NewController->LS, LS);
-                        WinCanvasProcessXInputButton(&OldController->RS, &NewController->RS, RS);
-
-                        WinCanvasProcessXInputButton(&OldController->A, &NewController->A, A);
-                        WinCanvasProcessXInputButton(&OldController->B, &NewController->B, B);
-                        WinCanvasProcessXInputButton(&OldController->X, &NewController->X, X);
-                        WinCanvasProcessXInputButton(&OldController->Y, &NewController->Y, Y);
-
-                        WinCanvasProcessXInputAnalog(
-                            &OldController->LeftTrigger, &NewController->LeftTrigger, LeftTrigger);
-
-                        WinCanvasProcessXInputAnalog(&OldController->RightTrigger,
-                                                     &NewController->RightTrigger,
-                                                     RightTrigger);
-
-
-                        WinCanvasProcessXInputAnalog(
-                            &OldController->LeftStickY, &NewController->LeftStickY, LStickY);
-                        WinCanvasProcessXInputAnalog(
-                            &OldController->LeftStickX, &NewController->LeftStickX, LStickX);
-
-                        WinCanvasProcessXInputAnalog(
-                            &OldController->RightStickY, &NewController->RightStickY, RStickY);
-                        WinCanvasProcessXInputAnalog(
-                            &OldController->RightStickX, &NewController->RightStickX, RStickX);
-
-                        // ---------------------------------------------------------------------- //
-
-
-
-                        // XINPUT_VIBRATION Vibration;
-                        // Vibration.wLeftMotorSpeed = 60000;
-                        // Vibration.wRightMotorSpeed = 60000;
-                        // XInputSetState(ControllerIdx, &Vibration);
-                    } else {
-
-                        // Controller not found
-                    }
-                }
-
+                WinPlatProcessXInput(Inputs, OldInput, NewInput);
 
                 // Writting Sound is pretty tough ---------------------------- //
                 DWORD PlayCursor = 0;
@@ -712,20 +810,19 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd) 
                 DWORD BytesToWrite = 0;
                 bool SoundIsValid = false;
 
-                if (SUCCEEDED(GlobalSoundBuffer->GetCurrentPosition(&PlayCursor, &WriteCursor))) {
+                if (SUCCEEDED(WinPlatSoundBuffer->GetCurrentPosition(&PlayCursor, &WriteCursor))) {
 
-                    TargetCursor = (PlayCursor + (WinCanvasSound.LatencySampleCount *
-                                                  WinCanvasSound.BytesPerSample)) %
-                                   WinCanvasSound.BufferSize;
+                    TargetCursor = (PlayCursor + (WinPlatSound.LatencySampleCount *
+                                                  WinPlatSound.BytesPerSample)) %
+                                   WinPlatSound.BufferSize;
 
-                    ByteToLock =
-                        (WinCanvasSound.RunningSampleIndex * WinCanvasSound.BytesPerSample) %
-                        WinCanvasSound.BufferSize;
+                    ByteToLock = (WinPlatSound.RunningSampleIndex * WinPlatSound.BytesPerSample) %
+                                 WinPlatSound.BufferSize;
 
                     BytesToWrite = 0;
                     if (ByteToLock > TargetCursor) {
 
-                        BytesToWrite = WinCanvasSound.BufferSize - ByteToLock;
+                        BytesToWrite = WinPlatSound.BufferSize - ByteToLock;
                         BytesToWrite += TargetCursor;
                     } else {
 
@@ -738,33 +835,35 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd) 
 
                 CanvasBitMap BitMap = {};
 
-                BitMap.Memory = GlobalWinCanvas.Memory;
-                BitMap.Width = GlobalWinCanvas.Width;
-                BitMap.Height = GlobalWinCanvas.Height;
-                BitMap.Size = GlobalWinCanvas.Size;
-                BitMap.Pitch = GlobalWinCanvas.Pitch;
-                BitMap.BytesPerPixel = GlobalWinCanvas.BytesPerPixel;
+                BitMap.Memory = GlobalBitMap.Memory;
+                BitMap.Width = GlobalBitMap.Width;
+                BitMap.Height = GlobalBitMap.Height;
+                BitMap.Size = GlobalBitMap.Size;
+                BitMap.Pitch = GlobalBitMap.Pitch;
+                BitMap.BytesPerPixel = GlobalBitMap.BytesPerPixel;
 
                 CanvasSound GameSound = {};
-                GameSound.SamplesPerSecond = WinCanvasSound.SamplesPerSec;
-                GameSound.SampleCount = BytesToWrite / WinCanvasSound.BytesPerSample;
+                GameSound.SamplesPerSecond = WinPlatSound.SamplesPerSec;
+                GameSound.SampleCount = BytesToWrite / WinPlatSound.BytesPerSample;
                 GameSound.SampleOut = CanvasSampleBuffer;
 
                 CanvasUpdateAndRender(&Memmory, &BitMap, &GameSound, NewInput, &GlobalRunning);
 
                 if (SoundIsValid) {
-                    WinCanvasSoundFill(&WinCanvasSound, ByteToLock, BytesToWrite, &GameSound);
+                    WinPlatSoundFill(
+                        &WinPlatSound, ByteToLock, BytesToWrite, &GameSound, WinPlatSoundBuffer);
                 }
 
                 // Drawing the Bitmap -------------------------------------------- //
                 HDC DeviceCtx = GetDC(WindowHandle);
-                WinCanvasDimensions Dimensions = WinCanvasGetDimensions(WindowHandle);
-                WinCanvasDisplayBitmap(DeviceCtx, Dimensions.Width, Dimensions.Height);
+                WinPlatDimensions Dimensions = WinPlatGetDimensions(WindowHandle);
+                WinPlatDisplayBitmap(DeviceCtx, Dimensions.Width, Dimensions.Height);
 
                 ReleaseDC(WindowHandle, DeviceCtx);
                 // --------------------------------------------------------------- //
 
 
+#ifdef DEBUG
                 // Profiling Stuff ----------------------------------------------- //
                 uint64 EndCycleCount = __rdtsc();
 
@@ -778,16 +877,16 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd) 
                 real64 MegaCyclesElapsed =
                     (((real64)EndCycleCount - (real64)LastCycleCount) / (1000.0f * 1000.0f));
 
-                // char Buffer[256];
-                //
-                // sprintf(
-                //     Buffer, "%.03fms, %.03ffps, %.03fMC/F \n", MSPerFrame, FPS,
-                //     MegaCyclesElapsed);
-                // OutputDebugStringA(Buffer);
+                char Buffer[256];
+
+                sprintf(
+                    Buffer, "%.03fms, %.03ffps, %.03fMC/F \n", MSPerFrame, FPS, MegaCyclesElapsed);
+                OutputDebugStringA(Buffer);
 
                 LastCounter = EndCounter;
                 LastCycleCount = EndCycleCount;
                 // --------------------------------------------------------------- //
+#endif
 
                 CanvasInput *T = OldInput;
                 OldInput = NewInput;
@@ -795,10 +894,10 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd) 
             }
 
         } else {
-            OutputDebugStringA("Failed at creation of window handle.");
+            OutputDebugStringA("Failed at creation of window handle.\n");
         }
     } else {
-        OutputDebugStringA("Registering the window class failed.");
+        OutputDebugStringA("Registering the window class failed.\n");
     }
 
     return 0;

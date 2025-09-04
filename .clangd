@@ -1,0 +1,9 @@
+CompileFlags:
+  Add:
+    - -DDEBUG=1
+    - -W4
+    - -WX
+
+BuiltinHeaders: QueryDriver
+
+Compiler: cl.exe

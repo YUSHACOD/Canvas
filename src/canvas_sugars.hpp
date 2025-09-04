@@ -25,9 +25,10 @@ typedef double real64;
 
 #define ArrayLen(ARRAY) (sizeof(ARRAY) / sizeof((ARRAY)[0]))
 
-#define KiloBytes(VAL) ((VAL) * 1024)
+#define KiloBytes(VAL) ((VAL) * (uint64)1024)
 #define MegaBytes(VAL) (KiloBytes(VAL) * 1024)
 #define GigaBytes(VAL) (MegaBytes(VAL) * 1024)
+#define TeraBytes(VAL) (GigaBytes(VAL) * 1024)
 
 #define Text(Literal) ((char *)(Literal))
 
@@ -37,7 +38,7 @@ typedef double real64;
     };
 
 
-inline uint32
+internal inline uint32
 SafeTruncateU64(uint64 Val) {
     Assert(Val <= 0xffffffff);
     return (uint32)Val;
