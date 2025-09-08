@@ -1,5 +1,6 @@
 #pragma comment(lib, "user32.lib")
 #pragma comment(lib, "gdi32.lib")
+#pragma comment(lib, "winmm.lib")
 
 /*
  *  TODO(Ayush): Seperating the Platform layer
@@ -479,7 +480,7 @@ WinPlatProcessXInput(CanvasInput *Inputs, CanvasInput *OldInput, CanvasInput *Ne
             CanvasControllerInput *OldController = &(OldInput->Controllers[ControllerIdx]);
             CanvasControllerInput *NewController = &(NewInput->Controllers[ControllerIdx]);
 
-			// Digital ------------------------------------------------------------------- //
+            // Digital ------------------------------------------------------------------- //
             WinPlatProcessXInputButton(&OldController->Up, &NewController->Up, Up);
             WinPlatProcessXInputButton(&OldController->Down, &NewController->Down, Down);
             WinPlatProcessXInputButton(&OldController->Left, &NewController->Left, Left);
@@ -498,9 +499,9 @@ WinPlatProcessXInput(CanvasInput *Inputs, CanvasInput *OldInput, CanvasInput *Ne
             WinPlatProcessXInputButton(&OldController->B, &NewController->B, B);
             WinPlatProcessXInputButton(&OldController->X, &NewController->X, X);
             WinPlatProcessXInputButton(&OldController->Y, &NewController->Y, Y);
-			// --------------------------------------------------------------------------- //
+            // --------------------------------------------------------------------------- //
 
-			// Analog -------------------------------------------------------------------- //
+            // Analog -------------------------------------------------------------------- //
             WinPlatProcessXInputAnalog(
                 &OldController->LeftTrigger, &NewController->LeftTrigger, LeftTrigger);
 
@@ -527,7 +528,7 @@ WinPlatProcessXInput(CanvasInput *Inputs, CanvasInput *OldInput, CanvasInput *Ne
             // Vibration.wRightMotorSpeed = 60000;
             // XInputSetState(ControllerIdx, &Vibration);
         } else {
-            OutputDebugStringA("Couldn't Get GamePad State\n");
+            // OutputDebugStringA("Couldn't Get GamePad State\n");
         }
     }
 }
@@ -693,14 +694,25 @@ WinPlatWindowCallBack(HWND WindowHandle, UINT Message, WPARAM wParam, LPARAM lPa
 
 
 
+inline static int64
+WinPlatGetTime() {
+    LARGE_INTEGER TimeCounter = {};
+    QueryPerformanceCounter(&TimeCounter);
+    return TimeCounter.QuadPart;
+}
+
+
+
 int32
 WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd) {
 
-#ifdef DEBUG
     LARGE_INTEGER FreqStructResult = {};
     QueryPerformanceFrequency(&FreqStructResult);
     int64 PerfCounterFrequency = FreqStructResult.QuadPart;
-#endif
+
+    UINT SchedulerGranularity = 1;
+    bool IsTimeProper = (timeBeginPeriod(SchedulerGranularity) == TIMERR_NOERROR);
+
 
     WinPlatLoadXInput();
     WinPlatCreateDibSection(1280, 720);
@@ -713,6 +725,10 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd) 
     WindowClass.hInstance = Instance;
     WindowClass.lpszClassName = WindowClassName;
 
+    // Refesh Rate
+    uint32 MonitorRefreshRate = 144;
+    uint32 GameUpdateHz = MonitorRefreshRate / 1;
+    real32 MaxTimePerFrame = 1.0f / (real32)GameUpdateHz;
 
     if (RegisterClassA(&WindowClass)) {
 
@@ -780,8 +796,7 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd) 
 
 #ifdef DEBUG
             // Perf Metrics ------------------------------------------- //
-            LARGE_INTEGER LastCounter;
-            QueryPerformanceCounter(&LastCounter);
+            int64 LastCounter = WinPlatGetTime();
             uint64 LastCycleCount = __rdtsc();
             // -------------------------------------------------------- //
 #endif
@@ -793,8 +808,7 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd) 
             while (GlobalRunning) {
 
 #ifdef DEBUG
-                LARGE_INTEGER BeginCounter;
-                QueryPerformanceCounter(&BeginCounter);
+                // int64 BeginCounter = WinPlatGetTime();
 #endif
 
 
@@ -863,30 +877,47 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd) 
                 // --------------------------------------------------------------- //
 
 
-#ifdef DEBUG
                 // Profiling Stuff ----------------------------------------------- //
                 uint64 EndCycleCount = __rdtsc();
 
-                LARGE_INTEGER EndCounter;
-                QueryPerformanceCounter(&EndCounter);
+                int64 EndCounter = WinPlatGetTime();
 
-                int64 CounterElapsed = EndCounter.QuadPart - LastCounter.QuadPart;
-                real64 MSPerFrame =
-                    (1000.0f * (real64)CounterElapsed) / (real64)PerfCounterFrequency;
-                real64 FPS = 1000.0f / MSPerFrame;
                 real64 MegaCyclesElapsed =
                     (((real64)EndCycleCount - (real64)LastCycleCount) / (1000.0f * 1000.0f));
 
+                int64 CounterElapsed = EndCounter - LastCounter;
+
+                real32 TimeElapsedForFrame = (real32)CounterElapsed / (real32)PerfCounterFrequency;
+
+                if (TimeElapsedForFrame < MaxTimePerFrame) {
+                    if (IsTimeProper) {
+                        DWORD SleepTime =
+                            (DWORD)(1000.0f * (MaxTimePerFrame - TimeElapsedForFrame));
+                        Sleep(SleepTime);
+                    }
+                    while (TimeElapsedForFrame < MaxTimePerFrame) {
+                        CounterElapsed = WinPlatGetTime() - LastCounter;
+                        TimeElapsedForFrame = (real32)CounterElapsed / (real32)PerfCounterFrequency;
+                    }
+                } else {
+                }
+
+
+#ifdef DEBUG
+                CounterElapsed = WinPlatGetTime() - LastCounter;
+                real64 MSPerFrame =
+                    (1000.0f * (real64)CounterElapsed) / (real64)PerfCounterFrequency;
+                real64 FPS = 1000.0f / MSPerFrame;
                 char Buffer[256];
 
                 sprintf(
                     Buffer, "%.03fms, %.03ffps, %.03fMC/F \n", MSPerFrame, FPS, MegaCyclesElapsed);
                 OutputDebugStringA(Buffer);
+#endif
 
-                LastCounter = EndCounter;
+                LastCounter = WinPlatGetTime();
                 LastCycleCount = EndCycleCount;
                 // --------------------------------------------------------------- //
-#endif
 
                 CanvasInput *T = OldInput;
                 OldInput = NewInput;

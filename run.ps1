@@ -96,7 +96,7 @@ switch ($Target.ToLower())
 		RunProj
 	}
 
-	"debugger"
+	"dbg"
 	{ 
 		RunInDebugger
 	}
