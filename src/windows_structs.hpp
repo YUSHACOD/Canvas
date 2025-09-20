@@ -5,35 +5,39 @@
 #include "canvas_sugars.hpp"
 #include "canvas.cpp"
 
-#include <stdio.h>
 #include <windows.h>
-#include <Xinput.h>
+#include <xinput.h>
 #include <dsound.h>
 #include <malloc.h>
 
 typedef struct {
     BITMAPINFO Info;
     void *Memory;
-    int32 Width;
-    int32 Height;
-    int32 Size;
-    int32 Pitch;
-    int32 BytesPerPixel;
+    uint32 Width;
+    uint32 Height;
+    uint32 Size;
+    uint32 Pitch;
+    uint32 BytesPerPixel;
 } WinPlatBitMap;
 
 typedef struct {
-    int32 Width;
-    int32 Height;
+    uint32 Width;
+    uint32 Height;
 } WinPlatDimensions;
 
 typedef struct {
-    int32 Channels;
-    int32 SamplesPerSec;
-    int32 BytesPerSample;
-    int32 BufferSize;
+    uint32 Channels;
+    uint32 SamplesPerSec;
+    uint32 BytesPerSample;
+    uint32 BufferSize;
     uint32 RunningSampleIndex;
-    int32 LatencySampleCount;
+    uint32 LatencySampleCount;
 } WinPlatSound;
+
+typedef struct {
+	DWORD Play;
+	DWORD Write;
+} DebugSoundCursor;
 
 // --------------------------------------------------------------------------------------------- //
 #endif

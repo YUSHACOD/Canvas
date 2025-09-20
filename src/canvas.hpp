@@ -16,21 +16,21 @@ bool DEBUGPlatformWriteEntireFile(char *FileName, void *Memory, uint32 MemorySiz
 
 typedef struct {
     void *Memory;
-    int32 Width;
-    int32 Height;
-    int32 Size;
-    int32 Pitch;
-    int32 BytesPerPixel;
+    uint32 Width;
+    uint32 Height;
+    uint32 Size;
+    uint32 Pitch;
+    uint32 BytesPerPixel;
 } CanvasBitMap;
 
 typedef struct {
-    int16 *SampleOut;
-    int32 SamplesPerSecond;
-    int32 SampleCount;
+    uint16 *SampleOut;
+    uint32 SamplesPerSecond;
+    uint32 SampleCount;
 } CanvasSound;
 
 typedef struct {
-    int32 Transitions;
+    uint32 Transitions;
     bool EndedDown;
 } CanvasButtonState;
 
@@ -107,9 +107,9 @@ internal void CanvasUpdateAndRender(CanvasMemmory *Memmory,
 
 
 typedef struct {
-    int32 XOff;
-    int32 YOff;
-    int32 ToneHz;
+    uint32 XOff;
+    uint32 YOff;
+    uint32 ToneHz;
 } CanvasState;
 
 // ---------------------------------------------------------------------------------------------- //
