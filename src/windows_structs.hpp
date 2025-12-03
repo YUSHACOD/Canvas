@@ -25,19 +25,6 @@ typedef struct {
     uint32 Height;
 } WinPlatDimensions;
 
-typedef struct {
-    uint32 Channels;
-    uint32 SamplesPerSec;
-    uint32 BytesPerSample;
-    uint32 BufferSize;
-    uint32 RunningSampleIndex;
-    uint32 LatencySampleCount;
-} WinPlatSound;
-
-typedef struct {
-	DWORD Play;
-	DWORD Write;
-} DebugSoundCursor;
 
 // --------------------------------------------------------------------------------------------- //
 #endif

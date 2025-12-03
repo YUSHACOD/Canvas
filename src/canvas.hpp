@@ -24,12 +24,6 @@ typedef struct {
 } CanvasBitMap;
 
 typedef struct {
-    uint16 *SampleOut;
-    uint32 SamplesPerSecond;
-    uint32 SampleCount;
-} CanvasSound;
-
-typedef struct {
     uint32 Transitions;
     bool EndedDown;
 } CanvasButtonState;
@@ -100,7 +94,6 @@ typedef struct {
 
 internal void CanvasUpdateAndRender(CanvasMemmory *Memmory,
                                     CanvasBitMap *BitMap,
-                                    CanvasSound *SoundBuffer,
                                     CanvasInput *Input,
                                     bool *Running);
 
@@ -109,7 +102,6 @@ internal void CanvasUpdateAndRender(CanvasMemmory *Memmory,
 typedef struct {
     uint32 XOff;
     uint32 YOff;
-    uint32 ToneHz;
 } CanvasState;
 
 // ---------------------------------------------------------------------------------------------- //

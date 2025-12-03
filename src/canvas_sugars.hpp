@@ -2,7 +2,7 @@
 #define CANVAS_SUGARS_H
 // Sugars ---------------------------------------------------- //
 
-#include <cstdint>
+#include <stdint.h>
 
 #define global static
 #define internal static
@@ -33,13 +33,15 @@ typedef double real64;
 #define Text(Literal) ((char *)(Literal))
 
 #define Assert(EXP)                                                                                \
-    if (!(EXP)) {                                                                                  \
+    if (!(EXP))                                                                                    \
+    {                                                                                              \
         *(volatile int *)0 = 0;                                                                    \
     };
 
 
 internal inline uint32
-SafeTruncateU64(uint64 Val) {
+SafeTruncateU64(uint64 Val)
+{
     Assert(Val <= 0xffffffff);
     return (uint32)Val;
 }

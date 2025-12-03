@@ -3,7 +3,7 @@
 #pragma comment(lib, "winmm.lib")
 
 /*
- *  TODO(Ayush): Seperating the Platform layer
+ *  TODO: Seperating the Platform layer
  *   - Save Location
  *   - Getting the Handle to our own executable???
  *   - Asset Loading Path
@@ -39,7 +39,6 @@ global WinPlatBitMap GlobalBitMap;
 
 
 // XInput Shenanigans ------------------------------------------------------- //
-
 #define XINPUT_GET(name) DWORD WINAPI name(DWORD UserIndex, XINPUT_STATE *State)
 typedef XINPUT_GET(xinput_get_state);
 XINPUT_GET(xInputGetStateStub) { return ERROR_DEVICE_NOT_CONNECTED; }
@@ -68,215 +67,6 @@ WinPlatLoadXInput()
     }
 }
 // -------------------------------------------------------------------------- //
-
-
-
-// Same shenanigans as above for DirectSound -------------------------------- //
-#define DSOUND_CREATE(name)                                                                        \
-    HRESULT WINAPI name(LPCGUID pcGuidDevice, LPDIRECTSOUND *ppDS, LPUNKNOWN pUnkOuter)
-
-typedef DSOUND_CREATE(dsound_create);
-
-internal void
-WinPlatInitDSound(HWND WindowHandle,
-                  uint32 BufferSize,
-                  uint32 SamplesPerSec,
-                  LPDIRECTSOUNDBUFFER *WinPlatSoundBuffer)
-{
-    // Load the library
-    HMODULE DSoundLibrary = LoadLibraryA("dsound.dll");
-
-    if (DSoundLibrary)
-    {
-        // Create the Direct Sound object
-        dsound_create *DirectSoundCreate =
-            (dsound_create *)GetProcAddress(DSoundLibrary, "DirectSoundCreate");
-
-        LPDIRECTSOUND DirectSound;
-        if (DirectSoundCreate)
-        {
-            if (SUCCEEDED(DirectSoundCreate(0, &DirectSound, 0)))
-            {
-                WAVEFORMATEX BufferFormat = {};
-
-                BufferFormat.wFormatTag = WAVE_FORMAT_PCM;
-                BufferFormat.nChannels = 2;
-                BufferFormat.nSamplesPerSec = SamplesPerSec;
-                BufferFormat.wBitsPerSample = 16;
-                BufferFormat.nBlockAlign =
-                    (BufferFormat.nChannels * BufferFormat.wBitsPerSample) / 8;
-                BufferFormat.nAvgBytesPerSec =
-                    BufferFormat.nSamplesPerSec * BufferFormat.nBlockAlign;
-
-                BufferFormat.cbSize = 0;
-                if (SUCCEEDED(DirectSound->SetCooperativeLevel(WindowHandle, DSSCL_PRIORITY)))
-                {
-                    // "Create" a primary buffer
-                    DSBUFFERDESC DSBufferDesc = {};
-
-                    DSBufferDesc.dwSize = sizeof(DSBufferDesc);
-                    DSBufferDesc.dwFlags = DSBCAPS_PRIMARYBUFFER;
-
-                    LPDIRECTSOUNDBUFFER DSPrimaryBuffer;
-                    if (SUCCEEDED(
-                            DirectSound->CreateSoundBuffer(&DSBufferDesc, &DSPrimaryBuffer, 0)))
-                    {
-                        if (SUCCEEDED(DSPrimaryBuffer->SetFormat(&BufferFormat)))
-                        {
-                        }
-                    }
-                    else
-                    {
-                        // logging
-                    }
-                }
-                else
-                {
-                    // logging
-                }
-
-
-                // "Create" a secondary buffer
-                DSBUFFERDESC DSBufferDesc = {};
-
-                DSBufferDesc.dwSize = sizeof(DSBufferDesc);
-                DSBufferDesc.dwBufferBytes = BufferSize;
-                DSBufferDesc.dwFlags = DSBCAPS_GLOBALFOCUS;
-                DSBufferDesc.lpwfxFormat = &BufferFormat;
-
-                if (SUCCEEDED(DirectSound->CreateSoundBuffer(&DSBufferDesc, WinPlatSoundBuffer, 0)))
-                {
-                    if (SUCCEEDED((*WinPlatSoundBuffer)->SetFormat(&BufferFormat)))
-                    {
-                        // logging?
-                    }
-                }
-                else
-                {
-                    // logging
-                }
-            }
-            else
-            {
-                // logging
-            }
-        }
-        else
-        {
-            // logging
-        }
-    }
-    else
-    {
-        // logging
-    }
-}
-// -------------------------------------------------------------------------- //
-
-
-
-internal WinPlatSound
-WinPlatInitSound()
-{
-    WinPlatSound Sound = {};
-
-    Sound.Channels = 2;
-    Sound.SamplesPerSec = 48000;
-    Sound.BytesPerSample = sizeof(int16) * Sound.Channels;
-    Sound.BufferSize = Sound.SamplesPerSec * Sound.BytesPerSample;
-    Sound.RunningSampleIndex = 0;
-    Sound.LatencySampleCount = FramesOfDelay * (Sound.SamplesPerSec / GameUpdateHz);
-
-    return Sound;
-}
-
-
-
-internal void
-WinPlatSoundClear(WinPlatSound *Sound, LPDIRECTSOUNDBUFFER WinPlatSoundBuffer)
-{
-    VOID *Region1;
-    DWORD Region1Size;
-    VOID *Region2;
-    DWORD Region2Size;
-
-
-    if (SUCCEEDED(WinPlatSoundBuffer->Lock(0,
-                                           Sound->BufferSize, //
-                                           &Region1,
-                                           &Region1Size, //
-                                           &Region2,
-                                           &Region2Size, //
-                                           0)))
-    {
-        uint8 *DestSamples = (uint8 *)Region1;
-
-        for (DWORD ByteIdx = 0; ByteIdx < Region1Size; ByteIdx += 1)
-        {
-            *DestSamples++ = 0;
-        }
-
-        DestSamples = (uint8 *)Region2;
-
-        for (DWORD ByteIdx = 0; ByteIdx < Region2Size; ByteIdx += 1)
-        {
-            *DestSamples++ = 0;
-        }
-
-        WinPlatSoundBuffer->Unlock(Region1, Region1Size, Region2, Region2Size);
-    }
-}
-
-
-
-internal void
-WinPlatSoundFill(WinPlatSound *Sound,
-                 DWORD ByteToLock,
-                 DWORD BytesToWrite,
-                 CanvasSound *GameSound,
-                 LPDIRECTSOUNDBUFFER GlobalSoundBuffer)
-{
-    VOID *Region1;
-    DWORD Region1Size;
-    VOID *Region2;
-    DWORD Region2Size;
-
-
-    if (SUCCEEDED(GlobalSoundBuffer->Lock(ByteToLock,
-                                          BytesToWrite, //
-                                          &Region1,
-                                          &Region1Size, //
-                                          &Region2,
-                                          &Region2Size, //
-                                          0)))
-    {
-        DWORD Region1SampleCount = Region1Size / Sound->BytesPerSample;
-
-        uint16 *DestSamples = (uint16 *)Region1;
-        uint16 *SourceSamples = GameSound->SampleOut;
-
-        for (DWORD SampleIdx = 0; SampleIdx < Region1SampleCount; SampleIdx += 1)
-        {
-            *DestSamples++ = *SourceSamples++;
-            *DestSamples++ = *SourceSamples++;
-
-            Sound->RunningSampleIndex += 1;
-        }
-
-        DWORD Region2SampleCount = Region2Size / Sound->BytesPerSample;
-        DestSamples = (uint16 *)Region2;
-
-        for (DWORD SampleIdx = 0; SampleIdx < Region2SampleCount; SampleIdx += 1)
-        {
-            *DestSamples++ = *SourceSamples++;
-            *DestSamples++ = *SourceSamples++;
-
-            Sound->RunningSampleIndex += 1;
-        }
-
-        GlobalSoundBuffer->Unlock(Region1, Region1Size, Region2, Region2Size);
-    }
-}
 
 
 
@@ -781,50 +571,6 @@ WinPlatGetTime()
     return TimeCounter.QuadPart;
 }
 
-#ifdef DEBUG
-internal void
-WinPlatDebugDrawVert(uint32 X, uint32 Top, uint32 Bottom, uint32 Color)
-{
-    uint8 *Pixel =
-        ((uint8 *)GlobalBitMap.Memory + X * GlobalBitMap.BytesPerPixel + Top * GlobalBitMap.Pitch);
-    for (uint32 y = Top; y < Bottom; y += 1)
-    {
-        *(uint32 *)Pixel = Color;
-        Pixel += GlobalBitMap.Pitch;
-    }
-}
-
-internal void
-WinPlatDebugSyncDiplay(DebugSoundCursor *LastCursorArray,
-                       uint8 LastCursorIdx,
-                       WinPlatSound *Sound,
-                       real32 TargetSecondsPerFrame)
-{
-    uint32 PadX = 20;
-    uint32 PadY = 20;
-
-    uint32 Top = PadY;
-    uint32 Bottom = GlobalBitMap.Height - PadY;
-
-    real32 C = (real32)(GlobalBitMap.Width - 2 * PadX) / (real32)Sound->BufferSize;
-    for (uint8 i = 0; i < LastCursorIdx; i += 1)
-    {
-        uint32 X1 = PadX + (uint32)(C * (real32)LastCursorArray[i].Play);
-        uint32 X2 = PadX + (uint32)(C * (real32)LastCursorArray[i].Write);
-
-        WinPlatDebugDrawVert(X1, Top, Bottom, 0xFFFFFFFF);
-        WinPlatDebugDrawVert(X2, Top, Bottom, 0x00000000);
-    }
-    for (uint8 i = LastCursorIdx; i < MonitorRefreshRate; i += 1)
-    {
-        uint32 X1 = PadX + (uint32)(C * (real32)LastCursorArray[i].Play);
-        uint32 X2 = PadX + (uint32)(C * (real32)LastCursorArray[i].Write);
-
-        WinPlatDebugDrawVert(X1, Top, Bottom, 0xFFFFFFFF);
-        WinPlatDebugDrawVert(X2, Top, Bottom, 0x00000000);
-    }
-}
-#endif
 
 int32
 WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd)
@@ -849,7 +595,7 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd)
     WindowClass.lpszClassName = WindowClassName;
 
     // Refesh Rate
-    real32 MaxTimePerFrame = 1.0f / (real32)GameUpdateHz;
+    real32 MaxTimePerFrame = 1.0f / (real32)MonitorRefreshRate;
 
     if (RegisterClassA(&WindowClass))
     {
@@ -869,28 +615,6 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd)
 
         if (WindowHandle)
         {
-            // Sound ---------------------------------------------------------------------------- //
-            WinPlatSound WinPlatSound = WinPlatInitSound(); // Config
-
-            LPDIRECTSOUNDBUFFER WinPlatSoundBuffer = {};
-            // Direct Sound init after a window is created
-            WinPlatInitDSound(WindowHandle,
-                              WinPlatSound.BufferSize,
-                              WinPlatSound.SamplesPerSec,
-                              &WinPlatSoundBuffer);
-
-            WinPlatSoundClear(&WinPlatSound, WinPlatSoundBuffer);
-
-            WinPlatSoundBuffer->Play(0, 0, DSBPLAY_LOOPING);
-
-            uint16 *CanvasSampleBuffer = (uint16 *)VirtualAlloc(0,
-                                                                WinPlatSound.BufferSize,  //
-                                                                MEM_RESERVE | MEM_COMMIT, //
-                                                                PAGE_READWRITE);
-            // --------------------------------------------------------------------------------- //
-
-
-
             // Game Arena Allocations ---------------------------------------------------------- //
             CanvasMemmory Memmory = {};
 
@@ -913,15 +637,13 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd)
             // --------------------------------------------------------------------------------- //
 
 
-            GlobalRunning = (CanvasSampleBuffer && Memmory.PermaStore && Memmory.TransStore);
+            GlobalRunning = (Memmory.PermaStore && Memmory.TransStore);
 
 #ifdef DEBUG
             // Perf Metrics ------------------------------------------- //
             int64 LastCounter = WinPlatGetTime();
             uint64 LastCycleCount = __rdtsc();
             // -------------------------------------------------------- //
-            uint8 DebugLastCursorIdx = 0;
-            DebugSoundCursor DebugLastCursor[MonitorRefreshRate] = {0};
 #endif
 
             CanvasInput Inputs[2] = {};
@@ -935,38 +657,6 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd)
 
                 WinPlatProcessXInput(Inputs, OldInput, NewInput);
 
-                // Writting Sound is pretty tough ---------------------------- //
-                DWORD TargetCursor = 0;
-                DWORD ByteToLock = 0;
-                DWORD BytesToWrite = 0;
-                DWORD PlayCursor = 0;
-                DWORD WriteCursor = 0;
-                bool SoundIsValid = false;
-                if (WinPlatSoundBuffer->GetCurrentPosition(&PlayCursor, &WriteCursor) == DS_OK)
-                {
-                    TargetCursor = (PlayCursor + (WinPlatSound.LatencySampleCount *
-                                                   WinPlatSound.BytesPerSample)) %
-                                   WinPlatSound.BufferSize;
-
-                    ByteToLock = (WinPlatSound.RunningSampleIndex * WinPlatSound.BytesPerSample) %
-                                 WinPlatSound.BufferSize;
-
-                    BytesToWrite = 0;
-                    if (ByteToLock > TargetCursor)
-                    {
-
-                        BytesToWrite = WinPlatSound.BufferSize - ByteToLock;
-                        BytesToWrite += TargetCursor;
-                    }
-                    else
-                    {
-
-                        BytesToWrite = TargetCursor - ByteToLock;
-                    }
-                    SoundIsValid = true;
-                }
-                // Sound Writting is pretty tough ---------------------------- //
-
                 CanvasBitMap BitMap = {};
 
                 BitMap.Memory = GlobalBitMap.Memory;
@@ -976,39 +666,16 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd)
                 BitMap.Pitch = GlobalBitMap.Pitch;
                 BitMap.BytesPerPixel = GlobalBitMap.BytesPerPixel;
 
-                CanvasSound GameSound = {};
-                GameSound.SamplesPerSecond = WinPlatSound.SamplesPerSec;
-                GameSound.SampleCount = BytesToWrite / WinPlatSound.BytesPerSample;
-                GameSound.SampleOut = CanvasSampleBuffer;
 
-                CanvasUpdateAndRender(&Memmory, &BitMap, &GameSound, NewInput, &GlobalRunning);
+                CanvasUpdateAndRender(&Memmory, &BitMap, NewInput, &GlobalRunning);
 
-                if (SoundIsValid)
-                {
-                    WinPlatSoundFill(
-                        &WinPlatSound, ByteToLock, BytesToWrite, &GameSound, WinPlatSoundBuffer);
-                }
 
                 // Drawing the Bitmap -------------------------------------------- //
                 HDC DeviceCtx = GetDC(WindowHandle);
                 WinPlatDimensions Dimensions = WinPlatGetDimensions(WindowHandle);
 
-#ifdef DEBUG
-                WinPlatDebugSyncDiplay(
-                    DebugLastCursor, DebugLastCursorIdx, &WinPlatSound, MaxTimePerFrame);
-#endif
 
                 WinPlatDisplayBitmap(DeviceCtx, Dimensions.Width, Dimensions.Height);
-
-#ifdef DEBUG // Debug Last Play Cursor Print ---------------------------------- //
-                {
-                    DebugSoundCursor *Marker = &DebugLastCursor[DebugLastCursorIdx];
-                    Marker->Play = PlayCursor;
-                    Marker->Write = WriteCursor;
-                    // WinPlatSoundBuffer->GetCurrentPosition(&Marker->Play, &Marker->Write);
-                    DebugLastCursorIdx = (DebugLastCursorIdx + 1) % MonitorRefreshRate;
-                }
-#endif // --------------------------------------------------------------- //
 
                 ReleaseDC(WindowHandle, DeviceCtx);
                 // --------------------------------------------------------------- //

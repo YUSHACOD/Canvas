@@ -3,33 +3,6 @@
 
 #include <math.h>
 
-internal void
-CanvasOutputSound(CanvasSound *Sound, uint32 ToneVolume, uint32 ToneHz, uint32 ExtraToneHz)
-{
-
-    local_persist real32 tSine;
-
-    uint32 WavePeriod = Sound->SamplesPerSecond / (ToneHz + ExtraToneHz);
-
-    uint16 *SampleOut = Sound->SampleOut;
-
-    for (uint32 SampleIdx = 0; SampleIdx < Sound->SampleCount; SampleIdx += 1)
-    {
-
-        real32 SineValue = sinf(tSine);
-
-        uint16 SampleValue = (uint16)(SineValue * (real32)ToneVolume);
-
-        *SampleOut = SampleValue;
-        SampleOut += 1;
-
-        *SampleOut = SampleValue;
-        SampleOut += 1;
-
-        tSine += (1.0f * Pi32 * 2.0f) / (real32)WavePeriod;
-    }
-}
-
 
 
 internal void
@@ -61,11 +34,9 @@ CanvasWeirdRender(CanvasBitMap *BitMap, uint32 XOff, uint32 YOff)
     }
 }
 
-
 internal void
 CanvasUpdateAndRender(CanvasMemmory *Memmory,
                       CanvasBitMap *BitMap,
-                      CanvasSound *Sound,
                       CanvasInput *Input,
                       bool *Running)
 {
@@ -89,7 +60,6 @@ CanvasUpdateAndRender(CanvasMemmory *Memmory,
 #endif
 
 
-        State->ToneHz = 256;
         Memmory->IsValid = true;
     }
 
@@ -105,22 +75,13 @@ CanvasUpdateAndRender(CanvasMemmory *Memmory,
     State->YOff -= (Input1->Up.EndedDown) ? 2 : 0;
     State->YOff += (Input1->Down.EndedDown) ? 2 : 0;
 
-    State->ToneHz += (Input1->RS.EndedDown) ? 1 : 0;
-    if (State->ToneHz > 1)
-        State->ToneHz -= (Input1->LS.EndedDown) ? 1 : 0;
 
     if (Input1->Stop.EndedDown)
     {
         *Running = false;
     }
 
-    uint32 ExtraToneHz = (uint32)(Input1->RightTrigger.End * 256.0f);
-
-    // uint32 ToneVolume = (uint32)(3000.0f * Input1->LeftTrigger.End);
-    uint32 ToneVolume = 3000;
-
 
     // Todo: Allow sample offsets here for more robust platform options.
-    CanvasOutputSound(Sound, ToneVolume, State->ToneHz, ExtraToneHz);
     CanvasWeirdRender(BitMap, State->XOff, State->YOff);
 }
