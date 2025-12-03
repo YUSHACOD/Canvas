@@ -35,6 +35,7 @@
 // Globals --------------------------------------------------//
 global bool GlobalRunning;
 global WinPlatBitMap GlobalBitMap;
+global WinPlatDimensions ScreenDim = {};
 // Globals --------------------------------------------------//
 
 
@@ -138,16 +139,25 @@ WinPlatDisplayBitmap(HDC DeviceCtx, uint32 WindowWidth, uint32 WindowHeight)
     uint32 DestWidth = WindowWidth;
     uint32 DestHeight = WindowHeight;
 
-    // float AspectRatio = (float)GlobalWinPlat.Width /
-    //    (float)GlobalWinPlat.Height;
-    //
-    // if (WindowWidth > WindowHeight) { DestHeight = (uint32)((float)WindowWidth /
-    // AspectRatio); } else { 	DestWidth = (uint32)((float)WindowHeight *
-    // AspectRatio);
-    // }
+    real32 AspectRatioScr = (real32)ScreenDim.Width / (real32)ScreenDim.Height;
+    real32 AspectRatioWin = (real32)WindowWidth / (real32)WindowHeight;
 
-    uint32 DestX = 0;
     uint32 DestY = 0;
+    uint32 DestX = 0;
+
+    if (AspectRatioScr >= AspectRatioWin)
+    {
+        DestY = DestHeight;
+        DestHeight = (uint32)((real32)WindowWidth / AspectRatioScr);
+		DestY = (DestY - DestHeight) / 2;
+    }
+    else
+    {
+        DestX = DestWidth;
+        DestWidth = (uint32)((real32)WindowHeight * AspectRatioScr);
+		DestX = (DestX - DestWidth) / 2;
+    }
+
 
     StretchDIBits(DeviceCtx, //
                   DestX,
@@ -582,6 +592,8 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd)
     UINT SchedulerGranularity = 1;
     bool IsTimeProper = (timeBeginPeriod(SchedulerGranularity) == TIMERR_NOERROR);
 
+    ScreenDim.Width = 1920;
+    ScreenDim.Height = 1080;
 
     WinPlatLoadXInput();
     WinPlatCreateDibSection(1280, 720);

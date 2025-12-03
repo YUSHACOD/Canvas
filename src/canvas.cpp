@@ -4,7 +4,6 @@
 #include <math.h>
 
 
-
 internal void
 CanvasWeirdRender(CanvasBitMap *BitMap, uint32 XOff, uint32 YOff)
 {
@@ -49,7 +48,7 @@ CanvasUpdateAndRender(CanvasMemmory *Memmory,
     if (!Memmory->IsValid)
     {
 
-#ifdef DEBUG
+#if 0
         char *FileName = Text(__FILE__);
         DEBUGFileStruct File = DEBUGPlatformReadEntireFile(FileName);
         if (File.Memory)
