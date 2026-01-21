@@ -29,12 +29,12 @@
 #include "windows_structs.hpp"
 
 #define MonitorRefreshRate 144
-#define GameUpdateHz (MonitorRefreshRate / 1)
-#define FramesOfDelay 10
+#define GameUpdateHz       (MonitorRefreshRate / 1)
+#define FramesOfDelay      10
 
 // Globals --------------------------------------------------//
-global bool GlobalRunning;
-global WinPlatBitMap GlobalBitMap;
+global bool              GlobalRunning;
+global WinPlatBitMap     GlobalBitMap;
 global WinPlatDimensions ScreenDim = {};
 // Globals --------------------------------------------------//
 
@@ -52,18 +52,13 @@ XINPUT_SET(xInputSetStateStub) { return ERROR_DEVICE_NOT_CONNECTED; }
 global xinput_set_state *XInputSetState_ = xInputSetStateStub;
 #define XInputSetState XInputSetState_
 
-internal void
-WinPlatLoadXInput()
-{
+internal void WinPlatLoadXInput() {
     HMODULE XInputLibrary = LoadLibraryA("xinput1_3.dll");
 
-    if (XInputLibrary)
-    {
+    if (XInputLibrary) {
         XInputGetState = (xinput_get_state *)GetProcAddress(XInputLibrary, "XInputGetState");
         XInputSetState = (xinput_set_state *)GetProcAddress(XInputLibrary, "XInputSetState");
-    }
-    else
-    {
+    } else {
         OutputDebugStringA("Couldn't Load XInput\n");
     }
 }
@@ -72,28 +67,24 @@ WinPlatLoadXInput()
 
 
 internal void
-WinPlatProcessXInputButton(CanvasButtonState *Old, CanvasButtonState *New, bool IsSet)
-{
+WinPlatProcessXInputButton(CanvasButtonState *Old, CanvasButtonState *New, bool IsSet) {
     New->EndedDown = IsSet;
     New->Transitions += (Old->EndedDown ^ New->EndedDown) ? 1 : 0;
 }
 
 internal void
-WinPlatProcessXInputAnalog(CanvasAnalogState *Old, CanvasAnalogState *New, real32 Val)
-{
+WinPlatProcessXInputAnalog(CanvasAnalogState *Old, CanvasAnalogState *New, real32 Val) {
     New->End = New->Min = New->Max = Val;
-    New->Start = Old->End;
+    New->Start                     = Old->End;
 }
 
 
 
-internal WinPlatDimensions
-WinPlatGetDimensions(HWND WindowHandle)
-{
+internal WinPlatDimensions WinPlatGetDimensions(HWND WindowHandle) {
     RECT ClientRect;
     GetClientRect(WindowHandle, &ClientRect);
 
-    uint32 Width = ClientRect.right - ClientRect.left;
+    uint32 Width  = ClientRect.right - ClientRect.left;
     uint32 Height = ClientRect.bottom - ClientRect.top;
 
     return WinPlatDimensions{Width, Height};
@@ -101,24 +92,21 @@ WinPlatGetDimensions(HWND WindowHandle)
 
 
 
-internal void
-WinPlatCreateDibSection(uint32 Width, uint32 Height)
-{
-    if (GlobalBitMap.Memory)
-    {
+internal void WinPlatCreateDibSection(uint32 Width, uint32 Height) {
+    if (GlobalBitMap.Memory) {
         VirtualFree(GlobalBitMap.Memory, 0, MEM_RELEASE);
     }
 
-    GlobalBitMap.Width = Width;
+    GlobalBitMap.Width  = Width;
     GlobalBitMap.Height = Height;
 
-    GlobalBitMap.Info.bmiHeader.biSize = sizeof(GlobalBitMap.Info.bmiHeader);
-    GlobalBitMap.Info.bmiHeader.biWidth = GlobalBitMap.Width;
+    GlobalBitMap.Info.bmiHeader.biSize   = sizeof(GlobalBitMap.Info.bmiHeader);
+    GlobalBitMap.Info.bmiHeader.biWidth  = GlobalBitMap.Width;
     GlobalBitMap.Info.bmiHeader.biHeight = -(int32)GlobalBitMap.Height; // Windows
                                                                         // Convention
                                                                         // Bullshit
-    GlobalBitMap.Info.bmiHeader.biPlanes = 1;
-    GlobalBitMap.Info.bmiHeader.biBitCount = 32;
+    GlobalBitMap.Info.bmiHeader.biPlanes      = 1;
+    GlobalBitMap.Info.bmiHeader.biBitCount    = 32;
     GlobalBitMap.Info.bmiHeader.biCompression = BI_RGB;
 
     GlobalBitMap.BytesPerPixel = 4;
@@ -133,10 +121,8 @@ WinPlatCreateDibSection(uint32 Width, uint32 Height)
 
 
 
-internal void
-WinPlatDisplayBitmap(HDC DeviceCtx, uint32 WindowWidth, uint32 WindowHeight)
-{
-    uint32 DestWidth = WindowWidth;
+internal void WinPlatDisplayBitmap(HDC DeviceCtx, uint32 WindowWidth, uint32 WindowHeight) {
+    uint32 DestWidth  = WindowWidth;
     uint32 DestHeight = WindowHeight;
 
     real32 AspectRatioScr = (real32)ScreenDim.Width / (real32)ScreenDim.Height;
@@ -145,17 +131,14 @@ WinPlatDisplayBitmap(HDC DeviceCtx, uint32 WindowWidth, uint32 WindowHeight)
     uint32 DestY = 0;
     uint32 DestX = 0;
 
-    if (AspectRatioScr >= AspectRatioWin)
-    {
-        DestY = DestHeight;
+    if (AspectRatioScr >= AspectRatioWin) {
+        DestY      = DestHeight;
         DestHeight = (uint32)((real32)WindowWidth / AspectRatioScr);
-		DestY = (DestY - DestHeight) / 2;
-    }
-    else
-    {
-        DestX = DestWidth;
+        DestY      = (DestY - DestHeight) / 2;
+    } else {
+        DestX     = DestWidth;
         DestWidth = (uint32)((real32)WindowHeight * AspectRatioScr);
-		DestX = (DestX - DestWidth) / 2;
+        DestX     = (DestX - DestWidth) / 2;
     }
 
 
@@ -174,44 +157,33 @@ WinPlatDisplayBitmap(HDC DeviceCtx, uint32 WindowWidth, uint32 WindowHeight)
                   SRCCOPY);
 }
 
-DEBUGFileStruct
-DEBUGPlatformReadEntireFile(char *FileName)
-{
+DEBUGFileStruct DEBUGPlatformReadEntireFile(char *FileName) {
     DEBUGFileStruct Result = {};
 
     HANDLE FileHandle =
         CreateFileA(FileName, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
 
-    if (FileHandle != INVALID_HANDLE_VALUE)
-    {
+    if (FileHandle != INVALID_HANDLE_VALUE) {
         LARGE_INTEGER FileSize;
-        if (GetFileSizeEx(FileHandle, &FileSize))
-        {
+        if (GetFileSizeEx(FileHandle, &FileSize)) {
             Result.Memory =
                 VirtualAlloc(0, FileSize.QuadPart, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 
-            if (Result.Memory)
-            {
+            if (Result.Memory) {
                 uint32 FileSize32 = SafeTruncateU64(FileSize.QuadPart);
-                DWORD BytesToRead;
+                DWORD  BytesToRead;
                 if (ReadFile(FileHandle, Result.Memory, FileSize32, &BytesToRead, 0) &&
-                    (FileSize32 == BytesToRead))
-                {
+                    (FileSize32 == BytesToRead)) {
                     Result.Size = FileSize32;
-                }
-                else
-                {
-                    if (Result.Memory)
-                    {
+                } else {
+                    if (Result.Memory) {
                         VirtualFree(Result.Memory, 0, MEM_RELEASE);
                     }
                 }
             }
         }
         CloseHandle(FileHandle);
-    }
-    else
-    {
+    } else {
     }
 
     return Result;
@@ -219,47 +191,33 @@ DEBUGPlatformReadEntireFile(char *FileName)
 
 
 
-void
-DEBUGPlatformFreeFileMemory(void *Memory)
-{
-    if (Memory)
-    {
+void DEBUGPlatformFreeFileMemory(void *Memory) {
+    if (Memory) {
         VirtualFree(Memory, 0, MEM_RELEASE);
     }
 }
 
 
 
-bool
-DEBUGPlatformWriteEntireFile(char *FileName, void *Memory, uint32 MemorySize)
-{
+bool DEBUGPlatformWriteEntireFile(char *FileName, void *Memory, uint32 MemorySize) {
     bool Result = false;
 
     HANDLE FileHandle = CreateFileA(FileName, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, 0, 0);
-    if (FileHandle != INVALID_HANDLE_VALUE)
-    {
-        if (Memory)
-        {
+    if (FileHandle != INVALID_HANDLE_VALUE) {
+        if (Memory) {
             uint32 MemmorySize32 = SafeTruncateU64(MemorySize);
-            DWORD BytesToWrite;
+            DWORD  BytesToWrite;
 
-            if (WriteFile(FileHandle, Memory, MemmorySize32, &BytesToWrite, 0))
-            {
+            if (WriteFile(FileHandle, Memory, MemmorySize32, &BytesToWrite, 0)) {
                 Result = true;
-            }
-            else
-            {
+            } else {
                 OutputDebugStringA("Couldn't Write the File\n");
             }
-        }
-        else
-        {
+        } else {
             OutputDebugStringA("The Memory is Null\n");
         }
         CloseHandle(FileHandle);
-    }
-    else
-    {
+    } else {
         OutputDebugStringA("File, not opened\n");
     }
 
@@ -269,29 +227,25 @@ DEBUGPlatformWriteEntireFile(char *FileName, void *Memory, uint32 MemorySize)
 
 
 internal void
-WinPlatProcessXInput(CanvasInput *Inputs, CanvasInput *OldInput, CanvasInput *NewInput)
-{
+WinPlatProcessXInput(CanvasInput *Inputs, CanvasInput *OldInput, CanvasInput *NewInput) {
     uint32 MaxControllerCount = XUSER_MAX_COUNT;
-    if (MaxControllerCount > ArrayLen(Inputs[0].Controllers))
-    {
+    if (MaxControllerCount > ArrayLen(Inputs[0].Controllers)) {
         MaxControllerCount = ArrayLen(Inputs[0].Controllers);
     }
 
-    for (DWORD ControllerIdx = 0; ControllerIdx < MaxControllerCount; ControllerIdx += 1)
-    {
+    for (DWORD ControllerIdx = 0; ControllerIdx < MaxControllerCount; ControllerIdx += 1) {
         XINPUT_STATE ControllerState;
-        if (XInputGetState(ControllerIdx, &ControllerState) == ERROR_SUCCESS)
-        {
+        if (XInputGetState(ControllerIdx, &ControllerState) == ERROR_SUCCESS) {
             // Unpacking of Gamepad Inputs ------------------------------------------ //
             XINPUT_GAMEPAD *Pad = &ControllerState.Gamepad;
 
-            bool Up = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_UP);
-            bool Down = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_DOWN);
-            bool Left = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_LEFT);
+            bool Up    = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_UP);
+            bool Down  = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_DOWN);
+            bool Left  = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_LEFT);
             bool Right = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_RIGHT);
 
             bool Start = (Pad->wButtons & XINPUT_GAMEPAD_START);
-            bool Stop = (Pad->wButtons & XINPUT_GAMEPAD_BACK);
+            bool Stop  = (Pad->wButtons & XINPUT_GAMEPAD_BACK);
 
             bool LT = (Pad->wButtons & XINPUT_GAMEPAD_LEFT_THUMB);
             bool RT = (Pad->wButtons & XINPUT_GAMEPAD_RIGHT_THUMB);
@@ -316,7 +270,7 @@ WinPlatProcessXInput(CanvasInput *Inputs, CanvasInput *OldInput, CanvasInput *Ne
             RStickX = (RStickX < 0) ? (RStickX / 32768.0f) : (RStickX / 32767.0f);
             RStickY = (RStickY < 0) ? (RStickY / 32768.0f) : (RStickY / 32767.0f);
 
-            real32 LeftTrigger = (real32)Pad->bLeftTrigger / 255.0f;
+            real32 LeftTrigger  = (real32)Pad->bLeftTrigger / 255.0f;
             real32 RightTrigger = (real32)Pad->bRightTrigger / 255.0f;
             // ---------------------------------------------------------------------- //
 
@@ -362,9 +316,8 @@ WinPlatProcessXInput(CanvasInput *Inputs, CanvasInput *OldInput, CanvasInput *Ne
             WinPlatProcessXInputAnalog(
                 &OldController->RightStickY, &NewController->RightStickY, RStickY);
             WinPlatProcessXInputAnalog(
-                &OldController->RightStickX, &NewController->RightStickX, RStickX);
-
-            // ---------------------------------------------------------------------- //
+                &OldController->RightStickX, &NewController->RightStickX, RStickX); // ----------------------------------------------------------------------
+                                                                                    // //
 
 
 
@@ -372,9 +325,7 @@ WinPlatProcessXInput(CanvasInput *Inputs, CanvasInput *OldInput, CanvasInput *Ne
             // Vibration.wLeftMotorSpeed = 60000;
             // Vibration.wRightMotorSpeed = 60000;
             // XInputSetState(ControllerIdx, &Vibration);
-        }
-        else
-        {
+        } else {
             // OutputDebugStringA("Couldn't Get GamePad State\n");
         }
     }
@@ -382,70 +333,53 @@ WinPlatProcessXInput(CanvasInput *Inputs, CanvasInput *OldInput, CanvasInput *Ne
 
 
 
-internal void
-WinPlatProcessWindowMessages(void)
-{
+internal void WinPlatProcessWindowMessages(void) {
+
     MSG Message;
-    while (PeekMessageA(&Message, 0, 0, 0, PM_REMOVE))
-    {
+    while (PeekMessageA(&Message, 0, 0, 0, PM_REMOVE)) {
         WPARAM wParam = Message.wParam;
         // LPARAM lParam = Message.lParam;
-        switch (Message.message)
-        {
-            case WM_QUIT:
-            {
+        switch (Message.message) {
+            case WM_QUIT: {
                 GlobalRunning = false;
-            }
-            break;
+            } break;
 
                 // case WM_SIZE: {
                 //
                 // } break;
 
-            case WM_DESTROY:
-            {
+            case WM_DESTROY: {
                 GlobalRunning = false;
-            }
-            break;
+            } break;
 
             case WM_KEYDOWN:
             case WM_KEYUP:
             case WM_SYSKEYDOWN:
-            case WM_SYSKEYUP:
-            {
+            case WM_SYSKEYUP: {
                 uint32 VKCode = (uint32)wParam;
                 // bool WasDown = ((lParam & (uint64)(1 << 30)) != 0);
                 // bool IsDown = ((lParam & (uint64)(1 << 31)) == 0);
 
-                if (VKCode == VK_ESCAPE)
-                {
+                if (VKCode == VK_ESCAPE) {
                     GlobalRunning = false;
                 }
 
-                if (VKCode == 'W')
-                {
+                if (VKCode == 'W') {
                 }
-                if (VKCode == 'A')
-                {
+                if (VKCode == 'A') {
                 }
-                if (VKCode == 'S')
-                {
+                if (VKCode == 'S') {
                 }
-                if (VKCode == 'D')
-                {
+                if (VKCode == 'D') {
                 }
 
-                if (VKCode == VK_SPACE)
-                {
+                if (VKCode == VK_SPACE) {
                 }
-            }
-            break;
+            } break;
 
-            case WM_CLOSE:
-            {
+            case WM_CLOSE: {
                 GlobalRunning = false;
-            }
-            break;
+            } break;
 
                 // case WM_ACTIVATEAPP: {
                 //
@@ -471,41 +405,34 @@ WinPlatProcessWindowMessages(void)
                 //     EndPaint(WindowHandle, &Paint);
                 // } break;
 
-            default:
-            {
+            default: {
                 TranslateMessage(&Message);
                 DispatchMessageA(&Message);
-            }
-            break;
+            } break;
         }
     }
 }
 
 
 
-internal LRESULT
-WinPlatWindowCallBack(HWND WindowHandle, UINT Message, WPARAM wParam, LPARAM lParam)
-{
+internal LRESULT WinPlatWindowCallBack(HWND   WindowHandle,
+                                       UINT   Message,
+                                       WPARAM wParam,
+                                       LPARAM lParam) {
     LRESULT Result = 0;
 
-    switch (Message)
-    {
-        case WM_SIZE:
-        {
-        }
-        break;
+    switch (Message) {
+        case WM_SIZE: {
+        } break;
 
-        case WM_DESTROY:
-        {
+        case WM_DESTROY: {
             GlobalRunning = false;
-        }
-        break;
+        } break;
 
         case WM_KEYDOWN:
         case WM_KEYUP:
         case WM_SYSKEYDOWN:
-        case WM_SYSKEYUP:
-        {
+        case WM_SYSKEYUP: {
             Assert(!"Wrong Channel to get Keyboard input, should be from Message dispatches in "
                     "Main Loop");
             // uint32 VKCode = wParam;
@@ -527,29 +454,23 @@ WinPlatWindowCallBack(HWND WindowHandle, UINT Message, WPARAM wParam, LPARAM lPa
             //
             // if (VKCode == VK_SPACE) {
             // }
-        }
-        break;
+        } break;
 
-        case WM_CLOSE:
-        {
+        case WM_CLOSE: {
             GlobalRunning = false;
-        }
-        break;
+        } break;
 
-        case WM_ACTIVATEAPP:
-        {
-        }
-        break;
+        case WM_ACTIVATEAPP: {
+        } break;
 
-        case WM_PAINT:
-        {
+        case WM_PAINT: {
             PAINTSTRUCT Paint;
-            HDC DeviceCtx = BeginPaint(WindowHandle, &Paint);
+            HDC         DeviceCtx = BeginPaint(WindowHandle, &Paint);
 
             { // Flushing the window with BLACKNESS
-                int64 X = Paint.rcPaint.left;
-                int64 Y = Paint.rcPaint.top;
-                int64 Width = Paint.rcPaint.right - X;
+                int64 X      = Paint.rcPaint.left;
+                int64 Y      = Paint.rcPaint.top;
+                int64 Width  = Paint.rcPaint.right - X;
                 int64 Height = Paint.rcPaint.bottom - Y;
                 PatBlt(DeviceCtx, (int32)X, (int32)Y, (int32)Width, (int32)Height, BLACKNESS);
             }
@@ -558,14 +479,11 @@ WinPlatWindowCallBack(HWND WindowHandle, UINT Message, WPARAM wParam, LPARAM lPa
             WinPlatDisplayBitmap(DeviceCtx, Dimensions.Width, Dimensions.Height);
 
             EndPaint(WindowHandle, &Paint);
-        }
-        break;
+        } break;
 
-        default:
-        {
+        default: {
             Result = DefWindowProcA(WindowHandle, Message, wParam, lParam);
-        }
-        break;
+        } break;
     }
 
     return Result;
@@ -573,44 +491,40 @@ WinPlatWindowCallBack(HWND WindowHandle, UINT Message, WPARAM wParam, LPARAM lPa
 
 
 
-inline internal int64
-WinPlatGetTime()
-{
+inline internal int64 WinPlatGetTime() {
     LARGE_INTEGER TimeCounter = {};
     QueryPerformanceCounter(&TimeCounter);
     return TimeCounter.QuadPart;
 }
 
 
-int32
-WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd)
-{
+int32 WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd) {
     LARGE_INTEGER FreqStructResult = {};
     QueryPerformanceFrequency(&FreqStructResult);
     int64 PerfCounterFrequency = FreqStructResult.QuadPart;
 
     UINT SchedulerGranularity = 1;
-    bool IsTimeProper = (timeBeginPeriod(SchedulerGranularity) == TIMERR_NOERROR);
+    bool IsTimeProper         = (timeBeginPeriod(SchedulerGranularity) == TIMERR_NOERROR);
 
-    ScreenDim.Width = 1920;
+    ScreenDim.Width  = 1920;
     ScreenDim.Height = 1080;
 
     WinPlatLoadXInput();
-    WinPlatCreateDibSection(1280, 720);
+
+    WinPlatCreateDibSection(ScreenDim.Width, ScreenDim.Height);
 
     LPCSTR WindowClassName = "WinPlatWindowClass";
 
-    WNDCLASSA WindowClass = {};
-    WindowClass.style = CS_HREDRAW | CS_VREDRAW;
-    WindowClass.lpfnWndProc = WinPlatWindowCallBack;
-    WindowClass.hInstance = Instance;
+    WNDCLASSA WindowClass     = {};
+    WindowClass.style         = CS_HREDRAW | CS_VREDRAW;
+    WindowClass.lpfnWndProc   = WinPlatWindowCallBack;
+    WindowClass.hInstance     = Instance;
     WindowClass.lpszClassName = WindowClassName;
 
     // Refesh Rate
     real32 MaxTimePerFrame = 1.0f / (real32)MonitorRefreshRate;
 
-    if (RegisterClassA(&WindowClass))
-    {
+    if (RegisterClassA(&WindowClass)) {
         HWND WindowHandle = CreateWindowExA(0,
                                             WindowClassName,
                                             "Canvas",                         // Title/Caption
@@ -625,12 +539,11 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd)
                                             Instance,
                                             0);
 
-        if (WindowHandle)
-        {
+        if (WindowHandle) {
             // Game Arena Allocations ---------------------------------------------------------- //
             CanvasMemmory Memmory = {};
 
-            Memmory.IsValid = false;
+            Memmory.IsValid   = false;
             Memmory.PermaSize = MegaBytes(64);
 
 #ifdef DEBUG
@@ -653,29 +566,28 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd)
 
 #ifdef DEBUG
             // Perf Metrics ------------------------------------------- //
-            int64 LastCounter = WinPlatGetTime();
+            int64  LastCounter    = WinPlatGetTime();
             uint64 LastCycleCount = __rdtsc();
             // -------------------------------------------------------- //
 #endif
 
-            CanvasInput Inputs[2] = {};
-            CanvasInput *OldInput = &Inputs[0];
-            CanvasInput *NewInput = &Inputs[1];
+            CanvasInput  Inputs[2] = {};
+            CanvasInput *OldInput  = &Inputs[0];
+            CanvasInput *NewInput  = &Inputs[1];
 
 
-            while (GlobalRunning)
-            {
+            while (GlobalRunning) {
                 WinPlatProcessWindowMessages();
 
                 WinPlatProcessXInput(Inputs, OldInput, NewInput);
 
                 CanvasBitMap BitMap = {};
 
-                BitMap.Memory = GlobalBitMap.Memory;
-                BitMap.Width = GlobalBitMap.Width;
-                BitMap.Height = GlobalBitMap.Height;
-                BitMap.Size = GlobalBitMap.Size;
-                BitMap.Pitch = GlobalBitMap.Pitch;
+                BitMap.Memory        = GlobalBitMap.Memory;
+                BitMap.Width         = GlobalBitMap.Width;
+                BitMap.Height        = GlobalBitMap.Height;
+                BitMap.Size          = GlobalBitMap.Size;
+                BitMap.Pitch         = GlobalBitMap.Pitch;
                 BitMap.BytesPerPixel = GlobalBitMap.BytesPerPixel;
 
 
@@ -683,11 +595,12 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd)
 
 
                 // Drawing the Bitmap -------------------------------------------- //
-                HDC DeviceCtx = GetDC(WindowHandle);
+                HDC               DeviceCtx  = GetDC(WindowHandle);
                 WinPlatDimensions Dimensions = WinPlatGetDimensions(WindowHandle);
 
 
                 WinPlatDisplayBitmap(DeviceCtx, Dimensions.Width, Dimensions.Height);
+				ZeroMemory(BitMap.Memory, BitMap.Size);
 
                 ReleaseDC(WindowHandle, DeviceCtx);
                 // --------------------------------------------------------------- //
@@ -705,27 +618,22 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd)
 
                 real32 TimeElapsedForFrame = (real32)CounterElapsed / (real32)PerfCounterFrequency;
 
-                if (TimeElapsedForFrame < MaxTimePerFrame)
-                {
-                    if (IsTimeProper)
-                    {
+                if (TimeElapsedForFrame < MaxTimePerFrame) {
+                    if (IsTimeProper) {
                         DWORD SleepTime =
                             (DWORD)(1000.0f * (MaxTimePerFrame - TimeElapsedForFrame));
                         Sleep(SleepTime);
                     }
-                    while (TimeElapsedForFrame < MaxTimePerFrame)
-                    {
-                        CounterElapsed = WinPlatGetTime() - LastCounter;
+                    while (TimeElapsedForFrame < MaxTimePerFrame) {
+                        CounterElapsed      = WinPlatGetTime() - LastCounter;
                         TimeElapsedForFrame = (real32)CounterElapsed / (real32)PerfCounterFrequency;
                     }
-                }
-                else
-                {
+                } else {
                 }
 
 
-                int64 temp = LastCounter;
-                LastCounter = WinPlatGetTime();
+                int64 temp     = LastCounter;
+                LastCounter    = WinPlatGetTime();
                 LastCycleCount = EndCycleCount;
 
 #ifdef DEBUG
@@ -733,7 +641,7 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd)
                 real64 MSPerFrame =
                     (1000.0f * (real64)CounterElapsed) / (real64)PerfCounterFrequency;
                 real64 FPS = 1000.0f / MSPerFrame;
-                char Buffer[256];
+                char   Buffer[256];
 
                 sprintf(
                     Buffer, "%.03fms, %.03ffps, %.03fMC/F \n", MSPerFrame, FPS, MegaCyclesElapsed);
@@ -742,17 +650,13 @@ WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd)
                 // --------------------------------------------------------------- //
 
                 CanvasInput *T = OldInput;
-                OldInput = NewInput;
-                NewInput = T;
+                OldInput       = NewInput;
+                NewInput       = T;
             }
-        }
-        else
-        {
+        } else {
             OutputDebugStringA("Failed at creation of window handle.\n");
         }
-    }
-    else
-    {
+    } else {
         OutputDebugStringA("Registering the window class failed.\n");
     }
 

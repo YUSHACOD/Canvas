@@ -6,16 +6,16 @@
 
 #ifdef DEBUG
 typedef struct {
-	void *Memory;
-	uint64 Size;
+    void  *Memory;
+    uint64 Size;
 } DEBUGFileStruct;
 DEBUGFileStruct DEBUGPlatformReadEntireFile(char *FileName);
-void DEBUGPlatformFreeFileMemory(void *Memory);
-bool DEBUGPlatformWriteEntireFile(char *FileName, void *Memory, uint32 MemorySize);
+void            DEBUGPlatformFreeFileMemory(void *Memory);
+bool            DEBUGPlatformWriteEntireFile(char *FileName, void *Memory, uint32 MemorySize);
 #endif
 
 typedef struct {
-    void *Memory;
+    void  *Memory;
     uint32 Width;
     uint32 Height;
     uint32 Size;
@@ -25,7 +25,7 @@ typedef struct {
 
 typedef struct {
     uint32 Transitions;
-    bool EndedDown;
+    bool   EndedDown;
 } CanvasButtonState;
 
 typedef struct {
@@ -84,18 +84,18 @@ typedef struct {
     bool IsValid;
 
     uint64 PermaSize;
-    void *PermaStore;
+    void  *PermaStore;
 
     uint64 TransSize;
-    void *TransStore;
+    void  *TransStore;
 } CanvasMemmory;
 
 
 
 internal void CanvasUpdateAndRender(CanvasMemmory *Memmory,
-                                    CanvasBitMap *BitMap,
-                                    CanvasInput *Input,
-                                    bool *Running);
+                                    CanvasBitMap  *BitMap,
+                                    CanvasInput   *Input,
+                                    bool          *Running);
 
 
 

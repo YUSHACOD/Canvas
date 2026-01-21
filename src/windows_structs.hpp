@@ -12,12 +12,12 @@
 
 typedef struct {
     BITMAPINFO Info;
-    void *Memory;
-    uint32 Width;
-    uint32 Height;
-    uint32 Size;
-    uint32 Pitch;
-    uint32 BytesPerPixel;
+    void      *Memory;
+    uint32     Width;
+    uint32     Height;
+    uint32     Size;
+    uint32     Pitch;
+    uint32     BytesPerPixel;
 } WinPlatBitMap;
 
 typedef struct {
