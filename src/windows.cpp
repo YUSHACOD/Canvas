@@ -316,8 +316,10 @@ WinPlatProcessXInput(CanvasInput *Inputs, CanvasInput *OldInput, CanvasInput *Ne
             WinPlatProcessXInputAnalog(
                 &OldController->RightStickY, &NewController->RightStickY, RStickY);
             WinPlatProcessXInputAnalog(
-                &OldController->RightStickX, &NewController->RightStickX, RStickX); // ----------------------------------------------------------------------
-                                                                                    // //
+                &OldController->RightStickX,
+                &NewController->RightStickX,
+                RStickX); // ----------------------------------------------------------------------
+                          // //
 
 
 
@@ -472,7 +474,8 @@ internal LRESULT WinPlatWindowCallBack(HWND   WindowHandle,
                 int64 Y      = Paint.rcPaint.top;
                 int64 Width  = Paint.rcPaint.right - X;
                 int64 Height = Paint.rcPaint.bottom - Y;
-                PatBlt(DeviceCtx, (int32)X, (int32)Y, (int32)Width, (int32)Height, BLACKNESS);
+
+                PatBlt(DeviceCtx, (int32)X, (int32)Y, (int32)Width, (int32)Height, WHITENESS);
             }
 
             WinPlatDimensions Dimensions = WinPlatGetDimensions(WindowHandle);
@@ -591,16 +594,14 @@ int32 WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int Sho
                 BitMap.BytesPerPixel = GlobalBitMap.BytesPerPixel;
 
 
-                CanvasUpdateAndRender(&Memmory, &BitMap, NewInput, &GlobalRunning);
-
+				CanvasUpdateAndRender(&Memmory, &BitMap, NewInput, &GlobalRunning);
 
                 // Drawing the Bitmap -------------------------------------------- //
                 HDC               DeviceCtx  = GetDC(WindowHandle);
                 WinPlatDimensions Dimensions = WinPlatGetDimensions(WindowHandle);
 
-
                 WinPlatDisplayBitmap(DeviceCtx, Dimensions.Width, Dimensions.Height);
-				ZeroMemory(BitMap.Memory, BitMap.Size);
+                ZeroMemory(BitMap.Memory, BitMap.Size);
 
                 ReleaseDC(WindowHandle, DeviceCtx);
                 // --------------------------------------------------------------- //
