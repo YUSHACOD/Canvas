@@ -63,23 +63,42 @@ inline internal void DrawSquareC(CanvasBitMap *BitMap, int32 X, int32 Y, Color c
     DrawSquare(BitMap, X - (size / 2), Y - (size / 2), c, size);
 }
 
-void Line(CanvasBitMap *BitMap, int32 x0, int32 y0, int32 x1, int32 y1, Color c) {
+void BLine(CanvasBitMap *BitMap, int32 x0, int32 y0, int32 x1, int32 y1, Color c, uint32 width) {
 
-    int32 dx = x1 - x0;
-    int32 dy = y1 - y0;
-    int32 D  = 2 * dy - dx;
-    int32 y  = y0;
+    int32 dx = ((x1 - x0) > 0) ? (x1 - x0) : (x0 - x1);
+    int32 dy = ((y1 - y0) > 0) ? (y0 - y1) : (y1 - y0);
 
-    for (int32 x = x0; x < x1; x += 1) {
+	int32 sx = (x0 < x1) ? 1 : -1;
+	int32 sy = (y0 < y1) ? 1 : -1;
 
-        DrawSquareC(BitMap, x, y, c, 5);
+	int32 e = dx + dy;
 
-        if (D > 0) {
-            y = y + 1;
-            D = D + (2 * (dy - dx));
-        } else {
-            D = D + 2 * dy;
-        }
+    while (true) {
+
+        DrawSquareC(BitMap, x0, y0, c, width);
+
+		if ((x0 == x1) && (y0 == y1)) {
+			break;
+		}
+
+		int32 e2 = 2 * e;
+		if (e2 >= dy) {
+			if (x0 == x1) {
+				break;
+			}
+
+			e = e + dy;
+			x0 = x0 + sx;
+		}
+		
+		if (e2 <= dx) {
+			if (y0 ==  y1) {
+				break;
+			}
+
+			e = e + dx;
+			y0 = y0 + sy;
+		}
     }
 }
 
@@ -114,8 +133,20 @@ void JOY(CanvasBitMap *bitmap, CanvasState *state) {
     c.red   = 255;
     c.blue  = 244;
 
-    DrawSquare(bitmap, state->XOff, state->YOff, c, 30);
-    // Line(bitmap, 0, 100, 1920, 100, c);
+    DrawSquareC(bitmap, state->XOff, state->YOff, c, 30);
+
+    DrawSquareC(bitmap, 0, 0, c, 20);
+    DrawSquareC(bitmap, -960, -540, c, 20);
+    DrawSquareC(bitmap, -960, 0, c, 20);
+    DrawSquareC(bitmap, 959, 0, c, 20);
+    DrawSquareC(bitmap, 0, -540, c, 20);
+    DrawSquareC(bitmap, 0, 539, c, 20);
+    DrawSquareC(bitmap, -960, 539, c, 20);
+    DrawSquareC(bitmap, 959, -540, c, 20);
+    DrawSquareC(bitmap, 959, 539, c, 20);
+
+	DrawSquareC(bitmap, -400, -100, c, 10);
+    BLine(bitmap, 0, 0, -400, -100, c, 5);
 
 
     c.blue = 0;
