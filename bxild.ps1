@@ -6,8 +6,8 @@ param(
 # Global settings
 # -------------------------------
 $CC = "cl"
-$CFLAGS = @("-nologo", "-GR-", "-Gm-", "-MT", "-Zi", "-EHsc", "-EHa-", "-W4", "-WX", "-Fm")
-$LINKER_FLAGS = @("/link", "-opt:ref")
+$CFLAGS = @("-nologo", "-GR-", "-Gm-", "-MT", "-Zi", "-EHsc", "-EHa-", "-W4", "-WX", "-Fm", "-DCANVXS=1")
+$LINKER_FLAGS = @("/link", "-incremental:no","-opt:ref")
 
 $DISABLED_WARNINGS = @("-wd4100", "-wd4201", "-wd4996")
 
@@ -15,14 +15,15 @@ $DEBUG_FLAGS   = @("-Oi", "-DDEBUG=1")
 $RELEASE_FLAGS = @("-Oi", "-O2")
 
 $SRC_DIR = "src"
-$SRC     = Get-ChildItem "$SRC_DIR/windows.cpp"
+$EXE_SRC = Get-ChildItem "$SRC_DIR/windows.cpp"
+$DLL_SRC = Get-ChildItem "$SRC_DIR/canvas.cpp"
 
 $OUTDIR  = "build"
 $DBGDIR  = Join-Path $OUTDIR "debug"
 $RELDIR  = Join-Path $OUTDIR "release"
 $DEBUGGER = "raddbg"
 
-$NAME = "Proj"
+$NAME = "Canvxs"
 
 # -------------------------------
 # Utility functions
@@ -40,7 +41,8 @@ function Build-Debug
 {
 	Folders
 	Push-Location $DBGDIR
-	& $CC $CFLAGS $DISABLED_WARNINGS $DEBUG_FLAGS "/Fe$NAME.exe" $SRC $LINKER_FLAGS
+	& $CC $CFLAGS $DISABLED_WARNINGS $DEBUG_FLAGS "/Fe$NAME.exe" $EXE_SRC $LINKER_FLAGS
+	& $CC $CFLAGS $DISABLED_WARNINGS $DEBUG_FLAGS $DLL_SRC "/LD" $LINKER_FLAGS "/EXPORT:CanvasUpdateAndRender"
 	Pop-Location
 }
 
@@ -48,7 +50,7 @@ function Build-Release
 {
 	Folders
 	Push-Location $RELDIR
-	& $CC $CFLAGS $RELEASE_FLAGS "/Fe$NAME.exe" $SRC $LINKER_FLAGS
+	& $CC $CFLAGS $RELEASE_FLAGS "/Fe$NAME.exe" $EXE_SRC $LINKER_FLAGS
 	Pop-Location
 }
 
