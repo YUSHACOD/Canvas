@@ -1,5 +1,3 @@
-#include "canvas.hpp"
-#include "canvas_sugars.hpp"
 #pragma comment(lib, "user32.lib")
 #pragma comment(lib, "gdi32.lib")
 #pragma comment(lib, "winmm.lib")
@@ -31,11 +29,11 @@
 #define GameUpdateHz       (MonitorRefreshRate / 1)
 #define FramesOfDelay      10
 
-// Globals --------------------------------------------------//
+// Globals -------------------------------------------------- //
 global bool              GlobalRunning;
 global WinPlatBitMap     GlobalBitMap;
 global WinPlatDimensions ScreenDim = {};
-// Globals --------------------------------------------------//
+// Globals -------------------------------------------------- //
 
 
 // XInput Shenanigans ------------------------------------------------------- //
@@ -70,12 +68,10 @@ internal FILETIME WinPlatGetLastWriteTime(char* filename) {
 
     FILETIME last_write_time = {};
 
-    WIN32_FIND_DATA find_data;
-    HANDLE          find_handle = FindFirstFileA(filename, &find_data);
 
-    if (find_handle != INVALID_HANDLE_VALUE) {
-        last_write_time = find_data.ftLastWriteTime;
-        FindClose(find_handle);
+    WIN32_FILE_ATTRIBUTE_DATA data;
+    if (GetFileAttributesExA(filename, GetFileExInfoStandard, &data)) {
+        last_write_time = data.ftLastWriteTime;
     }
 
     return last_write_time;
@@ -231,19 +227,19 @@ internal void WinPlatDisplayBitmap(HDC DeviceCtx, uint32 WindowWidth, uint32 Win
     uint32 DestWidth  = WindowWidth;
     uint32 DestHeight = WindowHeight;
 
-    real32 AspectRatioScr = (real32)ScreenDim.Width / (real32)ScreenDim.Height;
-    real32 AspectRatioWin = (real32)WindowWidth / (real32)WindowHeight;
+    float32 AspectRatioScr = (float32)ScreenDim.Width / (float32)ScreenDim.Height;
+    float32 AspectRatioWin = (float32)WindowWidth / (float32)WindowHeight;
 
     uint32 DestY = 0;
     uint32 DestX = 0;
 
     if (AspectRatioScr >= AspectRatioWin) {
         DestY      = DestHeight;
-        DestHeight = (uint32)((real32)WindowWidth / AspectRatioScr);
+        DestHeight = (uint32)((float32)WindowWidth / AspectRatioScr);
         DestY      = (DestY - DestHeight) / 2;
     } else {
         DestX     = DestWidth;
-        DestWidth = (uint32)((real32)WindowHeight * AspectRatioScr);
+        DestWidth = (uint32)((float32)WindowHeight * AspectRatioScr);
         DestX     = (DestX - DestWidth) / 2;
     }
 
@@ -271,7 +267,7 @@ WinPlatProcessXInputButton(CanvasButtonState* Old, CanvasButtonState* New, bool 
 }
 
 internal void
-WinPlatProcessXInputAnalog(CanvasAnalogState* Old, CanvasAnalogState* New, real32 Val) {
+WinPlatProcessXInputAnalog(CanvasAnalogState* Old, CanvasAnalogState* New, float32 Val) {
     New->End = New->Min = New->Max = Val;
     New->Start                     = Old->End;
 }
@@ -314,10 +310,10 @@ WinPlatProcessXInput(CanvasInput* Inputs, CanvasInput* OldInput, CanvasInput* Ne
             bool Y = (Pad->wButtons & XINPUT_GAMEPAD_Y);
 
 
-            real32 LStickX = (real32)Pad->sThumbLX;
-            real32 LStickY = (real32)Pad->sThumbLY;
-            real32 RStickX = (real32)Pad->sThumbRX;
-            real32 RStickY = (real32)Pad->sThumbRY;
+            float32 LStickX = (float32)Pad->sThumbLX;
+            float32 LStickY = (float32)Pad->sThumbLY;
+            float32 RStickX = (float32)Pad->sThumbRX;
+            float32 RStickY = (float32)Pad->sThumbRY;
 
             // Normalization of sticks
             LStickX = (LStickX < 0) ? (LStickX / 32768.0f) : (LStickX / 32767.0f);
@@ -325,8 +321,8 @@ WinPlatProcessXInput(CanvasInput* Inputs, CanvasInput* OldInput, CanvasInput* Ne
             RStickX = (RStickX < 0) ? (RStickX / 32768.0f) : (RStickX / 32767.0f);
             RStickY = (RStickY < 0) ? (RStickY / 32768.0f) : (RStickY / 32767.0f);
 
-            real32 LeftTrigger  = (real32)Pad->bLeftTrigger / 255.0f;
-            real32 RightTrigger = (real32)Pad->bRightTrigger / 255.0f;
+            float32 LeftTrigger  = (float32)Pad->bLeftTrigger / 255.0f;
+            float32 RightTrigger = (float32)Pad->bRightTrigger / 255.0f;
             // ---------------------------------------------------------------------- //
 
 
@@ -535,7 +531,7 @@ int32 WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int Sho
     WindowClass.lpszClassName = WindowClassName;
 
     // Refesh Rate
-    real32 MaxTimePerFrame = 1.0f / (real32)MonitorRefreshRate;
+    float32 MaxTimePerFrame = 1.0f / (float32)MonitorRefreshRate;
 
     if (RegisterClassA(&WindowClass)) {
         HWND WindowHandle = CreateWindowExA(0,
@@ -639,12 +635,12 @@ int32 WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int Sho
 
                 int64 EndCounter = WinPlatGetTime();
 
-                real64 MegaCyclesElapsed =
-                    (((real64)EndCycleCount - (real64)LastCycleCount) / (1000.0f * 1000.0f));
+                float64 MegaCyclesElapsed =
+                    (((float64)EndCycleCount - (float64)LastCycleCount) / (1000.0f * 1000.0f));
 
                 int64 CounterElapsed = EndCounter - LastCounter;
 
-                real32 TimeElapsedForFrame = (real32)CounterElapsed / (real32)PerfCounterFrequency;
+                float32 TimeElapsedForFrame = (float32)CounterElapsed / (float32)PerfCounterFrequency;
 
                 if (TimeElapsedForFrame < MaxTimePerFrame) {
                     if (IsTimeProper) {
@@ -654,7 +650,7 @@ int32 WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int Sho
                     }
                     while (TimeElapsedForFrame < MaxTimePerFrame) {
                         CounterElapsed      = WinPlatGetTime() - LastCounter;
-                        TimeElapsedForFrame = (real32)CounterElapsed / (real32)PerfCounterFrequency;
+                        TimeElapsedForFrame = (float32)CounterElapsed / (float32)PerfCounterFrequency;
                     }
                 } else {
                 }
@@ -666,9 +662,9 @@ int32 WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int Sho
 
 #ifdef DEBUG
                 CounterElapsed = WinPlatGetTime() - temp;
-                real64 MSPerFrame =
-                    (1000.0f * (real64)CounterElapsed) / (real64)PerfCounterFrequency;
-                real64 FPS = 1000.0f / MSPerFrame;
+                float64 MSPerFrame =
+                    (1000.0f * (float64)CounterElapsed) / (float64)PerfCounterFrequency;
+                float64 FPS = 1000.0f / MSPerFrame;
                 char   Buffer[256];
 
                 sprintf(

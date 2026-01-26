@@ -36,10 +36,10 @@ typedef struct {
 } CanvasButtonState;
 
 typedef struct {
-    real32 Min;
-    real32 Max;
-    real32 Start;
-    real32 End;
+    float32 Min;
+    float32 Max;
+    float32 Start;
+    float32 End;
 } CanvasAnalogState;
 
 typedef struct {
@@ -337,6 +337,8 @@ typedef struct {
 
     uint32 Weight;
 
+	float32 dz;
+	float32 theta;
 } CanvasState;
 
 // ---------------------------------------------------------------------------------------------- //
