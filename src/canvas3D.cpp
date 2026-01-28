@@ -7,7 +7,7 @@
 #include "canvas_utils.cpp"
 
 void Draw3DPoint(CanvasBitMap* bitmap, Point3D p) {
-    u32 max_mag = (bitmap->Width < bitmap->Height) ? bitmap->Width / 2 : bitmap->Height / 2;
+    u32 max_mag = (bitmap->width < bitmap->height) ? bitmap->width / 2 : bitmap->height / 2;
 
     i32 draw_x = (i32)((p.x / (1.0f + p.z)) * (f32)max_mag);
     i32 draw_y = (i32)((p.y / (1.0f + p.z)) * (f32)max_mag);
@@ -16,7 +16,7 @@ void Draw3DPoint(CanvasBitMap* bitmap, Point3D p) {
 }
 
 internal void DrawLine3D(CanvasBitMap* bitmap, Point3D p1, Point3D p2) {
-    u32 max_mag = (bitmap->Width < bitmap->Height) ? bitmap->Width / 2 : bitmap->Height / 2;
+    u32 max_mag = (bitmap->width < bitmap->height) ? bitmap->width / 2 : bitmap->height / 2;
 
     i32 draw_x1 = (i32)((p1.x / (1.0f + p1.z)) * (f32)max_mag);
     i32 draw_y1 = (i32)((p1.y / (1.0f + p1.z)) * (f32)max_mag);
@@ -104,12 +104,12 @@ internal void Render3DScene(CanvasBitMap* bitmap, CanvasInput* input, CanvasStat
 
     // Update to state
     // state->theta += Pi32 * 0.01f;
-    state->dx += (input->Keyboard.D.EndedDown) ? 0.01f : 0.0f;
-    state->dx -= (input->Keyboard.A.EndedDown) ? 0.01f : 0.0f;
+    state->dx += (input->keyboard.D.ended_down) ? 0.01f : 0.0f;
+    state->dx -= (input->keyboard.A.ended_down) ? 0.01f : 0.0f;
 
-    state->dy += (input->Keyboard.E.EndedDown) ? 0.01f : 0.0f;
-    state->dy -= (input->Keyboard.Q.EndedDown) ? 0.01f : 0.0f;
+    state->dy += (input->keyboard.E.ended_down) ? 0.01f : 0.0f;
+    state->dy -= (input->keyboard.Q.ended_down) ? 0.01f : 0.0f;
 
-    state->dz += (input->Keyboard.W.EndedDown) ? 0.01f : 0.0f;
-    state->dz -= (input->Keyboard.S.EndedDown) ? 0.01f : 0.0f;
+    state->dz += (input->keyboard.W.ended_down) ? 0.01f : 0.0f;
+    state->dz -= (input->keyboard.S.ended_down) ? 0.01f : 0.0f;
 }

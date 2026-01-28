@@ -5,34 +5,34 @@
 #include "canvas_utils.cpp"
 #include "canvas3D.cpp"
 
-void CanvasWeirdRender(CanvasBitMap* BitMap, u32 XOff, u32 YOff) {
+void CanvasWeirdRender(CanvasBitMap* bitmap, u32 x_off, u32 y_off) {
 
-    u8* Row = (u8*)BitMap->Memory;
+    u8* row = (u8*)bitmap->memory;
 
-    for (u32 Y = 0; Y < BitMap->Height; Y += 1) {
-        u32* Pixel = (u32*)Row;
-        for (u32 X = 0; X < BitMap->Width; X += 1) {
+    for (u32 y = 0; y < bitmap->height; y += 1) {
+        u32* pixel = (u32*)row;
+        for (u32 x = 0; x < bitmap->width; x += 1) {
 
             // Blue
-            // uint8 blue  = (uint8)(X + XOff);
-            // uint8 green = (uint8)(Y + YOff);
+            // uint8 blue  = (uint8)(X + x_off);
+            // uint8 green = (uint8)(Y + y_off);
             u8 blue  = 255;
             u8 green = 255;
             u8 red   = 255;
             u8 pad   = 0;
 
-            DrawPixel(Pixel, red, blue, green, pad);
+            DrawPixel(pixel, red, blue, green, pad);
 
-            Pixel += 1;
+            pixel += 1;
         }
 
-        Row += BitMap->Pitch;
+        row += bitmap->pitch;
     }
 }
 
 void JOY(CanvasBitMap* bitmap, CanvasState* state) {
 
-    // DrawSquareC(bitmap, state->XOff, state->YOff, c, 30);
+    // DrawSquareC(bitmap, state->x_off, state->y_off, c, 30);
 
     // DrawSquareC(bitmap, 0, 0, c, 20);
     // DrawSquareC(bitmap, -960, -540, c, 20);
@@ -45,72 +45,72 @@ void JOY(CanvasBitMap* bitmap, CanvasState* state) {
     // DrawSquareC(bitmap, 959, 539, c, 20);
 
 
-    CaseyCircleFill(bitmap, state->XOff, state->YOff, state->Weight + 10, SILVER);
-    BLine(bitmap, 0, 0, state->XOff, state->YOff, SILVER, 5);
+    CaseyCircleFill(bitmap, state->x_off, state->y_off, state->weight + 10, SILVER);
+    BLine(bitmap, 0, 0, state->x_off, state->y_off, SILVER, 5);
 
-    CaseyCircleFill(bitmap, state->XOff + state->JX, state->YOff + state->JY, state->Weight, GOLD);
+    CaseyCircleFill(bitmap, state->x_off + state->jx, state->y_off + state->jy, state->weight, GOLD);
 }
 
 
 extern "C" CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRender) {
 
 #ifdef DEBUG
-    Assert(sizeof(CanvasState) <= Memory->PermaSize);
+    Assert(sizeof(CanvasState) <= memory->perma_size);
 #endif
 
-    CanvasState* State = (CanvasState*)Memory->PermaStore;
+    CanvasState* state = (CanvasState*)memory->perma_store;
 
-    if (!Memory->IsValid) {
+    if (!memory->is_valid) {
 
 #if 0
         char*          FileName = Text(__FILE__);
-        DBG_FileStruct File     = Memory->DBG_PlatReadEntireFile(FileName);
-        if (File.Memory) {
-            Memory->DBG_PlatWriteEntireFile(Text("./rama.txt"), File.Memory, (uint32)File.Size);
-            Memory->DBG_PlatFreeFileMemory(File.Memory);
+        DBG_FileStruct File     = memory->DBG_PlatReadEntireFile(FileName);
+        if (File.memory) {
+            memory->DBG_PlatWriteEntireFile(Text("./rama.txt"), File.memory, (uint32)File.Size);
+            memory->DBG_PlatFreeFilememory(File.memory);
         }
 #endif
 
-        Memory->IsValid = true;
+        memory->is_valid = true;
     }
 
-    // Input Handling ------------------------------------------ //
-    CanvasControllerInput* Input1 = &Input->Controllers[0];
+    // input Handling ------------------------------------------ //
+    CanvasControllerInput* input1 = &input->gamepads[0];
 
-    State->JX = (i32)(200.0f * Input1->LeftStickX.End);
-    State->JY = (i32)(200.0f * Input1->LeftStickY.End);
+    state->jx = (i32)(200.0f * input1->LeftStickX.end);
+    state->jy = (i32)(200.0f * input1->LeftStickY.end);
 
-    State->XOff -= (Input1->Left.EndedDown) ? 2 : 0;
-    State->XOff += (Input1->Right.EndedDown) ? 2 : 0;
+    state->x_off -= (input1->Left.ended_down) ? 2 : 0;
+    state->x_off += (input1->Right.ended_down) ? 2 : 0;
 
-    State->YOff += (Input1->Up.EndedDown) ? 2 : 0;
-    State->YOff -= (Input1->Down.EndedDown) ? 2 : 0;
+    state->y_off += (input1->Up.ended_down) ? 2 : 0;
+    state->y_off -= (input1->Down.ended_down) ? 2 : 0;
 
-    State->Weight += (u32)(5.0f * Input1->RightTrigger.End);
-    State->Weight -= (u32)(5.0f * Input1->LeftTrigger.End);
+    state->weight += (u32)(5.0f * input1->RightTrigger.end);
+    state->weight -= (u32)(5.0f * input1->LeftTrigger.end);
 
-    if (Input1->Stop.EndedDown) {
-        *Running = false;
+    if (input1->Stop.ended_down) {
+        *running = false;
     }
 
-    State->XOff -= (Input->Keyboard.A.EndedDown) ? 10 : 0;
-    State->XOff += (Input->Keyboard.D.EndedDown) ? 10 : 0;
+    state->x_off -= (input->keyboard.A.ended_down) ? 10 : 0;
+    state->x_off += (input->keyboard.D.ended_down) ? 10 : 0;
 
-    State->YOff += (Input->Keyboard.W.EndedDown) ? 10 : 0;
-    State->YOff -= (Input->Keyboard.S.EndedDown) ? 10 : 0;
+    state->y_off += (input->keyboard.W.ended_down) ? 10 : 0;
+    state->y_off -= (input->keyboard.S.ended_down) ? 10 : 0;
 
-    if (Input->Keyboard.Alt.EndedDown && Input->Keyboard.B.EndedDown) {
-        State->Weight += 5;
+    if (input->keyboard.Alt.ended_down && input->keyboard.B.ended_down) {
+        state->weight += 5;
     }
 
-    if (Input->Keyboard.Control.EndedDown && Input->Keyboard.R.EndedDown) {
-        ZeroMemory(State, sizeof(CanvasState));
+    if (input->keyboard.Control.ended_down && input->keyboard.R.ended_down) {
+        ZeroMemory(state, sizeof(CanvasState));
     }
 
 
 
     // Todo: Allow sample offsets here for more robust platform options.
-    // CanvasWeirdRender(BitMap, State->XOff, State->YOff);
+    // CanvasWeirdRender(BitMap, State->x_off, State->y_off);
     // JOY(BitMap, State);
-    Render3DScene(BitMap, Input, State);
+    Render3DScene(bitmap, input, state);
 }

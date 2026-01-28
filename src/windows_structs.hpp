@@ -11,23 +11,23 @@
 #include <malloc.h>
 
 typedef struct {
-    BITMAPINFO Info;
-    void*      Memory;
-    u32        Width;
-    u32        Height;
-    u32        Size;
-    u32        Pitch;
-    u32        BytesPerPixel;
+    BITMAPINFO info;
+    void*      memory;
+    u32        width;
+    u32        height;
+    u32        size;
+    u32        pitch;
+    u32        bytes_per_pixel;
 } WinPlatBitMap;
 
 typedef struct {
-    u32 Width;
-    u32 Height;
+    u32 width;
+    u32 height;
 } WinPlatDimensions;
 
 typedef struct {
     HMODULE                   game_lib;
-    canvas_update_and_render* UpdateAndRender;
+    canvas_update_and_render* update_and_render;
     bool                      is_valid;
     FILETIME                  last_write_time;
 } WinPlatGameCode;

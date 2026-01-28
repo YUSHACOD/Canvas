@@ -60,12 +60,12 @@ inline internal void DrawPixel(u32* draw_pixel, u8 red, u8 green, u8 blue, u8 pa
 inline internal void
 DrawPixel(CanvasBitMap* bitmap, i32 x, i32 y, u8 red, u8 blue, u8 green, u8 pad) {
 
-    u32 dx = x + (bitmap->Width / 2);
-    u32 dy = -y + (bitmap->Height / 2);
+    u32 dx = x + (bitmap->width / 2);
+    u32 dy = -y + (bitmap->height / 2);
 
-    if ((dx < bitmap->Width) && (dy < bitmap->Height)) {
+    if ((dx < bitmap->width) && (dy < bitmap->height)) {
 
-        u8*  draw_row   = ((u8*)bitmap->Memory) + (bitmap->Pitch * dy);
+        u8*  draw_row   = ((u8*)bitmap->memory) + (bitmap->pitch * dy);
         u32* draw_pixel = ((u32*)draw_row + dx);
 
         *draw_pixel = ((u32)pad << 24) | ((u32)red << 16) | ((u32)green << 8) | ((u32)blue);
@@ -74,12 +74,12 @@ DrawPixel(CanvasBitMap* bitmap, i32 x, i32 y, u8 red, u8 blue, u8 green, u8 pad)
 
 internal void DrawPixel(CanvasBitMap* bitmap, i32 x, i32 y, Color c) {
 
-    u32 dx = x + (bitmap->Width / 2);
-    u32 dy = -y + (bitmap->Height / 2);
+    u32 dx = x + (bitmap->width / 2);
+    u32 dy = -y + (bitmap->height / 2);
 
-    if ((dx < bitmap->Width) && (dy < bitmap->Height)) {
+    if ((dx < bitmap->width) && (dy < bitmap->height)) {
 
-        u8*  draw_row   = ((u8*)bitmap->Memory) + (bitmap->Pitch * dy);
+        u8*  draw_row   = ((u8*)bitmap->memory) + (bitmap->pitch * dy);
         u32* draw_pixel = ((u32*)draw_row + dx);
 
         *draw_pixel = ((u32)c.pad << 24) | ((u32)c.red << 16) | ((u32)c.green << 8) | ((u32)c.blue);
@@ -99,38 +99,38 @@ inline internal void DrawSquare(CanvasBitMap* bitmap, i32 x, i32 y, Color c, u32
     DrawRectangle(bitmap, x, y, c, size, size);
 }
 
-inline internal void DrawSquareC(CanvasBitMap* BitMap, i32 X, i32 Y, Color c, u32 size) {
-    DrawSquare(BitMap, X - (size / 2), Y - (size / 2), c, size);
+inline internal void DrawSquareC(CanvasBitMap* bitmap, i32 x, i32 y, Color c, u32 size) {
+    DrawSquare(bitmap, x - (size / 2), y - (size / 2), c, size);
 }
 
-void CaseyCircle(CanvasBitMap* BitMap, i32 Cx, i32 Cy, u32 r, Color c) {
+void CaseyCircle(CanvasBitMap* bitmap, i32 cx, i32 cy, u32 r, Color c) {
     int r2 = r + r;
 
-    int X  = r;
-    int Y  = 0;
-    int dY = -2;
-    int dX = r2 + r2 - 4;
-    int D  = r2 - 1;
+    int x  = r;
+    int y  = 0;
+    int dy = -2;
+    int dx = r2 + r2 - 4;
+    int d  = r2 - 1;
 
-    while (Y <= X) {
+    while (y <= x) {
 
-        DrawPixel(BitMap, Cx - X, Cy - Y, c);
-        DrawPixel(BitMap, Cx + X, Cy - Y, c);
-        DrawPixel(BitMap, Cx - X, Cy + Y, c);
-        DrawPixel(BitMap, Cx + X, Cy + Y, c);
-        DrawPixel(BitMap, Cx - Y, Cy - X, c);
-        DrawPixel(BitMap, Cx + Y, Cy - X, c);
-        DrawPixel(BitMap, Cx - Y, Cy + X, c);
-        DrawPixel(BitMap, Cx + Y, Cy + X, c);
+        DrawPixel(bitmap, cx - x, cy - y, c);
+        DrawPixel(bitmap, cx + x, cy - y, c);
+        DrawPixel(bitmap, cx - x, cy + y, c);
+        DrawPixel(bitmap, cx + x, cy + y, c);
+        DrawPixel(bitmap, cx - y, cy - x, c);
+        DrawPixel(bitmap, cx + y, cy - x, c);
+        DrawPixel(bitmap, cx - y, cy + x, c);
+        DrawPixel(bitmap, cx + y, cy + x, c);
 
-        D += dY;
-        dY -= 4;
-        ++Y;
+        d += dy;
+        dy -= 4;
+        ++y;
 
-        if (D < 0) {
-            D += dX;
-            dX -= 4;
-            --X;
+        if (d < 0) {
+            d += dx;
+            dx -= 4;
+            --x;
         }
     }
 }
@@ -141,35 +141,35 @@ internal void FillLine(CanvasBitMap* bitmap, i32 Cx, i32 Cy, i32 x, i32 y, Color
     }
 }
 
-internal void CaseyCircleFill(CanvasBitMap* BitMap, i32 Cx, i32 Cy, u32 r, Color c) {
+internal void CaseyCircleFill(CanvasBitMap* bitmap, i32 cx, i32 cy, u32 r, Color c) {
     int r2 = r + r;
 
-    int X  = r;
-    int Y  = 0;
-    int dY = -2;
-    int dX = r2 + r2 - 4;
-    int D  = r2 - 1;
+    int x  = r;
+    int y  = 0;
+    int dy = -2;
+    int dx = r2 + r2 - 4;
+    int d  = r2 - 1;
 
-    while (Y <= X) {
+    while (y <= x) {
 
-        FillLine(BitMap, Cx, Cy, -X, Y, c);
-        FillLine(BitMap, Cx, Cy, -Y, X, c);
-        FillLine(BitMap, Cx, Cy, X, Y, c);
-        FillLine(BitMap, Cx, Cy, Y, X, c);
+        FillLine(bitmap, cx, cy, -x, y, c);
+        FillLine(bitmap, cx, cy, -y, x, c);
+        FillLine(bitmap, cx, cy, x, y, c);
+        FillLine(bitmap, cx, cy, y, x, c);
 
-        D += dY;
-        dY -= 4;
-        ++Y;
+        d += dy;
+        dy -= 4;
+        ++y;
 
-        if (D < 0) {
-            D += dX;
-            dX -= 4;
-            --X;
+        if (d < 0) {
+            d += dx;
+            dx -= 4;
+            --x;
         }
     }
 }
 
-internal void BLine(CanvasBitMap* BitMap, i32 x0, i32 y0, i32 x1, i32 y1, Color c, u32 width) {
+internal void BLine(CanvasBitMap* bitmap, i32 x0, i32 y0, i32 x1, i32 y1, Color c, u32 width) {
 
     i32 dx = ((x1 - x0) > 0) ? (x1 - x0) : (x0 - x1);
     i32 dy = ((y1 - y0) > 0) ? (y0 - y1) : (y1 - y0);
@@ -182,7 +182,7 @@ internal void BLine(CanvasBitMap* BitMap, i32 x0, i32 y0, i32 x1, i32 y1, Color 
     while (true) {
 
 
-        DrawSquareC(BitMap, x0, y0, c, width);
+        DrawSquareC(bitmap, x0, y0, c, width);
 
         if ((x0 == x1) && (y0 == y1)) {
             break;

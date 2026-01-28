@@ -6,40 +6,40 @@
 
 #ifdef DEBUG
 typedef struct {
-    void* Memory;
-    u64   Size;
+    void* memory;
+    u64   size;
 } DBG_FileStruct;
 
-#define DBG_PLAT_READ_ENTIRE_FILE(name) DBG_FileStruct name(char* FileName)
+#define DBG_PLAT_READ_ENTIRE_FILE(name) DBG_FileStruct name(char* file_name)
 typedef DBG_PLAT_READ_ENTIRE_FILE(dbg_plat_read_entire_file);
 
-#define DBG_PLAT_FREE_FILE_MEMORY(name) void name(void* Memory)
+#define DBG_PLAT_FREE_FILE_MEMORY(name) void name(void* memory)
 typedef DBG_PLAT_FREE_FILE_MEMORY(dbg_plat_free_file_memory);
 
-#define DBG_PLAT_WRITE_ENTIRE_FILE(name) bool name(char* FileName, void* Memory, u32 MemorySize)
+#define DBG_PLAT_WRITE_ENTIRE_FILE(name) bool name(char* file_name, void* memory, u32 memory_size)
 typedef DBG_PLAT_WRITE_ENTIRE_FILE(dbg_plat_write_entire_file);
 
 #endif
 
 typedef struct {
-    void* Memory;
-    u32   Width;
-    u32   Height;
-    u32   Size;
-    u32   Pitch;
-    u32   BytesPerPixel;
+    void* memory;
+    u32   width;
+    u32   height;
+    u32   size;
+    u32   pitch;
+    u32   bytes_per_pixel;
 } CanvasBitMap;
 
 typedef struct {
-    u32  Transitions;
-    bool EndedDown;
+    u32  transition;
+    bool ended_down;
 } CanvasButtonState;
 
 typedef struct {
-    f32 Min;
-    f32 Max;
-    f32 Start;
-    f32 End;
+    f32 min;
+    f32 max;
+    f32 start;
+    f32 end;
 } CanvasAnalogState;
 
 typedef struct {
@@ -301,18 +301,18 @@ typedef struct {
 } CanvasKeyboardInput;
 
 typedef struct {
-    CanvasControllerInput Controllers[4];
-    CanvasKeyboardInput   Keyboard;
+    CanvasControllerInput gamepads[4];
+    CanvasKeyboardInput   keyboard;
 } CanvasInput;
 
 typedef struct {
-    bool IsValid;
+    bool is_valid;
 
-    u64   PermaSize;
-    void* PermaStore;
+    u64   perma_size;
+    void* perma_store;
 
-    u64   TransSize;
-    void* TransStore;
+    u64   trans_size;
+    void* trans_store;
 
     dbg_plat_read_entire_file*  DBG_PlatReadEntireFile;
     dbg_plat_free_file_memory*  DBG_PlatFreeFileMemory;
@@ -322,20 +322,20 @@ typedef struct {
 
 
 #define CANVAS_UPDATE_AND_RENDER(name)                                                             \
-    void name(CanvasMemory* Memory, CanvasBitMap* BitMap, CanvasInput* Input, bool* Running)
+    void name(CanvasMemory* memory, CanvasBitMap* bitmap, CanvasInput* input, bool* running)
 typedef CANVAS_UPDATE_AND_RENDER(canvas_update_and_render);
 CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRenderStub);
 
 
 
 typedef struct {
-    i32 JX;
-    i32 JY;
+    i32 jx;
+    i32 jy;
 
-    u32 XOff;
-    u32 YOff;
+    u32 x_off;
+    u32 y_off;
 
-    u32 Weight;
+    u32 weight;
 
     f32 dx;
     f32 dy;
