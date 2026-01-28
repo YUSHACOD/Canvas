@@ -2,12 +2,12 @@
 #define CANVAS_H
 // The Game Interface --------------------------------------------------------------------------- //
 
-#include "canvas_sugars.hpp"
+#include "sugars.hpp"
 
 #ifdef DEBUG
 typedef struct {
-    void*  Memory;
-    uint64 Size;
+    void* Memory;
+    u64   Size;
 } DBG_FileStruct;
 
 #define DBG_PLAT_READ_ENTIRE_FILE(name) DBG_FileStruct name(char* FileName)
@@ -16,30 +16,30 @@ typedef DBG_PLAT_READ_ENTIRE_FILE(dbg_plat_read_entire_file);
 #define DBG_PLAT_FREE_FILE_MEMORY(name) void name(void* Memory)
 typedef DBG_PLAT_FREE_FILE_MEMORY(dbg_plat_free_file_memory);
 
-#define DBG_PLAT_WRITE_ENTIRE_FILE(name) bool name(char* FileName, void* Memory, uint32 MemorySize)
+#define DBG_PLAT_WRITE_ENTIRE_FILE(name) bool name(char* FileName, void* Memory, u32 MemorySize)
 typedef DBG_PLAT_WRITE_ENTIRE_FILE(dbg_plat_write_entire_file);
 
 #endif
 
 typedef struct {
-    void*  Memory;
-    uint32 Width;
-    uint32 Height;
-    uint32 Size;
-    uint32 Pitch;
-    uint32 BytesPerPixel;
+    void* Memory;
+    u32   Width;
+    u32   Height;
+    u32   Size;
+    u32   Pitch;
+    u32   BytesPerPixel;
 } CanvasBitMap;
 
 typedef struct {
-    uint32 Transitions;
-    bool   EndedDown;
+    u32  Transitions;
+    bool EndedDown;
 } CanvasButtonState;
 
 typedef struct {
-    float32 Min;
-    float32 Max;
-    float32 Start;
-    float32 End;
+    f32 Min;
+    f32 Max;
+    f32 Start;
+    f32 End;
 } CanvasAnalogState;
 
 typedef struct {
@@ -308,11 +308,11 @@ typedef struct {
 typedef struct {
     bool IsValid;
 
-    uint64 PermaSize;
-    void*  PermaStore;
+    u64   PermaSize;
+    void* PermaStore;
 
-    uint64 TransSize;
-    void*  TransStore;
+    u64   TransSize;
+    void* TransStore;
 
     dbg_plat_read_entire_file*  DBG_PlatReadEntireFile;
     dbg_plat_free_file_memory*  DBG_PlatFreeFileMemory;
@@ -329,19 +329,19 @@ CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRenderStub);
 
 
 typedef struct {
-    int32 JX;
-    int32 JY;
+    i32 JX;
+    i32 JY;
 
-    uint32 XOff;
-    uint32 YOff;
+    u32 XOff;
+    u32 YOff;
 
-    uint32 Weight;
+    u32 Weight;
 
-	float32 dx;
-	float32 dy;
-	float32 dz;
+    f32 dx;
+    f32 dy;
+    f32 dz;
 
-	float32 theta;
+    f32 theta;
 } CanvasState;
 
 // ---------------------------------------------------------------------------------------------- //

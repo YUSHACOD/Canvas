@@ -1,5 +1,5 @@
-#ifndef CANVAS_SUGARS_H
-#define CANVAS_SUGARS_H
+#ifndef APEYUSH_SUGARS_H
+#define APEYUSH_SUGARS_H
 // Sugars ---------------------------------------------------- //
 
 #include <stdint.h>
@@ -10,22 +10,22 @@
 
 #define Pi32 3.1415926536f
 
-typedef int8_t  int8;
-typedef int16_t int16;
-typedef int32_t int32;
-typedef int64_t int64;
+typedef int8_t  i8;
+typedef int16_t i16;
+typedef int32_t i32;
+typedef int64_t i64;
 
-typedef uint8_t  uint8;
-typedef uint16_t uint16;
-typedef uint32_t uint32;
-typedef uint64_t uint64;
+typedef uint8_t  u8;
+typedef uint16_t u16;
+typedef uint32_t u32;
+typedef uint64_t u64;
 
-typedef float  float32;
-typedef double float64;
+typedef float  f32;
+typedef double f64;
 
 #define ArrayLen(ARRAY) (sizeof(ARRAY) / sizeof((ARRAY)[0]))
 
-#define KiloBytes(VAL) ((VAL) * (uint64)1024)
+#define KiloBytes(VAL) ((VAL) * (u64)1024)
 #define MegaBytes(VAL) (KiloBytes(VAL) * 1024)
 #define GigaBytes(VAL) (MegaBytes(VAL) * 1024)
 #define TeraBytes(VAL) (GigaBytes(VAL) * 1024)
@@ -38,14 +38,14 @@ typedef double float64;
     };
 
 
-internal inline uint32 SafeTruncateU64(uint64 Val) {
+internal inline u32 SafeTruncateU64(u64 Val) {
     Assert(Val <= 0xffffffff);
-    return (uint32)Val;
+    return (u32)Val;
 }
 
 
-internal inline void ZeroMemory(void* Memory, uint32 Size) {
-    uint8* Byte = (uint8*)Memory;
+internal inline void ZeroMemory(void* Memory, u32 Size) {
+    u8* Byte = (u8*)Memory;
     while (Size--) {
         *Byte++ = 0;
     }

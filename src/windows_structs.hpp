@@ -2,7 +2,7 @@
 #define WIN_LAYER_STRUCTS_H
 // Structures Used by the Windows Layer -------------------------------------------------------- //
 
-#include "canvas_sugars.hpp"
+#include "sugars.hpp"
 #include "canvas.hpp"
 
 #include <windows.h>
@@ -13,16 +13,16 @@
 typedef struct {
     BITMAPINFO Info;
     void*      Memory;
-    uint32     Width;
-    uint32     Height;
-    uint32     Size;
-    uint32     Pitch;
-    uint32     BytesPerPixel;
+    u32        Width;
+    u32        Height;
+    u32        Size;
+    u32        Pitch;
+    u32        BytesPerPixel;
 } WinPlatBitMap;
 
 typedef struct {
-    uint32 Width;
-    uint32 Height;
+    u32 Width;
+    u32 Height;
 } WinPlatDimensions;
 
 typedef struct {
@@ -33,7 +33,7 @@ typedef struct {
 } WinPlatGameCode;
 
 typedef struct {
-    uint32       count;
+    u32          count;
     CanvasInput* input_stream;
 } WinPlatInputRecord;
 

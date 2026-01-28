@@ -1,25 +1,25 @@
 
 #include "canvas.hpp"
-#include "canvas_sugars.hpp"
+#include "sugars.hpp"
 
 #include "canvas_utils.cpp"
 #include "canvas3D.cpp"
 
-void CanvasWeirdRender(CanvasBitMap* BitMap, uint32 XOff, uint32 YOff) {
+void CanvasWeirdRender(CanvasBitMap* BitMap, u32 XOff, u32 YOff) {
 
-    uint8* Row = (uint8*)BitMap->Memory;
+    u8* Row = (u8*)BitMap->Memory;
 
-    for (uint32 Y = 0; Y < BitMap->Height; Y += 1) {
-        uint32* Pixel = (uint32*)Row;
-        for (uint32 X = 0; X < BitMap->Width; X += 1) {
+    for (u32 Y = 0; Y < BitMap->Height; Y += 1) {
+        u32* Pixel = (u32*)Row;
+        for (u32 X = 0; X < BitMap->Width; X += 1) {
 
             // Blue
             // uint8 blue  = (uint8)(X + XOff);
             // uint8 green = (uint8)(Y + YOff);
-            uint8 blue  = 255;
-            uint8 green = 255;
-            uint8 red   = 255;
-            uint8 pad   = 0;
+            u8 blue  = 255;
+            u8 green = 255;
+            u8 red   = 255;
+            u8 pad   = 0;
 
             DrawPixel(Pixel, red, blue, green, pad);
 
@@ -77,8 +77,8 @@ extern "C" CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRender) {
     // Input Handling ------------------------------------------ //
     CanvasControllerInput* Input1 = &Input->Controllers[0];
 
-    State->JX = (int32)(200.0f * Input1->LeftStickX.End);
-    State->JY = (int32)(200.0f * Input1->LeftStickY.End);
+    State->JX = (i32)(200.0f * Input1->LeftStickX.End);
+    State->JY = (i32)(200.0f * Input1->LeftStickY.End);
 
     State->XOff -= (Input1->Left.EndedDown) ? 2 : 0;
     State->XOff += (Input1->Right.EndedDown) ? 2 : 0;
@@ -86,8 +86,8 @@ extern "C" CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRender) {
     State->YOff += (Input1->Up.EndedDown) ? 2 : 0;
     State->YOff -= (Input1->Down.EndedDown) ? 2 : 0;
 
-    State->Weight += (uint32)(5.0f * Input1->RightTrigger.End);
-    State->Weight -= (uint32)(5.0f * Input1->LeftTrigger.End);
+    State->Weight += (u32)(5.0f * Input1->RightTrigger.End);
+    State->Weight -= (u32)(5.0f * Input1->LeftTrigger.End);
 
     if (Input1->Stop.EndedDown) {
         *Running = false;

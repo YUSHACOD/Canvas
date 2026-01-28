@@ -127,8 +127,8 @@ DBG_PLAT_READ_ENTIRE_FILE(DBG_PlatReadEntireFile) {
                 VirtualAlloc(0, FileSize.QuadPart, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 
             if (Result.Memory) {
-                uint32 FileSize32 = SafeTruncateU64(FileSize.QuadPart);
-                DWORD  BytesToRead;
+                u32   FileSize32 = SafeTruncateU64(FileSize.QuadPart);
+                DWORD BytesToRead;
                 if (ReadFile(FileHandle, Result.Memory, FileSize32, &BytesToRead, 0) &&
                     (FileSize32 == BytesToRead)) {
                     Result.Size = FileSize32;
@@ -161,8 +161,8 @@ DBG_PLAT_WRITE_ENTIRE_FILE(DBG_PlatWriteEntireFile) {
     HANDLE FileHandle = CreateFileA(FileName, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, 0, 0);
     if (FileHandle != INVALID_HANDLE_VALUE) {
         if (Memory) {
-            uint32 MemorySize32 = SafeTruncateU64(MemorySize);
-            DWORD  BytesToWrite;
+            u32   MemorySize32 = SafeTruncateU64(MemorySize);
+            DWORD BytesToWrite;
 
             if (WriteFile(FileHandle, Memory, MemorySize32, &BytesToWrite, 0)) {
                 Result = true;
@@ -186,15 +186,15 @@ internal WinPlatDimensions WinPlatGetDimensions(HWND WindowHandle) {
     RECT ClientRect;
     GetClientRect(WindowHandle, &ClientRect);
 
-    uint32 Width  = ClientRect.right - ClientRect.left;
-    uint32 Height = ClientRect.bottom - ClientRect.top;
+    u32 Width  = ClientRect.right - ClientRect.left;
+    u32 Height = ClientRect.bottom - ClientRect.top;
 
     return WinPlatDimensions{Width, Height};
 }
 
 
 
-internal void WinPlatCreateDibSection(uint32 Width, uint32 Height) {
+internal void WinPlatCreateDibSection(u32 Width, u32 Height) {
     if (GlobalBitMap.Memory) {
         VirtualFree(GlobalBitMap.Memory, 0, MEM_RELEASE);
     }
@@ -204,9 +204,9 @@ internal void WinPlatCreateDibSection(uint32 Width, uint32 Height) {
 
     GlobalBitMap.Info.bmiHeader.biSize   = sizeof(GlobalBitMap.Info.bmiHeader);
     GlobalBitMap.Info.bmiHeader.biWidth  = GlobalBitMap.Width;
-    GlobalBitMap.Info.bmiHeader.biHeight = -(int32)GlobalBitMap.Height; // Windows
-                                                                        // Convention
-                                                                        // Bullshit
+    GlobalBitMap.Info.bmiHeader.biHeight = -(i32)GlobalBitMap.Height; // Windows
+                                                                      // Convention
+                                                                      // Bullshit
     GlobalBitMap.Info.bmiHeader.biPlanes      = 1;
     GlobalBitMap.Info.bmiHeader.biBitCount    = 32;
     GlobalBitMap.Info.bmiHeader.biCompression = BI_RGB;
@@ -223,23 +223,23 @@ internal void WinPlatCreateDibSection(uint32 Width, uint32 Height) {
 
 
 
-internal void WinPlatDisplayBitmap(HDC DeviceCtx, uint32 WindowWidth, uint32 WindowHeight) {
-    uint32 DestWidth  = WindowWidth;
-    uint32 DestHeight = WindowHeight;
+internal void WinPlatDisplayBitmap(HDC DeviceCtx, u32 WindowWidth, u32 WindowHeight) {
+    u32 DestWidth  = WindowWidth;
+    u32 DestHeight = WindowHeight;
 
-    float32 AspectRatioScr = (float32)ScreenDim.Width / (float32)ScreenDim.Height;
-    float32 AspectRatioWin = (float32)WindowWidth / (float32)WindowHeight;
+    f32 AspectRatioScr = (f32)ScreenDim.Width / (f32)ScreenDim.Height;
+    f32 AspectRatioWin = (f32)WindowWidth / (f32)WindowHeight;
 
-    uint32 DestY = 0;
-    uint32 DestX = 0;
+    u32 DestY = 0;
+    u32 DestX = 0;
 
     if (AspectRatioScr >= AspectRatioWin) {
         DestY      = DestHeight;
-        DestHeight = (uint32)((float32)WindowWidth / AspectRatioScr);
+        DestHeight = (u32)((f32)WindowWidth / AspectRatioScr);
         DestY      = (DestY - DestHeight) / 2;
     } else {
         DestX     = DestWidth;
-        DestWidth = (uint32)((float32)WindowHeight * AspectRatioScr);
+        DestWidth = (u32)((f32)WindowHeight * AspectRatioScr);
         DestX     = (DestX - DestWidth) / 2;
     }
 
@@ -266,8 +266,7 @@ WinPlatProcessXInputButton(CanvasButtonState* Old, CanvasButtonState* New, bool 
     New->Transitions += (Old->EndedDown ^ New->EndedDown) ? 1 : 0;
 }
 
-internal void
-WinPlatProcessXInputAnalog(CanvasAnalogState* Old, CanvasAnalogState* New, float32 Val) {
+internal void WinPlatProcessXInputAnalog(CanvasAnalogState* Old, CanvasAnalogState* New, f32 Val) {
     New->End = New->Min = New->Max = Val;
     New->Start                     = Old->End;
 }
@@ -276,7 +275,7 @@ WinPlatProcessXInputAnalog(CanvasAnalogState* Old, CanvasAnalogState* New, float
 internal void
 WinPlatProcessXInput(CanvasInput* Inputs, CanvasInput* OldInput, CanvasInput* NewInput) {
 
-    uint32 MaxControllerCount = XUSER_MAX_COUNT;
+    u32 MaxControllerCount = XUSER_MAX_COUNT;
 
     if (MaxControllerCount > ArrayLen(Inputs[0].Controllers)) {
         MaxControllerCount = ArrayLen(Inputs[0].Controllers);
@@ -310,10 +309,10 @@ WinPlatProcessXInput(CanvasInput* Inputs, CanvasInput* OldInput, CanvasInput* Ne
             bool Y = (Pad->wButtons & XINPUT_GAMEPAD_Y);
 
 
-            float32 LStickX = (float32)Pad->sThumbLX;
-            float32 LStickY = (float32)Pad->sThumbLY;
-            float32 RStickX = (float32)Pad->sThumbRX;
-            float32 RStickY = (float32)Pad->sThumbRY;
+            f32 LStickX = (f32)Pad->sThumbLX;
+            f32 LStickY = (f32)Pad->sThumbLY;
+            f32 RStickX = (f32)Pad->sThumbRX;
+            f32 RStickY = (f32)Pad->sThumbRY;
 
             // Normalization of sticks
             LStickX = (LStickX < 0) ? (LStickX / 32768.0f) : (LStickX / 32767.0f);
@@ -321,8 +320,8 @@ WinPlatProcessXInput(CanvasInput* Inputs, CanvasInput* OldInput, CanvasInput* Ne
             RStickX = (RStickX < 0) ? (RStickX / 32768.0f) : (RStickX / 32767.0f);
             RStickY = (RStickY < 0) ? (RStickY / 32768.0f) : (RStickY / 32767.0f);
 
-            float32 LeftTrigger  = (float32)Pad->bLeftTrigger / 255.0f;
-            float32 RightTrigger = (float32)Pad->bRightTrigger / 255.0f;
+            f32 LeftTrigger  = (f32)Pad->bLeftTrigger / 255.0f;
+            f32 RightTrigger = (f32)Pad->bRightTrigger / 255.0f;
             // ---------------------------------------------------------------------- //
 
 
@@ -410,9 +409,9 @@ internal void WinPlatProcessWindowMessages(CanvasKeyboardInput* Keyboard) {
             case WM_SYSKEYDOWN:
             case WM_SYSKEYUP: {
 
-                uint32 VKCode  = (uint32)wParam;
-                bool   WasDown = ((lParam & (1 << 30)) != 0);
-                bool   IsDown  = ((lParam & (1 << 31)) == 0);
+                u32  VKCode  = (u32)wParam;
+                bool WasDown = ((lParam & (1 << 30)) != 0);
+                bool IsDown  = ((lParam & (1 << 31)) == 0);
 
                 if (IsDown != WasDown) {
                     // Key state changed
@@ -475,12 +474,12 @@ internal LRESULT WinPlatWindowCallBack(HWND   WindowHandle,
             HDC         DeviceCtx = BeginPaint(WindowHandle, &Paint);
 
             { // Flushing the window with BLACKNESS
-                int64 X      = Paint.rcPaint.left;
-                int64 Y      = Paint.rcPaint.top;
-                int64 Width  = Paint.rcPaint.right - X;
-                int64 Height = Paint.rcPaint.bottom - Y;
+                i64 X      = Paint.rcPaint.left;
+                i64 Y      = Paint.rcPaint.top;
+                i64 Width  = Paint.rcPaint.right - X;
+                i64 Height = Paint.rcPaint.bottom - Y;
 
-                PatBlt(DeviceCtx, (int32)X, (int32)Y, (int32)Width, (int32)Height, WHITENESS);
+                PatBlt(DeviceCtx, (i32)X, (i32)Y, (i32)Width, (i32)Height, WHITENESS);
             }
 
             WinPlatDimensions Dimensions = WinPlatGetDimensions(WindowHandle);
@@ -499,18 +498,18 @@ internal LRESULT WinPlatWindowCallBack(HWND   WindowHandle,
 
 
 
-inline internal int64 WinPlatGetTime() {
+inline internal i64 WinPlatGetTime() {
     LARGE_INTEGER TimeCounter = {};
     QueryPerformanceCounter(&TimeCounter);
     return TimeCounter.QuadPart;
 }
 
 
-int32 WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd) {
+i32 WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int ShowCmd) {
 
     LARGE_INTEGER FreqStructResult = {};
     QueryPerformanceFrequency(&FreqStructResult);
-    int64 PerfCounterFrequency = FreqStructResult.QuadPart;
+    i64 PerfCounterFrequency = FreqStructResult.QuadPart;
 
     UINT SchedulerGranularity = 1;
     bool IsTimeProper         = (timeBeginPeriod(SchedulerGranularity) == TIMERR_NOERROR);
@@ -531,7 +530,7 @@ int32 WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int Sho
     WindowClass.lpszClassName = WindowClassName;
 
     // Refesh Rate
-    float32 MaxTimePerFrame = 1.0f / (float32)MonitorRefreshRate;
+    f32 MaxTimePerFrame = 1.0f / (f32)MonitorRefreshRate;
 
     if (RegisterClassA(&WindowClass)) {
         HWND WindowHandle = CreateWindowExA(0,
@@ -567,7 +566,7 @@ int32 WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int Sho
                                              Memory.PermaSize + Memory.TransSize,
                                              MEM_RESERVE | MEM_COMMIT,
                                              PAGE_READWRITE);
-            Memory.TransStore = (uint8*)Memory.PermaStore + Memory.PermaSize;
+            Memory.TransStore = (u8*)Memory.PermaStore + Memory.PermaSize;
 
             Memory.DBG_PlatReadEntireFile  = DBG_PlatReadEntireFile;
             Memory.DBG_PlatFreeFileMemory  = DBG_PlatFreeFileMemory;
@@ -579,8 +578,8 @@ int32 WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int Sho
 
 #ifdef DEBUG
             // Perf Metrics ------------------------------------------- //
-            int64  LastCounter    = WinPlatGetTime();
-            uint64 LastCycleCount = __rdtsc();
+            i64 LastCounter    = WinPlatGetTime();
+            u64 LastCycleCount = __rdtsc();
             // -------------------------------------------------------- //
 #endif
 
@@ -600,7 +599,7 @@ int32 WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int Sho
                 }
 
 
-                for (uint32 idx = 0; idx < ArrayLen(OldInput->Keyboard.Buttons); idx += 1) {
+                for (u32 idx = 0; idx < ArrayLen(OldInput->Keyboard.Buttons); idx += 1) {
                     NewInput->Keyboard.Buttons[idx].EndedDown =
                         OldInput->Keyboard.Buttons[idx].EndedDown;
                 }
@@ -631,16 +630,16 @@ int32 WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int Sho
 
 
                 // Profiling Stuff ----------------------------------------------- //
-                uint64 EndCycleCount = __rdtsc();
+                u64 EndCycleCount = __rdtsc();
 
-                int64 EndCounter = WinPlatGetTime();
+                i64 EndCounter = WinPlatGetTime();
 
-                float64 MegaCyclesElapsed =
-                    (((float64)EndCycleCount - (float64)LastCycleCount) / (1000.0f * 1000.0f));
+                f64 MegaCyclesElapsed =
+                    (((f64)EndCycleCount - (f64)LastCycleCount) / (1000.0f * 1000.0f));
 
-                int64 CounterElapsed = EndCounter - LastCounter;
+                i64 CounterElapsed = EndCounter - LastCounter;
 
-                float32 TimeElapsedForFrame = (float32)CounterElapsed / (float32)PerfCounterFrequency;
+                f32 TimeElapsedForFrame = (f32)CounterElapsed / (f32)PerfCounterFrequency;
 
                 if (TimeElapsedForFrame < MaxTimePerFrame) {
                     if (IsTimeProper) {
@@ -650,22 +649,21 @@ int32 WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, LPSTR CmdLine, int Sho
                     }
                     while (TimeElapsedForFrame < MaxTimePerFrame) {
                         CounterElapsed      = WinPlatGetTime() - LastCounter;
-                        TimeElapsedForFrame = (float32)CounterElapsed / (float32)PerfCounterFrequency;
+                        TimeElapsedForFrame = (f32)CounterElapsed / (f32)PerfCounterFrequency;
                     }
                 } else {
                 }
 
 
-                int64 temp     = LastCounter;
+                i64 temp       = LastCounter;
                 LastCounter    = WinPlatGetTime();
                 LastCycleCount = EndCycleCount;
 
 #ifdef DEBUG
-                CounterElapsed = WinPlatGetTime() - temp;
-                float64 MSPerFrame =
-                    (1000.0f * (float64)CounterElapsed) / (float64)PerfCounterFrequency;
-                float64 FPS = 1000.0f / MSPerFrame;
-                char   Buffer[256];
+                CounterElapsed  = WinPlatGetTime() - temp;
+                f64  MSPerFrame = (1000.0f * (f64)CounterElapsed) / (f64)PerfCounterFrequency;
+                f64  FPS        = 1000.0f / MSPerFrame;
+                char Buffer[256];
 
                 sprintf(
                     Buffer, "%.03fms, %.03ffps, %.03fMC/F \n", MSPerFrame, FPS, MegaCyclesElapsed);
