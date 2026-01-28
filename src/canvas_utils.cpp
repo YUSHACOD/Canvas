@@ -3,7 +3,18 @@
 // ---------------------------------------------------------------------------------------------- //
 
 #include "canvas.hpp"
-#include "canvas_sugars.hpp"
+
+typedef struct {
+    float32 x;
+    float32 y;
+    float32 z;
+} Point3D;
+
+typedef struct {
+    float32 x;
+    float32 y;
+} Point;
+
 
 // Colors --------------------------------------------------------------------------------------- //
 typedef struct {
@@ -41,17 +52,6 @@ typedef struct {
 #define GOLD   Color{255, 215, 0, 0}
 #define SILVER Color{192, 192, 192, 0}
 // Colors --------------------------------------------------------------------------------------- //
-
-typedef struct {
-    float32 x;
-    float32 y;
-    float32 z;
-} Point3D;
-
-typedef struct {
-    float32 x;
-    float32 y;
-} Point;
 
 inline internal void DrawPixel(uint32* draw_pixel, uint8 red, uint8 green, uint8 blue, uint8 pad) {
     *draw_pixel = ((uint32)pad << 24) | ((uint32)red << 16) | ((uint32)green << 8) | ((uint32)blue);

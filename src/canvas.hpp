@@ -337,7 +337,10 @@ typedef struct {
 
     uint32 Weight;
 
+	float32 dx;
+	float32 dy;
 	float32 dz;
+
 	float32 theta;
 } CanvasState;
 
