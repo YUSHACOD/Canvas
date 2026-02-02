@@ -390,7 +390,8 @@ WinPlatProcessXInput(CanvasInput* inputs, CanvasInput* old_input, CanvasInput* n
 internal void WinPlatProcessWindowMessages(CanvasKeyboardInput* keyboard) {
 
     MSG message;
-    while (PeekMessageA(&message, 0, 0, 0, PM_REMOVE)) {
+	bool peeking = true;
+    while (PeekMessageA(&message, 0, 0, 0, PM_REMOVE) || peeking) {
 
         WPARAM wParam = message.wParam;
         LPARAM lParam = message.lParam;
@@ -399,15 +400,12 @@ internal void WinPlatProcessWindowMessages(CanvasKeyboardInput* keyboard) {
 
             case WM_QUIT: {
                 GlobalRunning = false;
+				peeking = false;
             } break;
 
                 // case WM_SIZE: {
                 //
                 // } break;
-
-            case WM_DESTROY: {
-                GlobalRunning = false;
-            } break;
 
             case WM_KEYDOWN:
             case WM_KEYUP:
@@ -429,11 +427,6 @@ internal void WinPlatProcessWindowMessages(CanvasKeyboardInput* keyboard) {
                     GlobalRunning = false;
                 }
             } break;
-
-            case WM_CLOSE: {
-                GlobalRunning = false;
-            } break;
-
 
             default: {
                 TranslateMessage(&message);
