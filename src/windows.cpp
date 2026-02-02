@@ -389,9 +389,9 @@ WinPlatProcessXInput(CanvasInput* inputs, CanvasInput* old_input, CanvasInput* n
 
 internal void WinPlatProcessWindowMessages(CanvasKeyboardInput* keyboard) {
 
-    MSG message;
-	bool peeking = true;
-    while (PeekMessageA(&message, 0, 0, 0, PM_REMOVE) || peeking) {
+    MSG  message;
+    bool peeking = true;
+    while (PeekMessageA(&message, 0, 0, 0, PM_REMOVE) && peeking) {
 
         WPARAM wParam = message.wParam;
         LPARAM lParam = message.lParam;
@@ -400,7 +400,7 @@ internal void WinPlatProcessWindowMessages(CanvasKeyboardInput* keyboard) {
 
             case WM_QUIT: {
                 GlobalRunning = false;
-				peeking = false;
+                peeking       = false;
             } break;
 
                 // case WM_SIZE: {
@@ -647,7 +647,7 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
                         Sleep(SleepTime);
                     }
                     while (time_elapsed_for_frame < max_time_per_frame) {
-                        counter_elapsed      = WinPlatGetTime() - last_counter;
+                        counter_elapsed        = WinPlatGetTime() - last_counter;
                         time_elapsed_for_frame = (f32)counter_elapsed / (f32)perf_counter_frequency;
                     }
                 } else {
@@ -659,13 +659,16 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
                 last_cycle_count = end_cycle_count;
 
 #ifdef DEBUG
-                counter_elapsed  = WinPlatGetTime() - temp;
+                counter_elapsed   = WinPlatGetTime() - temp;
                 f64  ms_per_frame = (1000.0f * (f64)counter_elapsed) / (f64)perf_counter_frequency;
-                f64  fps        = 1000.0f / ms_per_frame;
+                f64  fps          = 1000.0f / ms_per_frame;
                 char buffer[256];
 
-                sprintf(
-                    buffer, "%.03fms, %.03ffps, %.03fMC/F \n", ms_per_frame, fps, mega_cylces_elapsed);
+                sprintf(buffer,
+                        "%.03fms, %.03ffps, %.03fMC/F \n",
+                        ms_per_frame,
+                        fps,
+                        mega_cylces_elapsed);
                 // OutputDebugStringA(Buffer);
 #endif
                 // --------------------------------------------------------------- //
