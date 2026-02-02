@@ -1,6 +1,7 @@
 #pragma comment(lib, "user32.lib")
 #pragma comment(lib, "gdi32.lib")
 #pragma comment(lib, "winmm.lib")
+#pragma comment(lib, "opengl32.lib")
 
 /*
  *  TODO: Seperating the Platform layer
@@ -239,7 +240,6 @@ internal void WinPlatDisplayBitmap(HDC device_ctx, u32 window_width, u32 window_
         dest_y      = dest_height;
         dest_height = (u32)((f32)window_width / screen_aspect_ratio);
         dest_y      = (dest_y - dest_height) / 2;
-
     } else {
 
         dest_x     = dest_width;
@@ -387,11 +387,59 @@ WinPlatProcessXInput(CanvasInput* inputs, CanvasInput* old_input, CanvasInput* n
     }
 }
 
+internal void WinPlatInitOpengl(HWND window_handle) {
+
+    PIXELFORMATDESCRIPTOR pixel_format_desc = {};
+    pixel_format_desc.nSize                 = sizeof(PIXELFORMATDESCRIPTOR);
+    pixel_format_desc.nVersion              = 1;
+    pixel_format_desc.dwFlags    = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
+    pixel_format_desc.iPixelType = PFD_TYPE_RGBA;
+    pixel_format_desc.cColorBits = 24;
+    pixel_format_desc.cRedBits   = 8;
+    pixel_format_desc.cGreenBits = 8;
+    pixel_format_desc.cBlueBits  = 8;
+    pixel_format_desc.cAlphaBits = 8;
+
+    HDC device_ctx    = GetDC(window_handle);
+    i32 pixel_fmt_idx = ChoosePixelFormat(device_ctx, &pixel_format_desc);
+
+    PIXELFORMATDESCRIPTOR pixel_fmt_desc_final = {};
+    DescribePixelFormat(
+        device_ctx, pixel_fmt_idx, sizeof(PIXELFORMATDESCRIPTOR), &pixel_fmt_desc_final);
+
+    SetPixelFormat(device_ctx, pixel_fmt_idx, &pixel_fmt_desc_final);
+
+    HGLRC rendering_context = wglCreateContext(device_ctx);
+    if (rendering_context) {
+        if (wglMakeCurrent(device_ctx, rendering_context)) {
+
+        } else {
+            // TODO: what to do when it fails
+        }
+    }
+}
+
+
+internal void WinPlatDeInitOpengl(HWND window_handle) {
+    HGLRC rendering_context = wglGetCurrentContext();
+    if (rendering_context) {
+        HDC device_ctx = wglGetCurrentDC();
+
+        wglMakeCurrent(NULL, NULL);
+
+        ReleaseDC(window_handle, device_ctx);
+
+        wglDeleteContext(rendering_context);
+    }
+}
+
 internal void WinPlatProcessWindowMessages(CanvasKeyboardInput* keyboard) {
 
-    MSG message;
-	bool peeking = true;
+    MSG  message;
+    bool peeking = true;
+    u64  count   = 0;
     while (PeekMessageA(&message, 0, 0, 0, PM_REMOVE) || peeking) {
+        count += 1;
 
         WPARAM wParam = message.wParam;
         LPARAM lParam = message.lParam;
@@ -400,7 +448,7 @@ internal void WinPlatProcessWindowMessages(CanvasKeyboardInput* keyboard) {
 
             case WM_QUIT: {
                 GlobalRunning = false;
-				peeking = false;
+                peeking       = false;
             } break;
 
                 // case WM_SIZE: {
@@ -434,6 +482,10 @@ internal void WinPlatProcessWindowMessages(CanvasKeyboardInput* keyboard) {
             } break;
         }
     }
+
+    char buffer[256];
+    sprintf(buffer, "Message count: %lld", count);
+    OutputDebugStringA(buffer);
 }
 
 
@@ -450,6 +502,17 @@ internal LRESULT WinPlatWindowCallBack(HWND   window_handle,
 
         case WM_DESTROY: {
             GlobalRunning = false;
+#if OPENGL
+            WinPlatDeInitOpengl(window_handle);
+#else
+#endif
+        } break;
+
+        case WM_CREATE: {
+#if OPENGL
+            WinPlatInitOpengl(window_handle);
+#else
+#endif
         } break;
 
         case WM_KEYDOWN:
@@ -468,6 +531,9 @@ internal LRESULT WinPlatWindowCallBack(HWND   window_handle,
         } break;
 
         case WM_PAINT: {
+
+#if OPENGL
+#else
             PAINTSTRUCT paint;
             HDC         device_ctx = BeginPaint(window_handle, &paint);
 
@@ -484,6 +550,7 @@ internal LRESULT WinPlatWindowCallBack(HWND   window_handle,
             WinPlatDisplayBitmap(device_ctx, dimensions.width, dimensions.height);
 
             EndPaint(window_handle, &paint);
+#endif
         } break;
 
         default: {
@@ -517,7 +584,10 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
 
     WinPlatLoadXInput();
 
+#if OPENGL
+#else
     WinPlatCreateDibSection(ScreenDim.width, ScreenDim.height);
+#endif
 
     LPCSTR window_class_name = "WinPlatWindowClass";
 
@@ -546,6 +616,8 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
                                              0);
 
         if (window_handle) {
+
+
             // Game Arena Allocations ---------------------------------------------------------- //
             CanvasMemory memory = {};
 
@@ -590,12 +662,11 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
 
             while (GlobalRunning) {
 
-                FILETIME new_write_time = WinPlatGetLastWriteTime(source_dll_name);
-                if (CompareFileTime(&new_write_time, &game_code.last_write_time) != 0) {
-                    WinPlatFreeGameCode(&game_code);
-                    game_code = WinPlatLoadGameCode(source_dll_name);
-                }
-
+				FILETIME new_write_time = WinPlatGetLastWriteTime(source_dll_name);
+				if (CompareFileTime(&new_write_time, &game_code.last_write_time) != 0) {
+					WinPlatFreeGameCode(&game_code);
+					game_code = WinPlatLoadGameCode(source_dll_name);
+				}
 
                 for (u32 idx = 0; idx < ArrayLen(old_input->keyboard.Buttons); idx += 1) {
                     new_input->keyboard.Buttons[idx].ended_down =
@@ -604,7 +675,12 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
 
                 WinPlatProcessWindowMessages(&new_input->keyboard);
 
+
+
                 WinPlatProcessXInput(inputs, old_input, new_input);
+
+#if OPENGL
+#else
 
                 CanvasBitMap bitmap    = {};
                 bitmap.memory          = GlobalBitMap.memory;
@@ -613,7 +689,6 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
                 bitmap.size            = GlobalBitMap.size;
                 bitmap.pitch           = GlobalBitMap.pitch;
                 bitmap.bytes_per_pixel = GlobalBitMap.bytes_per_pixel;
-
 
                 game_code.update_and_render(&memory, &bitmap, new_input, &GlobalRunning);
 
@@ -627,6 +702,7 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
                 ReleaseDC(window_handle, device_ctx);
                 // --------------------------------------------------------------- //
 
+#endif
 
                 // Profiling Stuff ----------------------------------------------- //
                 u64 end_cycle_count = __rdtsc();
@@ -647,7 +723,7 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
                         Sleep(SleepTime);
                     }
                     while (time_elapsed_for_frame < max_time_per_frame) {
-                        counter_elapsed      = WinPlatGetTime() - last_counter;
+                        counter_elapsed        = WinPlatGetTime() - last_counter;
                         time_elapsed_for_frame = (f32)counter_elapsed / (f32)perf_counter_frequency;
                     }
                 } else {
@@ -659,13 +735,16 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
                 last_cycle_count = end_cycle_count;
 
 #ifdef DEBUG
-                counter_elapsed  = WinPlatGetTime() - temp;
+                counter_elapsed   = WinPlatGetTime() - temp;
                 f64  ms_per_frame = (1000.0f * (f64)counter_elapsed) / (f64)perf_counter_frequency;
-                f64  fps        = 1000.0f / ms_per_frame;
+                f64  fps          = 1000.0f / ms_per_frame;
                 char buffer[256];
 
-                sprintf(
-                    buffer, "%.03fms, %.03ffps, %.03fMC/F \n", ms_per_frame, fps, mega_cylces_elapsed);
+                sprintf(buffer,
+                        "%.03fms, %.03ffps, %.03fMC/F \n",
+                        ms_per_frame,
+                        fps,
+                        mega_cylces_elapsed);
                 // OutputDebugStringA(Buffer);
 #endif
                 // --------------------------------------------------------------- //
@@ -680,6 +759,7 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
     } else {
         OutputDebugStringA("Registering the window class failed.\n");
     }
+
 
     return 0;
 }

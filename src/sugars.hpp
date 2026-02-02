@@ -5,7 +5,7 @@
 #include <stdint.h>
 
 #define global        static
-#define internal      static
+#define internal      
 #define local_persist static
 
 #define Pi32 3.1415926536f

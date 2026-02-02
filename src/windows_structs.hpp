@@ -9,6 +9,9 @@
 #include <xinput.h>
 #include <dsound.h>
 #include <malloc.h>
+#include <GL\gl.h>
+
+#define OPENGL 0
 
 typedef struct {
     BITMAPINFO info;
