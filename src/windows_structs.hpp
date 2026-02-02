@@ -11,7 +11,7 @@
 #include <malloc.h>
 #include <GL\gl.h>
 
-#define OPENGL 0
+#define OPENGL 1
 
 typedef struct {
     BITMAPINFO info;

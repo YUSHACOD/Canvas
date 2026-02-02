@@ -438,7 +438,7 @@ internal void WinPlatProcessWindowMessages(CanvasKeyboardInput* keyboard) {
     MSG  message;
     bool peeking = true;
     u64  count   = 0;
-    while (PeekMessageA(&message, 0, 0, 0, PM_REMOVE) || peeking) {
+    while (PeekMessageA(&message, 0, 0, 0, PM_REMOVE) && peeking) {
         count += 1;
 
         WPARAM wParam = message.wParam;
@@ -532,8 +532,6 @@ internal LRESULT WinPlatWindowCallBack(HWND   window_handle,
 
         case WM_PAINT: {
 
-#if OPENGL
-#else
             PAINTSTRUCT paint;
             HDC         device_ctx = BeginPaint(window_handle, &paint);
 
@@ -543,14 +541,16 @@ internal LRESULT WinPlatWindowCallBack(HWND   window_handle,
                 i64 width  = paint.rcPaint.right - x;
                 i64 height = paint.rcPaint.bottom - y;
 
-                PatBlt(device_ctx, (i32)x, (i32)y, (i32)width, (i32)height, WHITENESS);
+                PatBlt(device_ctx, (i32)x, (i32)y, (i32)width, (i32)height, BLACKNESS);
             }
 
+#if OPENGL
+#else
             WinPlatDimensions dimensions = WinPlatGetDimensions(window_handle);
             WinPlatDisplayBitmap(device_ctx, dimensions.width, dimensions.height);
+#endif
 
             EndPaint(window_handle, &paint);
-#endif
         } break;
 
         default: {
