@@ -23,6 +23,7 @@
  */
 
 #include <stdio.h>
+#include <math.h>
 
 #include "windows_structs.hpp"
 
@@ -433,6 +434,23 @@ internal void WinPlatDeInitOpengl(HWND window_handle) {
     }
 }
 
+
+internal void Ogl(f64 dt) {
+
+    HDC device_ctx = wglGetCurrentDC();
+
+    f64 scale = 20.0f;
+
+    glClearColor(
+        sinf((f32)(dt * scale)) * 0.5f + 0.5f, 0.0F, cosf((f32)(dt * scale)) * 0.5f + 0.5f, 1.0F);
+
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+
+
+    SwapBuffers(device_ctx);
+}
+
 internal void WinPlatProcessWindowMessages(CanvasKeyboardInput* keyboard) {
 
     MSG  message;
@@ -650,6 +668,7 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
             // Perf Metrics ------------------------------------------- //
             i64 last_counter     = WinPlatGetTime();
             u64 last_cycle_count = __rdtsc();
+            f64 time_elapsed     = 0.0f;
             // -------------------------------------------------------- //
 #endif
 
@@ -660,13 +679,17 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
             char*           source_dll_name = Text("canvas.dll");
             WinPlatGameCode game_code       = WinPlatLoadGameCode(source_dll_name);
 
+#ifdef OPENGL
+#endif
+
+
             while (GlobalRunning) {
 
-				FILETIME new_write_time = WinPlatGetLastWriteTime(source_dll_name);
-				if (CompareFileTime(&new_write_time, &game_code.last_write_time) != 0) {
-					WinPlatFreeGameCode(&game_code);
-					game_code = WinPlatLoadGameCode(source_dll_name);
-				}
+                FILETIME new_write_time = WinPlatGetLastWriteTime(source_dll_name);
+                if (CompareFileTime(&new_write_time, &game_code.last_write_time) != 0) {
+                    WinPlatFreeGameCode(&game_code);
+                    game_code = WinPlatLoadGameCode(source_dll_name);
+                }
 
                 for (u32 idx = 0; idx < ArrayLen(old_input->keyboard.Buttons); idx += 1) {
                     new_input->keyboard.Buttons[idx].ended_down =
@@ -680,6 +703,7 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
                 WinPlatProcessXInput(inputs, old_input, new_input);
 
 #if OPENGL
+                Ogl(time_elapsed);
 #else
 
                 CanvasBitMap bitmap    = {};
@@ -704,17 +728,17 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
 
 #endif
 
-                // Profiling Stuff ----------------------------------------------- //
-                u64 end_cycle_count = __rdtsc();
-
-                i64 end_counter = WinPlatGetTime();
+                    // Profiling Stuff ----------------------------------------------- //
+                    u64 end_cycle_count = __rdtsc();
+                i64     end_counter     = WinPlatGetTime();
 
                 f64 mega_cylces_elapsed =
                     (((f64)end_cycle_count - (f64)last_cycle_count) / (1000.0f * 1000.0f));
 
                 i64 counter_elapsed = end_counter - last_counter;
 
-                f32 time_elapsed_for_frame = (f32)counter_elapsed / (f32)perf_counter_frequency;
+                f64 time_elapsed_for_frame = (f32)counter_elapsed / (f32)perf_counter_frequency;
+                time_elapsed += time_elapsed_for_frame;
 
                 if (time_elapsed_for_frame < max_time_per_frame) {
                     if (is_time_proper) {
@@ -728,6 +752,7 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
                     }
                 } else {
                 }
+
 
 
                 i64 temp         = last_counter;

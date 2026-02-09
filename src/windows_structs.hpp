@@ -2,7 +2,7 @@
 #define WIN_LAYER_STRUCTS_H
 // Structures Used by the Windows Layer -------------------------------------------------------- //
 
-#include "sugars.hpp"
+#include "base/sugars.hpp"
 #include "canvas.hpp"
 
 #include <windows.h>
@@ -39,6 +39,10 @@ typedef struct {
     u32          count;
     CanvasInput* input_stream;
 } WinPlatInputRecord;
+
+typedef struct {
+
+} OpenGlContext;
 
 // --------------------------------------------------------------------------------------------- //
 #endif
