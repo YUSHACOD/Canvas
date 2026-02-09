@@ -2,7 +2,7 @@
 #define CANVAS_H
 // The Game Interface --------------------------------------------------------------------------- //
 
-#include "sugars.hpp"
+#include "base\sugars.hpp"
 
 #ifdef DEBUG
 typedef struct {

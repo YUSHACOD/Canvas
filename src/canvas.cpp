@@ -1,6 +1,6 @@
 
 #include "canvas.hpp"
-#include "sugars.hpp"
+#include "base\sugars.hpp"
 
 #include "canvas_utils.cpp"
 #include "canvas3D.cpp"
@@ -104,7 +104,7 @@ extern "C" CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRender) {
     }
 
     if (input->keyboard.Control.ended_down && input->keyboard.R.ended_down) {
-        ZeroMemory(state, sizeof(CanvasState));
+        ZeroMem(state, sizeof(CanvasState));
     }
 
 
