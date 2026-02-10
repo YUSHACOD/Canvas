@@ -1,3 +1,4 @@
+#include "canvas.hpp"
 #pragma comment(lib, "user32.lib")
 #pragma comment(lib, "gdi32.lib")
 #pragma comment(lib, "winmm.lib")
@@ -27,7 +28,7 @@
 
 #include "windows_structs.hpp"
 
-#define MonitorRefreshRate 60
+#define MonitorRefreshRate 144
 #define GameUpdateHz       (MonitorRefreshRate / 1)
 #define FramesOfDelay      10
 
@@ -35,7 +36,33 @@
 global bool              GlobalRunning;
 global WinPlatBitMap     GlobalBitMap;
 global WinPlatDimensions ScreenDim = {};
-// Globals -------------------------------------------------- //
+// ---------------------------------------------------------- //
+
+// Opengl Header -------------------------------------------------------------------------------- //
+typedef char GLchar;
+
+#define GL_FRAGMENT_SHADER 0x8B30
+#define GL_VERTEX_SHADER   0x8B31
+
+typedef BOOL   wgl_swap_interval_ext(int interval);
+typedef GLuint gl_create_shader(GLenum type);
+typedef void
+gl_shader_source(GLuint shader, GLsizei count, const GLchar* const* string, const GLint* length);
+typedef void   gl_compile_shader(GLuint shader);
+typedef GLuint gl_create_program(void);
+typedef void   gl_attach_shader(GLuint program, GLuint shader);
+typedef void   gl_link_program(GLuint program);
+typedef void   gl_delete_shader(GLuint shader);
+
+global wgl_swap_interval_ext* wglSwapIntervalEXT;
+global gl_create_shader*      glCreateShader;
+global gl_shader_source*      glShaderSource;
+global gl_compile_shader*     glCompileShader;
+global gl_create_program*     glCreateProgram;
+global gl_attach_shader*      glAttachShader;
+global gl_link_program*       glLinkProgram;
+global gl_delete_shader*      glDeleteShader;
+// ---------------------------------------------------------------------------------------------- //
 
 
 // XInput Shenanigans --------------------------------------------------------------------------- //
@@ -126,7 +153,7 @@ DBG_PLAT_READ_ENTIRE_FILE(DBG_PlatReadEntireFile) {
         LARGE_INTEGER FileSize;
         if (GetFileSizeEx(file_handle, &FileSize)) {
             result.memory =
-                VirtualAlloc(0, FileSize.QuadPart, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+                VirtualAlloc(0, FileSize.QuadPart + 1, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 
             if (result.memory) {
                 u32   FileSize32 = SafeTruncateU64(FileSize.QuadPart);
@@ -418,20 +445,74 @@ internal void WinPlatInitOpengl(HWND window_handle) {
             // TODO: what to do when it fails
         }
     }
+
+    wglSwapIntervalEXT = (wgl_swap_interval_ext*)wglGetProcAddress("wglSwapIntervalEXT");
+    if (wglSwapIntervalEXT) {
+        wglSwapIntervalEXT(1);
+    }
+
+    glCreateShader  = (gl_create_shader*)wglGetProcAddress("glCreateShader");
+    glShaderSource  = (gl_shader_source*)wglGetProcAddress("glShaderSource");
+    glCompileShader = (gl_compile_shader*)wglGetProcAddress("glCompileShader");
+    glCreateProgram = (gl_create_program*)wglGetProcAddress("glCreateProgram");
+    glAttachShader  = (gl_attach_shader*)wglGetProcAddress("glAttachShader");
+    glLinkProgram   = (gl_link_program*)wglGetProcAddress("glLinkProgram");
+    glDeleteShader  = (gl_delete_shader*)wglGetProcAddress("glDeleteShader");
 }
 
-
 internal void WinPlatDeInitOpengl(HWND window_handle) {
+
     HGLRC rendering_context = wglGetCurrentContext();
+
     if (rendering_context) {
         HDC device_ctx = wglGetCurrentDC();
 
         wglMakeCurrent(NULL, NULL);
-
         ReleaseDC(window_handle, device_ctx);
-
         wglDeleteContext(rendering_context);
     }
+}
+
+internal GLuint WinPlatCreateGLProgram() {
+
+    GLchar* vertex_shader_source[] = {
+        (char*)"#version 450 core                          \n",
+        (char*)"                                           \n",
+        (char*)"void main(void) {                          \n",
+        (char*)"	gl_Position = vec4(0.0, 0.0, 0.5, 1.0);\n",
+        (char*)"}                                          \n",
+    };
+
+    GLchar* fragment_shader_source[] = {
+        (char*)"#version 450 core              \n",
+        (char*)"                               \n",
+        (char*)"out vec4 color                 \n",
+        (char*)"                               \n",
+        (char*)"void main ( void ) {           \n",
+        (char*)"color = vec4(1.0, 0, 1.0, 1.0);\n",
+        (char*)"}                              \n",
+    };
+
+
+    GLuint vertex_shader   = glCreateShader(GL_VERTEX_SHADER);
+    GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+
+    glShaderSource(vertex_shader, 1, vertex_shader_source, NULL);
+    glCompileShader(vertex_shader);
+
+    glShaderSource(vertex_shader, 1, fragment_shader_source, NULL);
+    glCompileShader(fragment_shader);
+
+    GLuint program = glCreateProgram();
+    glAttachShader(program, vertex_shader);
+    glAttachShader(program, fragment_shader);
+
+    glLinkProgram(program);
+
+    glDeleteShader(vertex_shader);
+    glDeleteShader(fragment_shader);
+
+    return program;
 }
 
 
@@ -455,9 +536,7 @@ internal void WinPlatProcessWindowMessages(CanvasKeyboardInput* keyboard) {
 
     MSG  message;
     bool peeking = true;
-    u64  count   = 0;
     while (PeekMessageA(&message, 0, 0, 0, PM_REMOVE) && peeking) {
-        count += 1;
 
         WPARAM wParam = message.wParam;
         LPARAM lParam = message.lParam;
@@ -500,10 +579,6 @@ internal void WinPlatProcessWindowMessages(CanvasKeyboardInput* keyboard) {
             } break;
         }
     }
-
-    char buffer[256];
-    sprintf(buffer, "Message count: %lld", count);
-    OutputDebugStringA(buffer);
 }
 
 
@@ -616,7 +691,7 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
     window_class.lpszClassName = window_class_name;
 
     // Refesh Rate
-    f32 max_time_per_frame = 1.0f / (f32)MonitorRefreshRate;
+    f64 max_time_per_frame = 1.0f / (f64)MonitorRefreshRate;
 
     if (RegisterClassA(&window_class)) {
         HWND window_handle = CreateWindowExA(0,
@@ -634,8 +709,6 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
                                              0);
 
         if (window_handle) {
-
-
             // Game Arena Allocations ---------------------------------------------------------- //
             CanvasMemory memory = {};
 
@@ -648,8 +721,7 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
             LPVOID base_address = 0;
 #endif
 
-            memory.trans_size = GigaBytes(1);
-
+            memory.trans_size  = GigaBytes(1);
             memory.perma_store = VirtualAlloc(base_address,
                                               memory.perma_size + memory.trans_size,
                                               MEM_RESERVE | MEM_COMMIT,
@@ -680,8 +752,8 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
             WinPlatGameCode game_code       = WinPlatLoadGameCode(source_dll_name);
 
 #ifdef OPENGL
+            WinPlatCreateGLProgram();
 #endif
-
 
             while (GlobalRunning) {
 
@@ -695,11 +767,7 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
                     new_input->keyboard.Buttons[idx].ended_down =
                         old_input->keyboard.Buttons[idx].ended_down;
                 }
-
                 WinPlatProcessWindowMessages(&new_input->keyboard);
-
-
-
                 WinPlatProcessXInput(inputs, old_input, new_input);
 
 #if OPENGL
@@ -728,16 +796,16 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
 
 #endif
 
-                    // Profiling Stuff ----------------------------------------------- //
-                    u64 end_cycle_count = __rdtsc();
-                i64     end_counter     = WinPlatGetTime();
+                // Profiling Stuff ----------------------------------------------- //
+                u64 end_cycle_count = __rdtsc();
+                i64 end_counter     = WinPlatGetTime();
 
                 f64 mega_cylces_elapsed =
                     (((f64)end_cycle_count - (f64)last_cycle_count) / (1000.0f * 1000.0f));
 
                 i64 counter_elapsed = end_counter - last_counter;
 
-                f64 time_elapsed_for_frame = (f32)counter_elapsed / (f32)perf_counter_frequency;
+                f64 time_elapsed_for_frame = (f64)counter_elapsed / (f64)perf_counter_frequency;
                 time_elapsed += time_elapsed_for_frame;
 
                 if (time_elapsed_for_frame < max_time_per_frame) {
@@ -770,7 +838,7 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
                         ms_per_frame,
                         fps,
                         mega_cylces_elapsed);
-                // OutputDebugStringA(Buffer);
+                OutputDebugStringA(buffer);
 #endif
                 // --------------------------------------------------------------- //
 
