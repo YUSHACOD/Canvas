@@ -27,42 +27,14 @@
 #include <math.h>
 
 #include "windows_structs.hpp"
-
-#define MonitorRefreshRate 144
-#define GameUpdateHz       (MonitorRefreshRate / 1)
-#define FramesOfDelay      10
+#include "windows_opengl.cpp"
 
 // Globals -------------------------------------------------- //
 global bool              GlobalRunning;
 global WinPlatBitMap     GlobalBitMap;
 global WinPlatDimensions ScreenDim = {};
+global u64               MonitorRefreshRate;
 // ---------------------------------------------------------- //
-
-// Opengl Header -------------------------------------------------------------------------------- //
-typedef char GLchar;
-
-#define GL_FRAGMENT_SHADER 0x8B30
-#define GL_VERTEX_SHADER   0x8B31
-
-typedef BOOL   wgl_swap_interval_ext(int interval);
-typedef GLuint gl_create_shader(GLenum type);
-typedef void
-gl_shader_source(GLuint shader, GLsizei count, const GLchar* const* string, const GLint* length);
-typedef void   gl_compile_shader(GLuint shader);
-typedef GLuint gl_create_program(void);
-typedef void   gl_attach_shader(GLuint program, GLuint shader);
-typedef void   gl_link_program(GLuint program);
-typedef void   gl_delete_shader(GLuint shader);
-
-global wgl_swap_interval_ext* wglSwapIntervalEXT;
-global gl_create_shader*      glCreateShader;
-global gl_shader_source*      glShaderSource;
-global gl_compile_shader*     glCompileShader;
-global gl_create_program*     glCreateProgram;
-global gl_attach_shader*      glAttachShader;
-global gl_link_program*       glLinkProgram;
-global gl_delete_shader*      glDeleteShader;
-// ---------------------------------------------------------------------------------------------- //
 
 
 // XInput Shenanigans --------------------------------------------------------------------------- //
@@ -160,7 +132,8 @@ DBG_PLAT_READ_ENTIRE_FILE(DBG_PlatReadEntireFile) {
                 DWORD BytesToRead;
                 if (ReadFile(file_handle, result.memory, FileSize32, &BytesToRead, 0) &&
                     (FileSize32 == BytesToRead)) {
-                    result.size = FileSize32;
+                    result.size                         = FileSize32;
+                    ((char*)result.memory)[result.size] = '\0';
                 } else {
                     if (result.memory) {
                         VirtualFree(result.memory, 0, MEM_RELEASE);
@@ -415,119 +388,23 @@ WinPlatProcessXInput(CanvasInput* inputs, CanvasInput* old_input, CanvasInput* n
     }
 }
 
-internal void WinPlatInitOpengl(HWND window_handle) {
-
-    PIXELFORMATDESCRIPTOR pixel_format_desc = {};
-    pixel_format_desc.nSize                 = sizeof(PIXELFORMATDESCRIPTOR);
-    pixel_format_desc.nVersion              = 1;
-    pixel_format_desc.dwFlags    = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
-    pixel_format_desc.iPixelType = PFD_TYPE_RGBA;
-    pixel_format_desc.cColorBits = 24;
-    pixel_format_desc.cRedBits   = 8;
-    pixel_format_desc.cGreenBits = 8;
-    pixel_format_desc.cBlueBits  = 8;
-    pixel_format_desc.cAlphaBits = 8;
-
-    HDC device_ctx    = GetDC(window_handle);
-    i32 pixel_fmt_idx = ChoosePixelFormat(device_ctx, &pixel_format_desc);
-
-    PIXELFORMATDESCRIPTOR pixel_fmt_desc_final = {};
-    DescribePixelFormat(
-        device_ctx, pixel_fmt_idx, sizeof(PIXELFORMATDESCRIPTOR), &pixel_fmt_desc_final);
-
-    SetPixelFormat(device_ctx, pixel_fmt_idx, &pixel_fmt_desc_final);
-
-    HGLRC rendering_context = wglCreateContext(device_ctx);
-    if (rendering_context) {
-        if (wglMakeCurrent(device_ctx, rendering_context)) {
-
-        } else {
-            // TODO: what to do when it fails
-        }
-    }
-
-    wglSwapIntervalEXT = (wgl_swap_interval_ext*)wglGetProcAddress("wglSwapIntervalEXT");
-    if (wglSwapIntervalEXT) {
-        wglSwapIntervalEXT(1);
-    }
-
-    glCreateShader  = (gl_create_shader*)wglGetProcAddress("glCreateShader");
-    glShaderSource  = (gl_shader_source*)wglGetProcAddress("glShaderSource");
-    glCompileShader = (gl_compile_shader*)wglGetProcAddress("glCompileShader");
-    glCreateProgram = (gl_create_program*)wglGetProcAddress("glCreateProgram");
-    glAttachShader  = (gl_attach_shader*)wglGetProcAddress("glAttachShader");
-    glLinkProgram   = (gl_link_program*)wglGetProcAddress("glLinkProgram");
-    glDeleteShader  = (gl_delete_shader*)wglGetProcAddress("glDeleteShader");
-}
-
-internal void WinPlatDeInitOpengl(HWND window_handle) {
-
-    HGLRC rendering_context = wglGetCurrentContext();
-
-    if (rendering_context) {
-        HDC device_ctx = wglGetCurrentDC();
-
-        wglMakeCurrent(NULL, NULL);
-        ReleaseDC(window_handle, device_ctx);
-        wglDeleteContext(rendering_context);
-    }
-}
-
-internal GLuint WinPlatCreateGLProgram() {
-
-    GLchar* vertex_shader_source[] = {
-        (char*)"#version 450 core                          \n",
-        (char*)"                                           \n",
-        (char*)"void main(void) {                          \n",
-        (char*)"	gl_Position = vec4(0.0, 0.0, 0.5, 1.0);\n",
-        (char*)"}                                          \n",
-    };
-
-    GLchar* fragment_shader_source[] = {
-        (char*)"#version 450 core              \n",
-        (char*)"                               \n",
-        (char*)"out vec4 color                 \n",
-        (char*)"                               \n",
-        (char*)"void main ( void ) {           \n",
-        (char*)"color = vec4(1.0, 0, 1.0, 1.0);\n",
-        (char*)"}                              \n",
-    };
 
 
-    GLuint vertex_shader   = glCreateShader(GL_VERTEX_SHADER);
-    GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-
-    glShaderSource(vertex_shader, 1, vertex_shader_source, NULL);
-    glCompileShader(vertex_shader);
-
-    glShaderSource(vertex_shader, 1, fragment_shader_source, NULL);
-    glCompileShader(fragment_shader);
-
-    GLuint program = glCreateProgram();
-    glAttachShader(program, vertex_shader);
-    glAttachShader(program, fragment_shader);
-
-    glLinkProgram(program);
-
-    glDeleteShader(vertex_shader);
-    glDeleteShader(fragment_shader);
-
-    return program;
-}
-
-
-internal void Ogl(f64 dt) {
+internal void Ogl(f64 dt, WinPlatGLPipelineState* gl_state) {
 
     HDC device_ctx = wglGetCurrentDC();
 
-    f64 scale = 20.0f;
+	dt = dt * 0.001f;
 
-    glClearColor(
-        sinf((f32)(dt * scale)) * 0.5f + 0.5f, 0.0F, cosf((f32)(dt * scale)) * 0.5f + 0.5f, 1.0F);
+    GLfloat color[] = {(float)sin(dt) * 0.5f + 0.5f, (float)cos(dt) * 0.5f + 0.5f, 0.0f, 1.0f};
+    glClearBufferfv(GL_COLOR, 0, color);
 
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glUseProgram(gl_state->program_handle);
 
+    GLfloat attrib[] = {(float)sin(dt) * 0.5f, (float)cos(dt) * 0.6f, 0.0f, 0.0f};
+    glVertexAttrib4fv(0, attrib);
 
+    glDrawArrays(GL_TRIANGLES, 0, 3);
 
     SwapBuffers(device_ctx);
 }
@@ -593,20 +470,22 @@ internal LRESULT WinPlatWindowCallBack(HWND   window_handle,
         case WM_SIZE: {
         } break;
 
-        case WM_DESTROY: {
-            GlobalRunning = false;
+
+        case WM_CREATE: {
 #if OPENGL
-            WinPlatDeInitOpengl(window_handle);
+            WinPlatInitGL(window_handle);
 #else
 #endif
         } break;
 
-        case WM_CREATE: {
+        case WM_DESTROY: {
+            GlobalRunning = false;
 #if OPENGL
-            WinPlatInitOpengl(window_handle);
+            WinPlatDeInitGL(window_handle);
 #else
 #endif
         } break;
+
 
         case WM_KEYDOWN:
         case WM_KEYUP:
@@ -674,6 +553,10 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
 
     ScreenDim.width  = 1920;
     ScreenDim.height = 1080;
+
+    DEVMODEA device_mode = {};
+    EnumDisplaySettingsA(0, ENUM_CURRENT_SETTINGS, &device_mode);
+    MonitorRefreshRate = (u64)device_mode.dmDisplayFrequency;
 
     WinPlatLoadXInput();
 
@@ -752,16 +635,18 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
             WinPlatGameCode game_code       = WinPlatLoadGameCode(source_dll_name);
 
 #ifdef OPENGL
-            WinPlatCreateGLProgram();
+            WinPlatGLPipelineState gl_state = {};
+            gl_state.vao_len                = 1;
+            DBG_FileStruct vertex_source    = DBG_PlatReadEntireFile(Text("../../src/vertex.glsl"));
+            DBG_FileStruct fragment_source =
+                DBG_PlatReadEntireFile(Text("../../src/fragment.glsl"));
+            WinPlatGLPipelineSetup(
+                &gl_state, (char*)vertex_source.memory, (char*)fragment_source.memory);
 #endif
 
+            // Main Loop ------------------------------------------------------------------------ //
             while (GlobalRunning) {
 
-                FILETIME new_write_time = WinPlatGetLastWriteTime(source_dll_name);
-                if (CompareFileTime(&new_write_time, &game_code.last_write_time) != 0) {
-                    WinPlatFreeGameCode(&game_code);
-                    game_code = WinPlatLoadGameCode(source_dll_name);
-                }
 
                 for (u32 idx = 0; idx < ArrayLen(old_input->keyboard.Buttons); idx += 1) {
                     new_input->keyboard.Buttons[idx].ended_down =
@@ -771,8 +656,13 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
                 WinPlatProcessXInput(inputs, old_input, new_input);
 
 #if OPENGL
-                Ogl(time_elapsed);
+                Ogl(time_elapsed, &gl_state);
 #else
+                FILETIME new_write_time = WinPlatGetLastWriteTime(source_dll_name);
+                if (CompareFileTime(&new_write_time, &game_code.last_write_time) != 0) {
+                    WinPlatFreeGameCode(&game_code);
+                    game_code = WinPlatLoadGameCode(source_dll_name);
+                }
 
                 CanvasBitMap bitmap    = {};
                 bitmap.memory          = GlobalBitMap.memory;
@@ -806,9 +696,8 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
                 i64 counter_elapsed = end_counter - last_counter;
 
                 f64 time_elapsed_for_frame = (f64)counter_elapsed / (f64)perf_counter_frequency;
-                time_elapsed += time_elapsed_for_frame;
 
-                if (time_elapsed_for_frame < max_time_per_frame) {
+                if (time_elapsed_for_frame <= max_time_per_frame) {
                     if (is_time_proper) {
                         DWORD SleepTime =
                             (DWORD)(1000.0f * (max_time_per_frame - time_elapsed_for_frame));
@@ -828,9 +717,10 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
                 last_cycle_count = end_cycle_count;
 
 #ifdef DEBUG
-                counter_elapsed   = WinPlatGetTime() - temp;
-                f64  ms_per_frame = (1000.0f * (f64)counter_elapsed) / (f64)perf_counter_frequency;
-                f64  fps          = 1000.0f / ms_per_frame;
+                counter_elapsed  = WinPlatGetTime() - temp;
+                f64 ms_per_frame = (1000.0f * (f64)counter_elapsed) / (f64)perf_counter_frequency;
+                time_elapsed += ms_per_frame;
+                f64  fps = 1000.0f / ms_per_frame;
                 char buffer[256];
 
                 sprintf(buffer,
@@ -838,7 +728,7 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
                         ms_per_frame,
                         fps,
                         mega_cylces_elapsed);
-                OutputDebugStringA(buffer);
+                // OutputDebugStringA(buffer);
 #endif
                 // --------------------------------------------------------------- //
 
@@ -846,6 +736,12 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
                 old_input      = new_input;
                 new_input      = t;
             }
+            // Main Loop ------------------------------------------------------------------------ //
+
+#ifdef OPENGL
+            WinPlatOpenGLPipelineDelete(&gl_state);
+#elif
+#endif
         } else {
             OutputDebugStringA("Failed at creation of window handle.\n");
         }

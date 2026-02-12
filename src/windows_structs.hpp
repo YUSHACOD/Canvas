@@ -1,5 +1,5 @@
-#ifndef WIN_LAYER_STRUCTS_H
-#define WIN_LAYER_STRUCTS_H
+#ifndef WIN_LAYER_H
+#define WIN_LAYER_H
 // Structures Used by the Windows Layer -------------------------------------------------------- //
 
 #include "base/sugars.hpp"
@@ -9,7 +9,6 @@
 #include <xinput.h>
 #include <dsound.h>
 #include <malloc.h>
-#include <GL\gl.h>
 
 #define OPENGL 1
 
@@ -40,9 +39,6 @@ typedef struct {
     CanvasInput* input_stream;
 } WinPlatInputRecord;
 
-typedef struct {
-
-} OpenGlContext;
 
 // --------------------------------------------------------------------------------------------- //
 #endif
