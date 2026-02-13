@@ -33,6 +33,10 @@ typedef void
 gl_get_shader_info_log(GLuint shader, GLsizei bufSize, GLsizei* length, GLchar* infoLog);
 typedef void gl_clear_bufferfv(GLenum buffer, GLint drawbuffer, const GLfloat* value);
 typedef void gl_vertex_attrib4fv(GLuint index, const GLfloat* v);
+typedef void gl_vertex_attrib1f(GLuint index, const GLfloat x);
+typedef void
+gl_uniform_matrix4fv(GLint location, GLsizei count, GLboolean transpose, const GLfloat* value);
+typedef GLint gl_get_uniform_location(GLuint program, const GLchar* name);
 
 global wgl_swap_interval_ext*   wglSwapIntervalEXT;
 global gl_create_shader*        glCreateShader;
@@ -51,11 +55,15 @@ global gl_get_shaderiv*         glGetShaderiv;
 global gl_get_shader_info_log*  glGetShaderInfoLog;
 global gl_clear_bufferfv*       glClearBufferfv;
 global gl_vertex_attrib4fv*     glVertexAttrib4fv;
+global gl_vertex_attrib1f*      glVertexAttrib1f;
+global gl_uniform_matrix4fv*    glUniformMatrix4fv;
+global gl_get_uniform_location* glGetUniformLocation;
 
 typedef struct {
     GLuint vao_len;
     GLuint vao_handle;
     GLuint program_handle;
-} WinPlatGLPipelineState;
+    GLuint projection_location;
+} GLPipelineState;
 // --------------------------------------------------------------------------------------------- //
 #endif

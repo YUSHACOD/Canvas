@@ -15,7 +15,7 @@ set CFLAGS=-nologo -GR- -Gm- -MT -Zi -EHsc -EHa- -W4 -WX -Fm -DCANVXS=1
 
 set LINKER_FLAGS=/link -incremental:no -opt:ref
 
-set DISABLED_WARNINGS=-wd4100 -wd4201 -wd4996
+set DISABLED_WARNINGS=-wd4100 -wd4201 -wd4996 -wd4189
 set DEBUG_FLAGS=-Oi -DDEBUG=1
 
 set RELEASE_FLAGS=-Oi -O2
@@ -65,7 +65,9 @@ goto :eof
 
 :RunProj
 call :Build-Debug
-"%DBGDIR%\%NAME%.exe"
+pushd "%DBGDIR%"
+"%NAME%.exe"
+popd
 goto :eof
 
 :RunInDebugger

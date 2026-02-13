@@ -4,6 +4,7 @@
 
 #include "base/sugars.hpp"
 #include "canvas.hpp"
+#include "windows_opengl.hpp"
 
 #include <windows.h>
 #include <xinput.h>
@@ -38,6 +39,14 @@ typedef struct {
     u32          count;
     CanvasInput* input_stream;
 } WinPlatInputRecord;
+
+typedef struct {
+    bool              is_running;
+    WinPlatBitMap     bitmap;
+    WinPlatDimensions screen_dimensions;
+    u64               refresh_rate;
+    GLPipelineState*  gl_state;
+} WinPlatMainContext;
 
 
 // --------------------------------------------------------------------------------------------- //

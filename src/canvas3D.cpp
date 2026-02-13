@@ -40,7 +40,7 @@ Point3D Rotate3DXZ(Point3D p, f32 theta) {
 
 internal void Render3DScene(CanvasBitMap* bitmap, CanvasInput* input, CanvasState* state) {
 
-    // Cube as vertices and edges ----------------------- //
+    // Cube as vertices and edges
     Point3D points[] = {
         Point3D{0.25f,  0.25f,  0.25f },
         Point3D{-0.25f, 0.25f,  0.25f },
@@ -69,7 +69,6 @@ internal void Render3DScene(CanvasBitMap* bitmap, CanvasInput* input, CanvasStat
         {2, 6},
         {3, 7},
     };
-    // -------------------------------------------------- //
 
     // Drawing Vertices
     for (u32 idx = 0; idx < ArrayLen(points); idx += 1) {

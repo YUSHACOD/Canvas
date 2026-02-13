@@ -1,7 +1,7 @@
 
 #include "windows_opengl.hpp"
 
-internal void load_function_globals() {
+internal void GL_load_function_globals() {
     glCreateShader       = (gl_create_shader*)wglGetProcAddress("glCreateShader");
     glShaderSource       = (gl_shader_source*)wglGetProcAddress("glShaderSource");
     glCompileShader      = (gl_compile_shader*)wglGetProcAddress("glCompileShader");
@@ -18,9 +18,12 @@ internal void load_function_globals() {
     glGetShaderInfoLog   = (gl_get_shader_info_log*)wglGetProcAddress("glGetShaderInfoLog");
     glClearBufferfv      = (gl_clear_bufferfv*)wglGetProcAddress("glClearBufferfv");
     glVertexAttrib4fv    = (gl_vertex_attrib4fv*)wglGetProcAddress("glVertexAttrib4fv");
+    glVertexAttrib1f     = (gl_vertex_attrib1f*)wglGetProcAddress("glVertexAttrib1f");
+    glUniformMatrix4fv   = (gl_uniform_matrix4fv*)wglGetProcAddress("glUniformMatrix4fv");
+    glGetUniformLocation = (gl_get_uniform_location*)wglGetProcAddress("glGetUniformLocation");
 }
 
-internal void WinPlatInitGL(HWND window_handle) {
+internal void GLInit(HWND window_handle) {
 
     PIXELFORMATDESCRIPTOR pixel_format_desc = {};
     pixel_format_desc.nSize                 = sizeof(PIXELFORMATDESCRIPTOR);
@@ -56,11 +59,11 @@ internal void WinPlatInitGL(HWND window_handle) {
         wglSwapIntervalEXT(1);
     }
 
-    load_function_globals();
+    GL_load_function_globals();
 }
 
 
-internal void WinPlatDeInitGL(HWND window_handle) {
+internal void GLDeInit(HWND window_handle) {
 
     HGLRC rendering_context = wglGetCurrentContext();
 
@@ -73,23 +76,25 @@ internal void WinPlatDeInitGL(HWND window_handle) {
     }
 }
 
-internal i32 WinPlatGLPipelineSetup(WinPlatGLPipelineState* ogl_state,
-                                    const GLchar*           vertex_shader_source_,
-                                    const GLchar*           fragment_shader_source_) {
+internal i32 GLPipeLineSetup(GLPipelineState* gl_state,
+                             const GLchar*    vertex_shader_source_,
+                             const GLchar*    fragment_shader_source_) {
 
-    // const GLchar* vertex_shader_source_ = {"#version 450 core                          \n"
-    //                                        "                                           \n"
-    //                                        "void main(void) {                          \n"
-    //                                        "	gl_Position = vec4(0.0, 0.0, 0.5, 1.0);\n"
-    //                                        "}                                          \n"};
-    //
-    // const GLchar* fragment_shader_source_ = {"#version 450 core                    \n"
-    //                                          "                                     \n"
-    //                                          "out vec4 color;                      \n"
-    //                                          "                                     \n"
-    //                                          "void main(void)  {                   \n"
-    //                                          "    color = vec4(1.0, 1.0, 1.0, 1.0);\n"
-    //                                          "}                                    \n"};
+#if 0
+    const GLchar* vertex_shader_source_ = {"#version 450 core                          \n"
+                                           "                                           \n"
+                                           "void main(void) {                          \n"
+                                           "	gl_Position = vec4(0.0, 0.0, 0.5, 1.0);\n"
+                                           "}                                          \n"};
+
+    const GLchar* fragment_shader_source_ = {"#version 450 core                    \n"
+                                             "                                     \n"
+                                             "out vec4 color;                      \n"
+                                             "                                     \n"
+                                             "void main(void)  {                   \n"
+                                             "    color = vec4(1.0, 1.0, 1.0, 1.0);\n"
+                                             "}                                    \n"};
+#endif
 
     const GLchar* vertex_shader_source[1];
     vertex_shader_source[0] = vertex_shader_source_;
@@ -110,6 +115,7 @@ internal i32 WinPlatGLPipelineSetup(WinPlatGLPipelineState* ogl_state,
         GLchar  message[1025] = {};
         glGetShaderInfoLog(vertex_shader, 1024, &log_length, message);
         OutputDebugStringA(message);
+        Assert(0);
     }
 
     glShaderSource(fragment_shader, 1, fragment_shader_source, NULL);
@@ -122,25 +128,43 @@ internal i32 WinPlatGLPipelineSetup(WinPlatGLPipelineState* ogl_state,
         GLchar  message[1025] = {};
         glGetShaderInfoLog(fragment_shader, 1024, &log_length, message);
         OutputDebugStringA(message);
+        Assert(0);
     }
 
-    ogl_state->program_handle = glCreateProgram();
-    glAttachShader(ogl_state->program_handle, vertex_shader);
-    glAttachShader(ogl_state->program_handle, fragment_shader);
+    gl_state->program_handle = glCreateProgram();
+    glAttachShader(gl_state->program_handle, vertex_shader);
+    glAttachShader(gl_state->program_handle, fragment_shader);
 
-    glLinkProgram(ogl_state->program_handle);
+    glLinkProgram(gl_state->program_handle);
 
-    glDeleteShader(vertex_shader);
+    gl_state->projection_location = glGetUniformLocation(gl_state->program_handle, "proj");
+
+        glDeleteShader(vertex_shader);
     glDeleteShader(fragment_shader);
 
     // Vertex Array Object Creation
-    glCreateVertexArrays(ogl_state->vao_len, &ogl_state->vao_handle);
-    glBindVertexArray(ogl_state->vao_handle);
+    glCreateVertexArrays(gl_state->vao_len, &gl_state->vao_handle);
+    glBindVertexArray(gl_state->vao_handle);
 
     return 0;
 }
 
-internal void WinPlatOpenGLPipelineDelete(WinPlatGLPipelineState* ogl_state) {
-    glDeleteProgram(ogl_state->program_handle);
-    glDeleteVertexArrays(ogl_state->vao_len, &ogl_state->vao_handle);
+internal void GlPipelineDelete(GLPipelineState* gl_state) {
+    glDeleteProgram(gl_state->program_handle);
+    glDeleteVertexArrays(gl_state->vao_len, &gl_state->vao_handle);
+}
+
+internal void GLFixProjection(GLPipelineState* gl_state, u32 width, u32 height) {
+
+    glViewport(0, 0, width, height);
+
+    f32 aspect   = (f32)width / (f32)height;
+    f32 proj[16] = {0};
+    proj[0]      = 1.0f / aspect;
+    proj[5]      = 1.0f;
+    proj[10]     = 1.0f;
+    proj[15]     = 1.0f;
+
+    glUseProgram(gl_state->program_handle);
+    glUniformMatrix4fv(gl_state->projection_location, 1, GL_FALSE, proj);
 }
