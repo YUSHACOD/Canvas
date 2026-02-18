@@ -151,7 +151,6 @@ internal void CaseyCircleFill(CanvasBitMap* bitmap, i32 cx, i32 cy, u32 r, Color
     int d  = r2 - 1;
 
     while (y <= x) {
-
         FillLine(bitmap, cx, cy, -x, y, c);
         FillLine(bitmap, cx, cy, -y, x, c);
         FillLine(bitmap, cx, cy, x, y, c);

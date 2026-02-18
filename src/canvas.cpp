@@ -1,6 +1,6 @@
 
 #include "canvas.hpp"
-#include "base\sugars.hpp"
+#include "base/sugars.hpp"
 
 #include "canvas_utils.cpp"
 #include "canvas3D.cpp"
@@ -16,9 +16,9 @@ void CanvasWeirdRender(CanvasBitMap* bitmap, u32 x_off, u32 y_off) {
             // Blue
             // uint8 blue  = (uint8)(X + x_off);
             // uint8 green = (uint8)(Y + y_off);
-            u8 blue  = 255;
-            u8 green = 255;
-            u8 red   = 255;
+            u8 blue  = 34;
+            u8 green = 34;
+            u8 red   = 34;
             u8 pad   = 0;
 
             DrawPixel(pixel, red, blue, green, pad);
@@ -110,7 +110,7 @@ extern "C" CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRender) {
 
 
     // Todo: Allow sample offsets here for more robust platform options.
-    // CanvasWeirdRender(BitMap, State->x_off, State->y_off);
+    CanvasWeirdRender(bitmap, state->x_off, state->y_off);
     // JOY(BitMap, State);
     Render3DScene(bitmap, input, state);
 }

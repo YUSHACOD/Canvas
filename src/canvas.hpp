@@ -2,7 +2,7 @@
 #define CANVAS_H
 // The Game Interface --------------------------------------------------------------------------- //
 
-#include "base\sugars.hpp"
+#include "base/sugars.hpp"
 
 #ifdef DEBUG
 typedef struct {
@@ -18,7 +18,6 @@ typedef DBG_PLAT_FREE_FILE_MEMORY(dbg_plat_free_file_memory);
 
 #define DBG_PLAT_WRITE_ENTIRE_FILE(name) bool name(char* file_name, void* memory, u32 memory_size)
 typedef DBG_PLAT_WRITE_ENTIRE_FILE(dbg_plat_write_entire_file);
-
 #endif
 
 typedef struct {
@@ -314,9 +313,11 @@ typedef struct {
     u64   trans_size;
     void* trans_store;
 
+#ifdef DEBUG
     dbg_plat_read_entire_file*  DBG_PlatReadEntireFile;
     dbg_plat_free_file_memory*  DBG_PlatFreeFileMemory;
     dbg_plat_write_entire_file* DBG_PlatWriteEntireFile;
+#endif
 } CanvasMemory;
 
 
