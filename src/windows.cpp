@@ -149,13 +149,12 @@ DBG_PLAT_READ_ENTIRE_FILE(DBG_PlatReadEntireFile) {
     return result;
 }
 
-
-
 DBG_PLAT_FREE_FILE_MEMORY(DBG_PlatFreeFilememory) {
     if (memory) {
         VirtualFree(memory, 0, MEM_RELEASE);
     }
 }
+
 
 DBG_PLAT_WRITE_ENTIRE_FILE(DBG_PlatWriteEntireFile) {
 
@@ -240,22 +239,21 @@ internal void WinPlatDisplayBitmap(HDC device_ctx, u32 window_width, u32 window_
     u32 dest_width  = window_width;
     u32 dest_height = window_height;
 
-    f32 screen_aspect_ratio =
-        (f32)MainCtx.screen_dimensions.width / (f32)MainCtx.screen_dimensions.height;
+
     f32 window_aspect_ratio = (f32)window_width / (f32)window_height;
 
     u32 dest_y = 0;
     u32 dest_x = 0;
 
-    if (screen_aspect_ratio >= window_aspect_ratio) {
+    if (MainCtx.aspect_ratio >= window_aspect_ratio) {
 
         dest_y      = dest_height;
-        dest_height = (u32)((f32)window_width / screen_aspect_ratio);
+        dest_height = (u32)((f32)window_width / MainCtx.aspect_ratio);
         dest_y      = (dest_y - dest_height) / 2;
     } else {
 
         dest_x     = dest_width;
-        dest_width = (u32)((f32)window_height * screen_aspect_ratio);
+        dest_width = (u32)((f32)window_height * MainCtx.aspect_ratio);
         dest_x     = (dest_x - dest_width) / 2;
     }
 
@@ -480,7 +478,8 @@ internal LRESULT WinPlatWindowCallBack(HWND   window_handle,
 #if OPENGL
             if (MainCtx.gl_state != 0) {
                 WinPlatDimensions dim = WinPlatGetDimensions(window_handle);
-                GLFixProjection(MainCtx.gl_state, dim.width, dim.height);
+                GLFixProjection(
+                    MainCtx.gl_state, dim, MainCtx.screen_dimensions, MainCtx.aspect_ratio);
             }
 #else
 #endif
@@ -505,23 +504,18 @@ internal LRESULT WinPlatWindowCallBack(HWND   window_handle,
         case WM_PAINT: {
 
             PAINTSTRUCT paint;
-#if OPENGL
             BeginPaint(window_handle, &paint);
+#if OPENGL
 #else
-            HDC device_ctx = BeginPaint(window_handle, &paint);
             { // Flushing the window with BLACKNESS
                 i64 x      = paint.rcPaint.left;
                 i64 y      = paint.rcPaint.top;
                 i64 width  = paint.rcPaint.right - x;
                 i64 height = paint.rcPaint.bottom - y;
 
-                PatBlt(device_ctx, (i32)x, (i32)y, (i32)width, (i32)height, WHITENESS);
+                PatBlt(MainCtx.device_ctx, (i32)x, (i32)y, (i32)width, (i32)height, BLACKNESS);
             }
-
-            WinPlatDimensions dimensions = WinPlatGetDimensions(window_handle);
-            WinPlatDisplayBitmap(device_ctx, dimensions.width, dimensions.height);
 #endif
-
             EndPaint(window_handle, &paint);
         } break;
 
@@ -548,6 +542,8 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
 
     MainCtx.screen_dimensions.width  = 1920;
     MainCtx.screen_dimensions.height = 1080;
+    MainCtx.aspect_ratio =
+        (f32)MainCtx.screen_dimensions.width / (f32)MainCtx.screen_dimensions.height;
 
     DEVMODEA device_mode = {};
     EnumDisplaySettingsA(0, ENUM_CURRENT_SETTINGS, &device_mode);
@@ -574,6 +570,7 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
     f64 max_time_per_frame = 1.0f / (f64)MainCtx.refresh_rate;
 
     if (RegisterClassA(&window_class)) {
+
         HWND window_handle = CreateWindowExA(0,
                                              window_class_name,
                                              "Canvas",                         // Title/Caption
@@ -589,6 +586,8 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
                                              0);
 
         if (window_handle) {
+
+            MainCtx.device_ctx = GetDC(window_handle);
 
             // Game Arena Allocations
             CanvasMemory memory = {};
@@ -630,48 +629,58 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
 
             // Opengl Pipeline Setup
 #if OPENGL
-            GLPipelineState gl_state     = {};
-            gl_state.vao_len             = 1;
+            GLPipelineState gl_state = {};
+            gl_state.vao_len         = 1;
+
             DBG_FileStruct vertex_source = DBG_PlatReadEntireFile(Text("../../src/vertex.glsl"));
             DBG_FileStruct fragment_source =
                 DBG_PlatReadEntireFile(Text("../../src/fragment.glsl"));
-            GLPipeLineSetup(&gl_state, (char*)vertex_source.memory, (char*)fragment_source.memory);
+
+            GLPipeLineSetup(&gl_state,
+                            (char*)vertex_source.memory,
+                            (char*)fragment_source.memory,
+                            MainCtx.aspect_ratio);
 
             MainCtx.gl_state = &gl_state;
+            glEnable(GL_SCISSOR_TEST);
 
             WinPlatDimensions dim = WinPlatGetDimensions(window_handle);
-            GLFixProjection(&gl_state, dim.width, dim.height);
+            GLFixProjection(&gl_state, dim, MainCtx.screen_dimensions, MainCtx.aspect_ratio);
+            GLfloat input_pos[4] = {0};
+#else
+            CanvasBitMap bitmap    = {};
+            bitmap.memory          = MainCtx.bitmap.memory;
+            bitmap.width           = MainCtx.bitmap.width;
+            bitmap.height          = MainCtx.bitmap.height;
+            bitmap.size            = MainCtx.bitmap.size;
+            bitmap.pitch           = MainCtx.bitmap.pitch;
+            bitmap.bytes_per_pixel = MainCtx.bitmap.bytes_per_pixel;
 #endif
 
             // Main Loop ------------------------------------------------------------------------ //
             while (MainCtx.is_running) {
-
-                WinPlatProcessWindowMessages(&new_input->keyboard);
 
                 // Input Processing
                 for (u32 idx = 0; idx < ArrayLen(old_input->keyboard.Buttons); idx += 1) {
                     new_input->keyboard.Buttons[idx].ended_down =
                         old_input->keyboard.Buttons[idx].ended_down;
                 }
+                WinPlatProcessWindowMessages(&new_input->keyboard);
                 WinPlatProcessXInput(inputs, old_input, new_input);
 
 #if OPENGL
-                HDC device_ctx = wglGetCurrentDC();
+                // Clear the buffer
+                glDisable(GL_SCISSOR_TEST);
+                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+                glEnable(GL_SCISSOR_TEST);
 
                 f64 dt = time_elapsed * 0.001f;
 
-                GLfloat color[] = {
-                    (f32)sin(dt) * 0.5f + 0.5f, 0.0f, (f32)cos(dt) * 0.5f + 0.5f, 1.0f};
+                // GLfloat color[] = {
+                //     (f32)sin(dt) * 0.5f + 0.5f, 0.0f, (f32)cos(dt) * 0.5f + 0.5f, 1.0f};
 
-                // GLfloat color[] = {0.0f, 0.0f, 0.0f, 1.0f};
+                GLfloat color[] = {1.0f, 1.0f, 1.0f, 1.0f};
                 glClearBufferfv(GL_COLOR, 0, color);
-
-                // glBegin(GL_LINE_LOOP);
-                // glVertex2f(0.0f, 0.0f);
-                // glVertex2f(-0.95f, 0.0f);
-                // glVertex2f(-0.95f, 0.95f);
-                // glVertex2f(0.0f, 0.95f);
-                // glEnd();
 
                 glUseProgram(gl_state.program_handle);
 
@@ -684,12 +693,25 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
                 GLfloat rot2D[] = {(f32)cos(dt) * 0.5f, (f32)sin(dt) * 0.5f, 0.0f, 0.0f};
                 glVertexAttrib4fv(2, rot2D);
 
+                input_pos[0] += (new_input->keyboard.D.ended_down) ? 0.01f : 0.0f;
+                input_pos[0] -= (new_input->keyboard.A.ended_down) ? 0.01f : 0.0f;
+
+                input_pos[1] += (new_input->keyboard.W.ended_down) ? 0.01f : 0.0f;
+                input_pos[1] -= (new_input->keyboard.S.ended_down) ? 0.01f : 0.0f;
+
+                input_pos[2] += (new_input->keyboard.E.ended_down) ? 0.01f : 0.0f;
+                input_pos[2] -= (new_input->keyboard.Q.ended_down) ? 0.01f : 0.0f;
+                glVertexAttrib4fv(3, input_pos);
+
+                f32 t = new_input->gamepads[0].RightTrigger.end;
+                glVertexAttrib1f(4, t);
+
                 glPointSize(10.0f);
-                glDrawArrays(GL_TRIANGLES, 0, 6);
-                glDrawArrays(GL_POINTS, 6, 7);
+                // glDrawArrays(GL_TRIANGLES, 0, 6);
+                // glDrawArrays(GL_POINTS, 6, 1);
+                glDrawArrays(GL_LINES, 7, 24);
 
-
-                SwapBuffers(device_ctx);
+                SwapBuffers(MainCtx.device_ctx);
 #else
 #ifdef DEBUG
                 FILETIME new_write_time = WinPlatGetLastWriteTime(source_dll_name);
@@ -699,24 +721,14 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
                 }
 #endif
 
-                CanvasBitMap bitmap    = {};
-                bitmap.memory          = MainCtx.bitmap.memory;
-                bitmap.width           = MainCtx.bitmap.width;
-                bitmap.height          = MainCtx.bitmap.height;
-                bitmap.size            = MainCtx.bitmap.size;
-                bitmap.pitch           = MainCtx.bitmap.pitch;
-                bitmap.bytes_per_pixel = MainCtx.bitmap.bytes_per_pixel;
+                ZeroMemory(bitmap.memory, bitmap.size);
 
                 game_code.update_and_render(&memory, &bitmap, new_input, &MainCtx.is_running);
 
                 // Drawing the Bitmap
-                HDC               device_ctx  = GetDC(window_handle);
                 WinPlatDimensions dimenstions = WinPlatGetDimensions(window_handle);
 
-                WinPlatDisplayBitmap(device_ctx, dimenstions.width, dimenstions.height);
-                ZeroMemory(bitmap.memory, bitmap.size);
-
-                ReleaseDC(window_handle, device_ctx);
+                WinPlatDisplayBitmap(MainCtx.device_ctx, dimenstions.width, dimenstions.height);
 #endif
 
                 // Timing Stuff ----------------------------------------------------------------- //
@@ -743,12 +755,9 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
                 } else {
                 }
 
-
-
                 i64 temp         = last_counter;
                 last_counter     = WinPlatGetTime();
                 last_cycle_count = end_cycle_count;
-
 #ifdef DEBUG
                 counter_elapsed  = WinPlatGetTime() - temp;
                 f64 ms_per_frame = (1000.0f * (f64)counter_elapsed) / (f64)perf_counter_frequency;

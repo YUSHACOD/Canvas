@@ -1,5 +1,6 @@
 
 #include "windows_opengl.hpp"
+#include "windows_structs.hpp"
 
 internal void GL_load_function_globals() {
     glCreateShader       = (gl_create_shader*)wglGetProcAddress("glCreateShader");
@@ -76,9 +77,10 @@ internal void GLDeInit(HWND window_handle) {
     }
 }
 
-internal i32 GLPipeLineSetup(GLPipelineState* gl_state,
-                             const GLchar*    vertex_shader_source_,
-                             const GLchar*    fragment_shader_source_) {
+internal i32 GLPipeLineSetup(GLPipelineState*   gl_state,
+                             const GLchar*      vertex_shader_source_,
+                             const GLchar*      fragment_shader_source_,
+                             f32 aspect_ratio) {
 
 #if 0
     const GLchar* vertex_shader_source_ = {"#version 450 core                          \n"
@@ -139,13 +141,22 @@ internal i32 GLPipeLineSetup(GLPipelineState* gl_state,
 
     gl_state->projection_location = glGetUniformLocation(gl_state->program_handle, "proj");
 
-        glDeleteShader(vertex_shader);
+    glDeleteShader(vertex_shader);
     glDeleteShader(fragment_shader);
 
     // Vertex Array Object Creation
     glCreateVertexArrays(gl_state->vao_len, &gl_state->vao_handle);
     glBindVertexArray(gl_state->vao_handle);
 
+    f32 proj[16] = {0};
+    proj[0]      = 1.0f / aspect_ratio;
+    proj[5]      = 1.0f;
+    proj[10]     = 1.0f;
+    proj[11]     = 1.0f;
+    proj[15]     = 1.0f;
+
+    glUseProgram(gl_state->program_handle);
+    glUniformMatrix4fv(gl_state->projection_location, 1, GL_FALSE, proj);
     return 0;
 }
 
@@ -154,17 +165,30 @@ internal void GlPipelineDelete(GLPipelineState* gl_state) {
     glDeleteVertexArrays(gl_state->vao_len, &gl_state->vao_handle);
 }
 
-internal void GLFixProjection(GLPipelineState* gl_state, u32 width, u32 height) {
+internal void GLFixProjection(GLPipelineState*  gl_state,
+                              WinPlatDimensions window,
+                              WinPlatDimensions display,
+                              f32               display_aspect) {
 
-    glViewport(0, 0, width, height);
+    u32 dest_width  = window.width;
+    u32 dest_height = window.height;
 
-    f32 aspect   = (f32)width / (f32)height;
-    f32 proj[16] = {0};
-    proj[0]      = 1.0f / aspect;
-    proj[5]      = 1.0f;
-    proj[10]     = 1.0f;
-    proj[15]     = 1.0f;
+    f32 window_aspect_ratio = (f32)window.width / (f32)window.height;
 
-    glUseProgram(gl_state->program_handle);
-    glUniformMatrix4fv(gl_state->projection_location, 1, GL_FALSE, proj);
+    u32 dest_y = 0;
+    u32 dest_x = 0;
+
+    if (display_aspect >= window_aspect_ratio) {
+        dest_y      = dest_height;
+        dest_height = (u32)((f32)window.width / display_aspect);
+        dest_y      = (dest_y - dest_height) / 2;
+    } else {
+        dest_x     = dest_width;
+        dest_width = (u32)((f32)window.height * display_aspect);
+        dest_x     = (dest_x - dest_width) / 2;
+    }
+
+
+    glViewport(dest_x, dest_y, dest_width, dest_height);
+    glScissor(dest_x, dest_y, dest_width, dest_height);
 }

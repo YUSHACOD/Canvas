@@ -72,9 +72,11 @@ goto :eof
 
 :RunInDebugger
 call :Build-Debug
+echo Debug Session Started
 pushd "%DBGDIR%"
 %DEBUGGER% "%NAME%.exe"
 popd
+echo Debug Session Ended
 goto :eof
 
 :Clean

@@ -41,11 +41,13 @@ typedef struct {
 } WinPlatInputRecord;
 
 typedef struct {
+    WinPlatDimensions screen_dimensions;
+    f32               aspect_ratio;
     bool              is_running;
     WinPlatBitMap     bitmap;
-    WinPlatDimensions screen_dimensions;
     u64               refresh_rate;
     GLPipelineState*  gl_state;
+    HDC               device_ctx;
 } WinPlatMainContext;
 
 
