@@ -1,3 +1,4 @@
+#include "windows_opengl.hpp"
 #pragma comment(lib, "user32.lib")
 #pragma comment(lib, "gdi32.lib")
 #pragma comment(lib, "winmm.lib")
@@ -19,21 +20,21 @@
  *   - Blt speed improvements
  *   - Hardware Accelearation (OpenGl or DirectX)
  *
- *
  *   Just a PARTIAL LIST!!!!
  */
-
-
-#include <stdio.h>
-#include <math.h>
-
 
 #include "windows_structs.hpp"
 #include "windows_opengl.cpp"
 
 
 // Globals -------------------------------------------------------------------------------------- //
-global WinPlatMainContext MainCtx;
+global HDC                    Global_DeviceCtx;
+global WinPlatDimensions      Global_DiplaySize;
+global f32                    Global_AspectRatio;
+global WinPlatOffScreenBuffer Global_OffScreenBuffer;
+global GLPipelineState        Global_OpenGLState;
+global bool                   Global_IsRunning;
+global WINDOWPLACEMENT        Global_PrevWndPlacement;
 // Globals -------------------------------------------------------------------------------------- //
 
 
@@ -84,7 +85,7 @@ internal WinPlatGameCode WinPlatLoadGameCode(char* source_dll_name) {
     result.update_and_render = CanvasUpdateAndRenderStub;
 
     char* temp_dll_name = Text("canvas_temp.dll");
-    CopyFile(source_dll_name, temp_dll_name, FALSE);
+    CopyFileA(source_dll_name, temp_dll_name, FALSE);
 
     result.game_lib = LoadLibraryA(temp_dll_name);
 
@@ -191,6 +192,11 @@ inline internal i64 WinPlatGetTime() {
     return time_counter.QuadPart;
 }
 
+inline internal void WinPlatTimeQuery(WinPlatTimeCounter* q) {
+    q->counter     = WinPlatGetTime();
+    q->cycle_count = __rdtsc();
+}
+
 internal WinPlatDimensions WinPlatGetDimensions(HWND window_handle) {
 
     RECT client_rect;
@@ -205,55 +211,57 @@ internal WinPlatDimensions WinPlatGetDimensions(HWND window_handle) {
 
 
 // Software Renderer Helpers -------------------------------------------------------------------- //
-internal void WinPlatCreateDibSection(u32 width, u32 height) {
+internal void WinPlatCreateDibSection(WinPlatOffScreenBuffer* bitmap,
+                                      WinPlatDimensions       display_dim) {
 
-    if (MainCtx.bitmap.memory) {
-        VirtualFree(MainCtx.bitmap.memory, 0, MEM_RELEASE);
+    if (bitmap->memory) {
+        VirtualFree(bitmap->memory, 0, MEM_RELEASE);
     }
 
-    MainCtx.bitmap.width  = width;
-    MainCtx.bitmap.height = height;
+    bitmap->width  = display_dim.width;
+    bitmap->height = display_dim.height;
 
-    MainCtx.bitmap.info.bmiHeader.biSize        = sizeof(MainCtx.bitmap.info.bmiHeader);
-    MainCtx.bitmap.info.bmiHeader.biWidth       = MainCtx.bitmap.width;
-    MainCtx.bitmap.info.bmiHeader.biHeight      = -(i32)MainCtx.bitmap.height;
-    MainCtx.bitmap.info.bmiHeader.biPlanes      = 1;
-    MainCtx.bitmap.info.bmiHeader.biBitCount    = 32;
-    MainCtx.bitmap.info.bmiHeader.biCompression = BI_RGB;
+    bitmap->info.bmiHeader.biSize        = sizeof(bitmap->info.bmiHeader);
+    bitmap->info.bmiHeader.biWidth       = bitmap->width;
+    bitmap->info.bmiHeader.biHeight      = -(i32)bitmap->height;
+    bitmap->info.bmiHeader.biPlanes      = 1;
+    bitmap->info.bmiHeader.biBitCount    = 32;
+    bitmap->info.bmiHeader.biCompression = BI_RGB;
 
-    MainCtx.bitmap.bytes_per_pixel = 4;
+    bitmap->bytes_per_pixel = 4;
 
-    MainCtx.bitmap.size =
-        MainCtx.bitmap.width * MainCtx.bitmap.height * MainCtx.bitmap.bytes_per_pixel;
+    bitmap->size = bitmap->width * bitmap->height * bitmap->bytes_per_pixel;
 
-    MainCtx.bitmap.memory =
-        VirtualAlloc(0, MainCtx.bitmap.size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+    bitmap->memory = VirtualAlloc(0, bitmap->size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 
-    MainCtx.bitmap.pitch = MainCtx.bitmap.width * MainCtx.bitmap.bytes_per_pixel;
+    bitmap->pitch = bitmap->width * bitmap->bytes_per_pixel;
 }
 
 
 
-internal void WinPlatDisplayBitmap(HDC device_ctx, u32 window_width, u32 window_height) {
+internal void WinPlatDisplayBitmap(HDC                     device_ctx,
+                                   WinPlatOffScreenBuffer* bitmap,
+                                   WinPlatDimensions       window_size,
+                                   WinPlatDimensions       display_size,
+                                   f32                     display_aspect_ratio) {
 
-    u32 dest_width  = window_width;
-    u32 dest_height = window_height;
+    u32 dest_width  = window_size.width;
+    u32 dest_height = window_size.height;
 
-
-    f32 window_aspect_ratio = (f32)window_width / (f32)window_height;
+    f32 window_aspect_ratio = (f32)window_size.width / (f32)window_size.height;
 
     u32 dest_y = 0;
     u32 dest_x = 0;
 
-    if (MainCtx.aspect_ratio >= window_aspect_ratio) {
+    if (display_aspect_ratio >= window_aspect_ratio) {
 
         dest_y      = dest_height;
-        dest_height = (u32)((f32)window_width / MainCtx.aspect_ratio);
+        dest_height = (u32)((f32)window_size.width / display_aspect_ratio);
         dest_y      = (dest_y - dest_height) / 2;
     } else {
 
         dest_x     = dest_width;
-        dest_width = (u32)((f32)window_height * MainCtx.aspect_ratio);
+        dest_width = (u32)((f32)window_size.height * display_aspect_ratio);
         dest_x     = (dest_x - dest_width) / 2;
     }
 
@@ -265,10 +273,10 @@ internal void WinPlatDisplayBitmap(HDC device_ctx, u32 window_width, u32 window_
                   dest_height, // Destination Dimensions
                   0,
                   0,
-                  MainCtx.bitmap.width,
-                  MainCtx.bitmap.height, // Source Dimensions
-                  MainCtx.bitmap.memory,
-                  &MainCtx.bitmap.info,
+                  bitmap->width,
+                  bitmap->height, // Source Dimensions
+                  bitmap->memory,
+                  &bitmap->info,
                   DIB_RGB_COLORS,
                   SRCCOPY);
 }
@@ -402,10 +410,46 @@ WinPlatProcessXInput(CanvasInput* inputs, CanvasInput* old_input, CanvasInput* n
 
 
 // Windows Message Processing ------------------------------------------------------------------- //
-internal void WinPlatProcessWindowMessages(CanvasKeyboardInput* keyboard) {
+
+// Raymond Cheng toggle fullscreen function
+internal void ToggleFullScreen(HWND window_handle) {
+
+    DWORD window_style = GetWindowLong(window_handle, GWL_STYLE);
+
+    if (window_style & WS_OVERLAPPEDWINDOW) {
+
+        MONITORINFO monitor_info = {sizeof(monitor_info)};
+
+        if (GetWindowPlacement(window_handle, &Global_PrevWndPlacement) &&
+            GetMonitorInfo(MonitorFromWindow(window_handle, MONITOR_DEFAULTTOPRIMARY),
+                           &monitor_info)) {
+            SetWindowLong(window_handle, GWL_STYLE, window_style & ~(WS_POPUP | WS_THICKFRAME));
+            SetWindowPos(window_handle,
+                         HWND_TOP,
+                         monitor_info.rcMonitor.left,
+                         monitor_info.rcMonitor.top,
+                         monitor_info.rcMonitor.right - monitor_info.rcMonitor.left,
+                         monitor_info.rcMonitor.bottom - monitor_info.rcMonitor.top,
+                         SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+        }
+    } else {
+        SetWindowLong(window_handle, GWL_STYLE, window_style | (WS_POPUP | WS_THICKFRAME));
+        SetWindowPlacement(window_handle, &Global_PrevWndPlacement);
+        SetWindowPos(window_handle,
+                     NULL,
+                     0,
+                     0,
+                     0,
+                     0,
+                     SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+    }
+}
+
+internal void
+WinPlatProcessWindowMessages(CanvasKeyboardInput* keyboard, HWND window_handle, bool* is_running) {
 
     MSG message;
-    while (PeekMessageA(&message, 0, 0, 0, PM_REMOVE) && MainCtx.is_running) {
+    while (PeekMessageA(&message, 0, 0, 0, PM_REMOVE) && *is_running) {
 
         WPARAM wParam = message.wParam;
         LPARAM lParam = message.lParam;
@@ -413,7 +457,7 @@ internal void WinPlatProcessWindowMessages(CanvasKeyboardInput* keyboard) {
         switch (message.message) {
 
             case WM_QUIT: {
-                MainCtx.is_running = false;
+                *is_running = false;
             } break;
 
 
@@ -433,8 +477,12 @@ internal void WinPlatProcessWindowMessages(CanvasKeyboardInput* keyboard) {
                 }
 
                 // Optional: Handle special cases
-                if (VKCode == VK_ESCAPE && is_down) {
-                    MainCtx.is_running = false;
+                if (keyboard->Escape.ended_down) {
+                    *is_running = false;
+                }
+
+                if (keyboard->F.ended_down) {
+                    ToggleFullScreen(window_handle);
                 }
             } break;
 
@@ -453,31 +501,32 @@ internal LRESULT WinPlatWindowCallBack(HWND   window_handle,
                                        WPARAM wParam,
                                        LPARAM lParam) {
 
-    LRESULT Result = 0;
+    LRESULT result = 0;
 
     switch (message) {
 
         case WM_CREATE: {
 #if OPENGL
             GLInit(window_handle);
-#else
 #endif
         } break;
 
         case WM_DESTROY: {
-            MainCtx.is_running = false;
-#if OPENGL
-            GLDeInit(window_handle);
-#else
-#endif
+            Global_IsRunning = false;
+        } break;
+
+        case WM_CLOSE: {
+            Global_IsRunning = false;
+        } break;
+
+        case WM_ACTIVATEAPP: {
         } break;
 
         case WM_SIZE: {
 #if OPENGL
-            if (MainCtx.gl_state != 0) {
+            if (Global_OpenGLState.is_valid) {
                 WinPlatDimensions dim = WinPlatGetDimensions(window_handle);
-                GLFixProjection(
-                    MainCtx.gl_state, dim, MainCtx.screen_dimensions, MainCtx.aspect_ratio);
+                GLFixProjection(&Global_OpenGLState, dim, Global_DiplaySize, Global_AspectRatio);
             }
 #else
 #endif
@@ -492,37 +541,61 @@ internal LRESULT WinPlatWindowCallBack(HWND   window_handle,
                     "Main Loop");
         } break;
 
-        case WM_CLOSE: {
-            MainCtx.is_running = false;
-        } break;
-
-        case WM_ACTIVATEAPP: {
-        } break;
 
         case WM_PAINT: {
-
             PAINTSTRUCT paint;
             BeginPaint(window_handle, &paint);
-#if OPENGL
-#else
+            // Todo: Just render here, this flushing should not occur
             { // Flushing the window with BLACKNESS
                 i64 x      = paint.rcPaint.left;
                 i64 y      = paint.rcPaint.top;
                 i64 width  = paint.rcPaint.right - x;
                 i64 height = paint.rcPaint.bottom - y;
 
-                PatBlt(MainCtx.device_ctx, (i32)x, (i32)y, (i32)width, (i32)height, BLACKNESS);
+                PatBlt(Global_DeviceCtx, (i32)x, (i32)y, (i32)width, (i32)height, BLACKNESS);
             }
-#endif
             EndPaint(window_handle, &paint);
         } break;
 
+
+        case WM_NCCALCSIZE: {
+            // This is just for top-border bug for non border resizable window
+            // Picked up from stackoverflow
+            if (wParam) {
+                /* Detect whether window is maximized or not. We don't need to change the resize
+                 * border when win is maximized because all resize borders are gone automatically */
+                WINDOWPLACEMENT wPos;
+                // GetWindowPlacement fail if this member is not set correctly.
+                wPos.length = sizeof(wPos);
+                GetWindowPlacement(window_handle, &wPos);
+                if (wPos.showCmd != SW_SHOWMAXIMIZED) {
+                    RECT borderThickness;
+                    SetRectEmpty(&borderThickness);
+                    AdjustWindowRectEx(&borderThickness,
+                                       GetWindowLongPtr(window_handle, GWL_STYLE) & ~WS_CAPTION,
+                                       FALSE,
+                                       NULL);
+                    borderThickness.left *= -1;
+                    borderThickness.top *= -1;
+                    NCCALCSIZE_PARAMS* sz = reinterpret_cast<NCCALCSIZE_PARAMS*>(lParam);
+                    // Add 1 pixel to the top border to make the window resizable from the top
+                    // border
+                    sz->rgrc[0].top += 1;
+                    sz->rgrc[0].left += borderThickness.left;
+                    sz->rgrc[0].right -= borderThickness.right;
+                    sz->rgrc[0].bottom -= borderThickness.bottom;
+                    return 0;
+                }
+            }
+        }
+
+
         default: {
-            Result = DefWindowProcA(window_handle, message, wParam, lParam);
+            result = DefWindowProcA(window_handle, message, wParam, lParam);
         } break;
     }
 
-    return Result;
+    return result;
 }
 // Windows Message Processing ------------------------------------------------------------------- //
 
@@ -531,53 +604,44 @@ internal LRESULT WinPlatWindowCallBack(HWND   window_handle,
 // Main Windows Entry Point --------------------------------------------------------------------- //
 i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int show_cmd) {
 
+    // Frequency
     LARGE_INTEGER freq_struct_result = {};
     QueryPerformanceFrequency(&freq_struct_result);
-    i64 perf_counter_frequency = freq_struct_result.QuadPart;
+    i64 perf_counter_freq = freq_struct_result.QuadPart;
 
-    UINT scedular_granularity = 1;
-    bool is_time_proper       = (timeBeginPeriod(scedular_granularity) == TIMERR_NOERROR);
+    // Time Validity
+#define SCHEDULAR_GRANULARITY 1
+    bool is_time_proper = (timeBeginPeriod(SCHEDULAR_GRANULARITY) == TIMERR_NOERROR);
 
-    MainCtx.screen_dimensions.width  = 1920;
-    MainCtx.screen_dimensions.height = 1080;
-    MainCtx.aspect_ratio =
-        (f32)MainCtx.screen_dimensions.width / (f32)MainCtx.screen_dimensions.height;
-
+    // Frame Timing
     DEVMODEA device_mode = {};
     EnumDisplaySettingsA(0, ENUM_CURRENT_SETTINGS, &device_mode);
-    MainCtx.refresh_rate = (u64)device_mode.dmDisplayFrequency;
+    u64 refresh_rate       = (u64)device_mode.dmDisplayFrequency;
+    f64 max_time_per_frame = 1.0f / (f64)refresh_rate;
 
     WinPlatLoadXInput();
 
-#if OPENGL
-#else
-    WinPlatCreateDibSection(MainCtx.screen_dimensions.width, MainCtx.screen_dimensions.height);
-#endif
-
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 
-    LPCSTR window_class_name = "WinPlatWindowClass";
+    LPCSTR    window_class_name = "WinPlatWindowClass";
+    WNDCLASSA window_class      = {};
+    window_class.style          = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
+    window_class.lpfnWndProc    = WinPlatWindowCallBack;
+    window_class.hInstance      = instance;
+    window_class.lpszClassName  = window_class_name;
 
-    WNDCLASSA window_class     = {};
-    window_class.style         = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
-    window_class.lpfnWndProc   = WinPlatWindowCallBack;
-    window_class.hInstance     = instance;
-    window_class.lpszClassName = window_class_name;
-
-    // Refesh Rate
-    f64 max_time_per_frame = 1.0f / (f64)MainCtx.refresh_rate;
 
     if (RegisterClassA(&window_class)) {
 
         HWND window_handle = CreateWindowExA(0,
                                              window_class_name,
-                                             "Canvas",                         // Title/Caption
-                                             WS_OVERLAPPEDWINDOW | WS_VISIBLE, // Style
+                                             "Canvas",                 // Title/Caption
+                                             WS_POPUP | WS_THICKFRAME, // Style
                                              // Position and Size
                                              CW_USEDEFAULT,
                                              CW_USEDEFAULT,
-                                             CW_USEDEFAULT,
-                                             CW_USEDEFAULT,
+                                             1280,
+                                             720,
                                              0,
                                              0,
                                              instance,
@@ -585,7 +649,48 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
 
         if (window_handle) {
 
-            MainCtx.device_ctx = GetDC(window_handle);
+            HMONITOR    monitor = MonitorFromWindow(window_handle, MONITOR_DEFAULTTONEAREST);
+            MONITORINFO info;
+            info.cbSize = sizeof(MONITORINFO);
+            GetMonitorInfo(monitor, &info);
+            Global_DiplaySize.width  = info.rcMonitor.right - info.rcMonitor.left;
+            Global_DiplaySize.height = info.rcMonitor.bottom - info.rcMonitor.top;
+            Global_AspectRatio       = (f32)Global_DiplaySize.width / (f32)Global_DiplaySize.height;
+
+            Global_DeviceCtx = GetDC(window_handle);
+
+            // Opengl Pipeline Setup
+#if OPENGL
+            Global_OpenGLState.vao_len = 1;
+
+            DBG_FileStruct vertex_source = DBG_PlatReadEntireFile(Text("../../src/vertex.glsl"));
+            DBG_FileStruct fragment_source =
+                DBG_PlatReadEntireFile(Text("../../src/fragment.glsl"));
+
+            GLPipeLineSetup(&Global_OpenGLState,
+                            (char*)vertex_source.memory,
+                            (char*)fragment_source.memory,
+                            Global_AspectRatio);
+
+            // DBG_PlatFreeFilememory(vertex_source.memory);
+            // DBG_PlatFreeFilememory(fragment_source.memory);
+
+            glEnable(GL_SCISSOR_TEST);
+
+            WinPlatDimensions dim = WinPlatGetDimensions(window_handle);
+            GLFixProjection(&Global_OpenGLState, dim, Global_DiplaySize, Global_AspectRatio);
+            GLfloat input_pos[4] = {0};
+#else
+            WinPlatCreateDibSection(&Global_OffScreenBuffer, Global_DiplaySize);
+            CanvasBitMap bitmap    = {};
+            bitmap.memory          = Global_OffScreenBuffer.memory;
+            bitmap.width           = Global_OffScreenBuffer.width;
+            bitmap.height          = Global_OffScreenBuffer.height;
+            bitmap.size            = Global_OffScreenBuffer.size;
+            bitmap.pitch           = Global_OffScreenBuffer.pitch;
+            bitmap.bytes_per_pixel = Global_OffScreenBuffer.bytes_per_pixel;
+#endif
+
 
             // Game Arena Allocations
             CanvasMemory memory = {};
@@ -608,13 +713,8 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
             memory.DBG_PlatWriteEntireFile = DBG_PlatWriteEntireFile;
 #endif
 
-            MainCtx.is_running = (memory.perma_store && memory.trans_store);
-
-
-            // Timing Init
-            i64 last_counter     = WinPlatGetTime();
-            u64 last_cycle_count = __rdtsc();
-            f64 time_elapsed     = 0.0f;
+            // If arena is valid and nothing crashed until now then run
+            Global_IsRunning = (memory.perma_store && memory.trans_store);
 
             // Input Init
             CanvasInput  inputs[2] = {};
@@ -625,91 +725,40 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
             char*           source_dll_name = Text("canvas.dll");
             WinPlatGameCode game_code       = WinPlatLoadGameCode(source_dll_name);
 
-            // Opengl Pipeline Setup
-#if OPENGL
-            GLPipelineState gl_state = {};
-            gl_state.vao_len         = 1;
+            ShowWindow(window_handle, show_cmd);
 
-            DBG_FileStruct vertex_source = DBG_PlatReadEntireFile(Text("../../src/vertex.glsl"));
-            DBG_FileStruct fragment_source =
-                DBG_PlatReadEntireFile(Text("../../src/fragment.glsl"));
+            // Timing Init
+            WinPlatTimeCounter last = {};
+            WinPlatTimeQuery(&last);
 
-            GLPipeLineSetup(&gl_state,
-                            (char*)vertex_source.memory,
-                            (char*)fragment_source.memory,
-                            MainCtx.aspect_ratio);
-
-            MainCtx.gl_state = &gl_state;
-            glEnable(GL_SCISSOR_TEST);
-
-            WinPlatDimensions dim = WinPlatGetDimensions(window_handle);
-            GLFixProjection(&gl_state, dim, MainCtx.screen_dimensions, MainCtx.aspect_ratio);
-            GLfloat input_pos[4] = {0};
-#else
-            CanvasBitMap bitmap    = {};
-            bitmap.memory          = MainCtx.bitmap.memory;
-            bitmap.width           = MainCtx.bitmap.width;
-            bitmap.height          = MainCtx.bitmap.height;
-            bitmap.size            = MainCtx.bitmap.size;
-            bitmap.pitch           = MainCtx.bitmap.pitch;
-            bitmap.bytes_per_pixel = MainCtx.bitmap.bytes_per_pixel;
-#endif
+            f64 time_elapsed = 0.0f;
 
             // Main Loop ------------------------------------------------------------------------ //
-            while (MainCtx.is_running) {
+            while (Global_IsRunning) {
 
                 // Input Processing
                 for (u32 idx = 0; idx < ArrayLen(old_input->keyboard.Buttons); idx += 1) {
                     new_input->keyboard.Buttons[idx].ended_down =
                         old_input->keyboard.Buttons[idx].ended_down;
                 }
-                WinPlatProcessWindowMessages(&new_input->keyboard);
+                WinPlatProcessWindowMessages(
+                    &new_input->keyboard, window_handle, &Global_IsRunning);
                 WinPlatProcessXInput(inputs, old_input, new_input);
 
 #if OPENGL
-                // Clear the buffer
-                glDisable(GL_SCISSOR_TEST);
-                glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-                glEnable(GL_SCISSOR_TEST);
+                f32 factor = 0.05f;
+                input_pos[0] += (new_input->keyboard.D.ended_down) ? factor : 0.0f;
+                input_pos[0] -= (new_input->keyboard.A.ended_down) ? factor : 0.0f;
 
-                f64 dt = time_elapsed * 0.001f;
+                input_pos[1] += (new_input->keyboard.W.ended_down) ? factor : 0.0f;
+                input_pos[1] -= (new_input->keyboard.S.ended_down) ? factor : 0.0f;
 
-                // GLfloat color[] = {
-                //     (f32)sin(dt) * 0.5f + 0.5f, 0.0f, (f32)cos(dt) * 0.5f + 0.5f, 1.0f};
+                input_pos[2] += (new_input->keyboard.E.ended_down) ? factor : 0.0f;
+                input_pos[2] -= (new_input->keyboard.Q.ended_down) ? factor : 0.0f;
 
-                GLfloat color[] = {1.0f, 1.0f, 1.0f, 1.0f};
-                glClearBufferfv(GL_COLOR, 0, color);
+                RenderOpenGL(time_elapsed, &Global_OpenGLState, input_pos);
 
-                glUseProgram(gl_state.program_handle);
-
-                GLfloat offset[] = {-0.125, -0.125, 0.0f, 0.0f};
-                glVertexAttrib4fv(0, offset);
-
-                GLfloat color_attrib[] = {1.0f, 1.0f, 1.0f, 1.0f};
-                glVertexAttrib4fv(1, color_attrib);
-
-                GLfloat rot2D[] = {(f32)cos(dt) * 0.5f, (f32)sin(dt) * 0.5f, 0.0f, 0.0f};
-                glVertexAttrib4fv(2, rot2D);
-
-                input_pos[0] += (new_input->keyboard.D.ended_down) ? 0.01f : 0.0f;
-                input_pos[0] -= (new_input->keyboard.A.ended_down) ? 0.01f : 0.0f;
-
-                input_pos[1] += (new_input->keyboard.W.ended_down) ? 0.01f : 0.0f;
-                input_pos[1] -= (new_input->keyboard.S.ended_down) ? 0.01f : 0.0f;
-
-                input_pos[2] += (new_input->keyboard.E.ended_down) ? 0.01f : 0.0f;
-                input_pos[2] -= (new_input->keyboard.Q.ended_down) ? 0.01f : 0.0f;
-                glVertexAttrib4fv(3, input_pos);
-
-                f32 t = new_input->gamepads[0].RightTrigger.end;
-                glVertexAttrib1f(4, t);
-
-                glPointSize(10.0f);
-                // glDrawArrays(GL_TRIANGLES, 0, 6);
-                // glDrawArrays(GL_POINTS, 6, 1);
-                glDrawArrays(GL_LINES, 7, 24);
-
-                SwapBuffers(MainCtx.device_ctx);
+                SwapBuffers(Global_DeviceCtx);
 #else
 #ifdef DEBUG
                 FILETIME new_write_time = WinPlatGetLastWriteTime(source_dll_name);
@@ -721,25 +770,37 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
 
                 ZeroMemory(bitmap.memory, bitmap.size);
 
-                game_code.update_and_render(&memory, &bitmap, new_input, &MainCtx.is_running);
+                game_code.update_and_render(&memory, &bitmap, new_input, &Global_IsRunning);
 
                 // Drawing the Bitmap
-                WinPlatDimensions dimenstions = WinPlatGetDimensions(window_handle);
-
-                WinPlatDisplayBitmap(MainCtx.device_ctx, dimenstions.width, dimenstions.height);
+                WinPlatDimensions window_size = WinPlatGetDimensions(window_handle);
+                WinPlatDisplayBitmap(Global_DeviceCtx,
+                                     &Global_OffScreenBuffer,
+                                     window_size,
+                                     Global_DiplaySize,
+                                     Global_AspectRatio);
 #endif
 
                 // Timing Stuff ----------------------------------------------------------------- //
-                u64 end_cycle_count = __rdtsc();
-                i64 end_counter     = WinPlatGetTime();
+                WinPlatTimeCounter end = {};
+                WinPlatTimeQuery(&end);
 
                 f64 mega_cylces_elapsed =
-                    (((f64)end_cycle_count - (f64)last_cycle_count) / (1000.0f * 1000.0f));
+                    (((f64)end.cycle_count - (f64)last.cycle_count) / (1000.0f * 1000.0f));
 
-                i64 counter_elapsed = end_counter - last_counter;
+                i64 counter_elapsed = end.counter - last.counter;
 
-                f64 time_elapsed_for_frame = (f64)counter_elapsed / (f64)perf_counter_frequency;
+                f64 time_elapsed_for_frame = (f64)counter_elapsed / (f64)perf_counter_freq;
 
+#if 0
+#define THIRTY_FPS (1.0f / 30.f)
+                if (time_elapsed_for_frame > THIRTY_FPS) {
+                    OutputDebugStringA("======== TOO SLOW ========");
+                    Assert(0);
+                }
+#endif
+
+                // TODO(Timing): this is a mess
                 if (time_elapsed_for_frame <= max_time_per_frame) {
                     if (is_time_proper) {
                         DWORD SleepTime =
@@ -747,18 +808,18 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
                         Sleep(SleepTime);
                     }
                     while (time_elapsed_for_frame < max_time_per_frame) {
-                        counter_elapsed        = WinPlatGetTime() - last_counter;
-                        time_elapsed_for_frame = (f32)counter_elapsed / (f32)perf_counter_frequency;
+                        counter_elapsed        = WinPlatGetTime() - last.counter;
+                        time_elapsed_for_frame = (f32)counter_elapsed / (f32)perf_counter_freq;
                     }
                 } else {
                 }
 
-                i64 temp         = last_counter;
-                last_counter     = WinPlatGetTime();
-                last_cycle_count = end_cycle_count;
+                i64 temp         = last.counter;
+                last.counter     = WinPlatGetTime();
+                last.cycle_count = end.cycle_count;
 #ifdef DEBUG
                 counter_elapsed  = WinPlatGetTime() - temp;
-                f64 ms_per_frame = (1000.0f * (f64)counter_elapsed) / (f64)perf_counter_frequency;
+                f64 ms_per_frame = (1000.0f * (f64)counter_elapsed) / (f64)perf_counter_freq;
                 time_elapsed += ms_per_frame;
                 f64  fps = 1000.0f / ms_per_frame;
                 char buffer[256];
@@ -779,10 +840,10 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
 
             // Cleanup
 #if OPENGL
-            GlPipelineDelete(&gl_state);
+            GLDeInit(window_handle);
+            GlPipelineDelete(&Global_OpenGLState);
 #else
 #endif
-
         } else {
             OutputDebugStringA("Failed at creation of window handle.\n");
         }

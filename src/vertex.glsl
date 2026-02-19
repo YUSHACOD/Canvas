@@ -7,6 +7,8 @@ layout(location = 3) in vec4 input_pos;
 layout(location = 4) in float t;
 
 uniform mat4 proj;
+uniform mat4 world;
+uniform mat4 view;
 
 out VS_OUT {
     vec4 color;
@@ -96,6 +98,7 @@ void main(void) {
         vertex = vertices[gl_VertexID] + offset + input_pos;
     }
 
+    // gl_Position = proj * view * world * vertex;
     gl_Position = proj * vertex;
 
     vs_out.color = mix(vec4(1.0, 0.5, 0.0, 1.0), vec4(0.0, 0.5, 1.0, 1.0), t);

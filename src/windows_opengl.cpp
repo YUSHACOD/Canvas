@@ -77,10 +77,10 @@ internal void GLDeInit(HWND window_handle) {
     }
 }
 
-internal i32 GLPipeLineSetup(GLPipelineState*   gl_state,
-                             const GLchar*      vertex_shader_source_,
-                             const GLchar*      fragment_shader_source_,
-                             f32 aspect_ratio) {
+internal i32 GLPipeLineSetup(GLPipelineState* gl_state,
+                             const GLchar*    vertex_shader_source_,
+                             const GLchar*    fragment_shader_source_,
+                             f32              aspect_ratio) {
 
 #if 0
     const GLchar* vertex_shader_source_ = {"#version 450 core                          \n"
@@ -157,12 +157,50 @@ internal i32 GLPipeLineSetup(GLPipelineState*   gl_state,
 
     glUseProgram(gl_state->program_handle);
     glUniformMatrix4fv(gl_state->projection_location, 1, GL_FALSE, proj);
+
+	gl_state->is_valid = true;
+
     return 0;
 }
 
 internal void GlPipelineDelete(GLPipelineState* gl_state) {
     glDeleteProgram(gl_state->program_handle);
     glDeleteVertexArrays(gl_state->vao_len, &gl_state->vao_handle);
+}
+
+internal void
+RenderOpenGL(f64 time_elapsed, GLPipelineState* gl_state, f32* input_pos) {
+    // Clear the buffer
+    glDisable(GL_SCISSOR_TEST);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glEnable(GL_SCISSOR_TEST);
+
+    f64 dt = time_elapsed * 0.001f;
+
+    // GLfloat color[] = {
+    //     (f32)sin(dt) * 0.5f + 0.5f, 0.0f, (f32)cos(dt) * 0.5f + 0.5f, 1.0f};
+    GLfloat color[] = {1.0f, 1.0f, 1.0f, 1.0f};
+    glClearBufferfv(GL_COLOR, 0, color);
+
+    glUseProgram(gl_state->program_handle);
+
+    GLfloat offset[] = {-0.125, -0.125, 0.0f, 0.0f};
+    glVertexAttrib4fv(0, offset);
+
+    GLfloat color_attrib[] = {1.0f, 1.0f, 1.0f, 1.0f};
+    glVertexAttrib4fv(1, color_attrib);
+
+    GLfloat rot2D[] = {(f32)cos(dt) * 0.5f, (f32)sin(dt) * 0.5f, 0.0f, 0.0f};
+    glVertexAttrib4fv(2, rot2D);
+
+    glVertexAttrib4fv(3, input_pos);
+
+    glVertexAttrib1f(4, 0);
+
+    glPointSize(10.0f);
+    // glDrawArrays(GL_TRIANGLES, 0, 6);
+    // glDrawArrays(GL_POINTS, 6, 1);
+    glDrawArrays(GL_LINES, 7, 24);
 }
 
 internal void GLFixProjection(GLPipelineState*  gl_state,
@@ -188,7 +226,7 @@ internal void GLFixProjection(GLPipelineState*  gl_state,
         dest_x     = (dest_x - dest_width) / 2;
     }
 
-
     glViewport(dest_x, dest_y, dest_width, dest_height);
     glScissor(dest_x, dest_y, dest_width, dest_height);
 }
+

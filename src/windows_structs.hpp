@@ -2,16 +2,19 @@
 #define WIN_LAYER_H
 // Structures Used by the Windows Layer -------------------------------------------------------- //
 
-#include "base/sugars.hpp"
-#include "canvas.hpp"
-#include "windows_opengl.hpp"
 
+#include <stdio.h>
+#include <math.h>
 #include <windows.h>
 #include <xinput.h>
 #include <dsound.h>
 #include <malloc.h>
 
-#define OPENGL 0
+#include "base/sugars.hpp"
+#include "canvas.hpp"
+#include "windows_opengl.hpp"
+
+#define OPENGL 1
 
 typedef struct {
     BITMAPINFO info;
@@ -21,7 +24,7 @@ typedef struct {
     u32        size;
     u32        pitch;
     u32        bytes_per_pixel;
-} WinPlatBitMap;
+} WinPlatOffScreenBuffer;
 
 typedef struct {
     u32 width;
@@ -41,14 +44,9 @@ typedef struct {
 } WinPlatInputRecord;
 
 typedef struct {
-    WinPlatDimensions screen_dimensions;
-    f32               aspect_ratio;
-    bool              is_running;
-    WinPlatBitMap     bitmap;
-    u64               refresh_rate;
-    GLPipelineState*  gl_state;
-    HDC               device_ctx;
-} WinPlatMainContext;
+    i64 counter;
+    u64 cycle_count;
+} WinPlatTimeCounter;
 
 
 // --------------------------------------------------------------------------------------------- //

@@ -64,6 +64,8 @@ typedef struct {
     GLuint vao_handle;
     GLuint program_handle;
     GLuint projection_location;
+	bool is_valid;
 } GLPipelineState;
+
 // --------------------------------------------------------------------------------------------- //
 #endif
