@@ -62,6 +62,7 @@ void main(void) {
             vec4(-1.0, -1.0, 1.0, 0.0)
         );
 
+
     mat4 cube_scale;
     cube_scale[0][0] = 20.0;
     cube_scale[1][1] = 20.0;
@@ -75,7 +76,9 @@ void main(void) {
 
     float t = lerp_offset;
 
-    vec4 z4 = 2.0 * (b + c * (t - 1.0) + a * t - 2.0 * b * t);
+	vec4 d = mix(a, b, lerp_offset);
+	vec4 e = mix(b, c, lerp_offset);
+    vec4 z4 = d - e;
 
     // Extract direction part
     vec3 z = normalize(z4.xyz);
