@@ -225,18 +225,38 @@ internal void GLPipeLineSetup(gl_renderer_state* gl_state, f32 aspect_ratio) {
 		   0,    0,   -1,    0 
 	);
 
+    f32 view[16] = GL_MAT(
+		   1,    0,    0,    0,
+		   0,    1,    0,    0,
+		   0,    0,    1,    0,
+		   0,    0,    0,    1 
+	);
 
-	f32* uniforms[1] = {proj};
-    for EachEnumVal(shader_program_kind, idx) {
-		for EachEnumVal(uniform_kind, jdx) {
+    f32 world[16] = GL_MAT(
+		   1,    0,    0,    0,
+		   0,    1,    0,    0,
+		   0,    0,    1,    0,
+		   0,    0,    0,    1 
+	);
 
-			gl_state->uniform_locations[jdx] = glGetUniformLocation(
-					gl_state->program_handles[idx], 
-					gl_glbl_uniform_name[jdx]
+	f32* uniforms[EnumCount(uniform_kind)] = {0};
+	uniforms[ProjMat]  = proj;
+	uniforms[ViewMat]  = view;
+	uniforms[WorldMat] = world;
+
+    for EachEnumVal(shader_program_kind, shdr) {
+		for EachEnumVal(uniform_kind, u) {
+
+			gl_state->uniform_locations[u] = glGetUniformLocation(
+					gl_state->program_handles[shdr], 
+					gl_glbl_uniform_name[u]
 			);
 
-			glUseProgram(gl_state->program_handles[idx]);
-			glUniformMatrix4fv(gl_state->uniform_locations[jdx], 1, GL_FALSE, proj);
+			// One has to load the program 
+			// to load a uniform into it
+			glUseProgram(gl_state->program_handles[shdr]);
+
+			glUniformMatrix4fv(gl_state->uniform_locations[u], 1, GL_FALSE, uniforms[u]);
 
 		}
     }
@@ -245,16 +265,15 @@ internal void GLPipeLineSetup(gl_renderer_state* gl_state, f32 aspect_ratio) {
     gl_state->is_valid = true;
 }
 
+// clang-format off
 internal void GlPipelineDelete(gl_renderer_state* gl_state) {
-    // clang-format off
-
-	for EachEnumVal(shader_program_kind, idx) {
+	for EachEnumVal(shader_program_kind, idx) { 
 		glDeleteProgram(gl_state->program_handles[idx]);
 	}
 
-	glDeleteVertexArrays(gl_state->vao_len, &gl_state->vao_handle);
-        // clang-format on
+    glDeleteVertexArrays(gl_state->vao_len, &gl_state->vao_handle);
 }
+// clang-format on
 
 internal void GLFixProjection(gl_renderer_state* gl_state,
                               winplat_dimensions window,

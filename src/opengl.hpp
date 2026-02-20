@@ -81,11 +81,15 @@ global char* gl_glbl_shader_program_prefixes[EnumCount(shader_program_kind)] = {
 
 typedef enum {
     ProjMat,
+	ViewMat,
+	WorldMat,
     // Last for count trick
     _COUNT_uniform_kind
 } uniform_kind;
 global char* gl_glbl_uniform_name[EnumCount(uniform_kind)] = {
     Text("proj"),
+    Text("view"),
+    Text("world"),
 };
 
 typedef struct {

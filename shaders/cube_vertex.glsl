@@ -79,6 +79,7 @@ void main(void) {
     vertex = cube_scale * cube_offsets[gl_VertexID];
     vertex = vertex + cube_pos;
 
+
     gl_Position = proj * vertex;
 	// gl_Position = vec4(proj[2][3], lerp_offset, 0.5, 1.0);
 

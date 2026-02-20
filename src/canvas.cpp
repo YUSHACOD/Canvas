@@ -47,18 +47,18 @@ extern "C" CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRender) {
         ZeroMem(state, sizeof(canvas_state));
     }
 
-    f64 dt = time_elapsed * 0.001f;
+    f64 dt = time_elapsed * 0.0005f;
 
     // Clearing the opengl buffer
     f32 red_shift   = ((f32)sin(dt) * 0.5f + 0.5f);
     f32 green_shift = ((f32)cos(dt) * 0.5f + 0.5f);
     f32 blue_shift  = 0.0f;
-    v4  color       = {red_shift, green_shift, blue_shift, 1.0f};
-    // v4 color = {0.1f, 0.1f, 0.1f, 1.0f};
+    // v4  color       = {red_shift, green_shift, blue_shift, 1.0f};
+    v4 color = {0.1f, 0.1f, 0.1f, 1.0f};
     memory->GLClear(memory->gl_state, color);
 
     // Drawing a cube
     // v4  color       = {0.1f, 0.1f, 0.1f, 1.0f};
-    v4 cube_color = {1.0f, 0.0f, 0.0f, 1.0f};
+    v4 cube_color = {1.0f, 0.0f, 1.0f, 1.0f};
     memory->GLDrawCube(memory->gl_state, dt, {0}, cube_color);
 }
