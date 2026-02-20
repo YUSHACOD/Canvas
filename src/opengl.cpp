@@ -325,35 +325,3 @@ CANVAS_GL_DRAW_CUBE(GLDrawCube) {
 
     glDrawArrays(GL_LINES, 0, 24);
 }
-
-internal void
-GL_UpdateDrawAndRender(f64 time_elapsed, gl_renderer_state* gl_state, f32* input_pos) {
-
-    f64 dt = time_elapsed * 0.001f;
-
-    f32 red_shift   = ((f32)sin(dt) * 0.5f + 0.5f);
-    f32 green_shift = ((f32)cos(dt) * 0.5f + 0.5f);
-    f32 blue_shift  = 0.0f;
-    // GLfloat clear_color[] = {0.1f, 0.1f, 0.1f, 1.0f};
-    GLClear(gl_state, {red_shift, green_shift, blue_shift, 1.0f});
-
-    GLfloat offset[] = {-0.125, -0.125, 0.0f, 0.0f};
-    glVertexAttrib4fv(0, offset);
-
-    GLfloat color_attrib[] = {0.0f, 0.0f, 1.0f, 1.0f};
-    glVertexAttrib4fv(1, color_attrib);
-
-    GLfloat rot2D[] = {(f32)cos(dt) * 0.5f, (f32)sin(dt) * 0.5f, 0.0f, 0.0f};
-    glVertexAttrib4fv(2, rot2D);
-
-    glVertexAttrib4fv(3, input_pos);
-
-    f32 lerp_offset = ((f32)sin(dt) * 0.5f + 0.5f);
-    glVertexAttrib1f(4, lerp_offset);
-
-    glPointSize(10.0f);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
-    glDrawArrays(GL_POINTS, 6, 7);
-    glLineWidth(20.0f);
-    glDrawArrays(GL_LINES, 7, 24);
-}

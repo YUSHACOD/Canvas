@@ -43,6 +43,7 @@ typedef void
 gl_get_program_info_log(GLuint program, GLsizei bufSize, GLsizei* length, GLchar* infoLog);
 typedef void gl_validate_program(GLuint program);
 
+
 global wgl_swap_interval_ext*   wglSwapIntervalEXT;
 global gl_create_shader*        glCreateShader;
 global gl_shader_source*        glShaderSource;
@@ -81,8 +82,8 @@ global char* gl_glbl_shader_program_prefixes[EnumCount(shader_program_kind)] = {
 
 typedef enum {
     ProjMat,
-	ViewMat,
-	WorldMat,
+    ViewMat,
+    WorldMat,
     // Last for count trick
     _COUNT_uniform_kind
 } uniform_kind;
@@ -107,7 +108,6 @@ typedef CANVAS_GL_CLEAR(canvas_gl_clear);
 
 #define CANVAS_GL_DRAW_CUBE(name) void name(gl_renderer_state* gl_state, f64 dt, v4 pos, v4 color)
 typedef CANVAS_GL_DRAW_CUBE(canvas_gl_draw_cube);
-
 
 // --------------------------------------------------------------------------------------------- //
 #endif
