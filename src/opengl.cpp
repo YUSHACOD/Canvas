@@ -198,7 +198,7 @@ internal void GLPipeLineSetup(gl_renderer_state* gl_state, f32 aspect_ratio) {
 
     // Projection Matrix
     // f32 fov    = 1.0f;
-    f32 fov = 1.0f / tan(Pi32 / 6.0f);
+    f32 fov = 1.0f / tan(Pi32 / 4.0f);
 
     // PLEASE REMEMBER THIS -------------------------------
     // Even if the z_near and z_far

@@ -707,6 +707,7 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
                 game_code = WinPlatLoadGameCode(Global_ModulePath);
             }
 
+			ShowCursor(false);
             ShowWindow(window_handle, show_cmd);
 
             // Timing Init
