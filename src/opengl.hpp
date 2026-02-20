@@ -2,7 +2,6 @@
 #define WIN_OPENGL_H
 // Opengl macros, function globals, and structs ------------------------------------------------ //
 
-
 #include <windows.h>
 #include <GL\gl.h>
 
@@ -13,6 +12,8 @@ typedef char GLchar;
 #define GL_FRAGMENT_SHADER 0x8B30
 #define GL_VERTEX_SHADER   0x8B31
 #define GL_COMPILE_STATUS  0x8B81
+#define GL_LINK_STATUS     0x8B82
+#define GL_VALIDATE_STATUS 0x8B83
 
 typedef BOOL   wgl_swap_interval_ext(int interval);
 typedef GLuint gl_create_shader(GLenum type);
@@ -37,6 +38,10 @@ typedef void gl_vertex_attrib1f(GLuint index, const GLfloat x);
 typedef void
 gl_uniform_matrix4fv(GLint location, GLsizei count, GLboolean transpose, const GLfloat* value);
 typedef GLint gl_get_uniform_location(GLuint program, const GLchar* name);
+typedef void  gl_get_programiv(GLuint program, GLenum pname, GLint* params);
+typedef void
+gl_get_program_info_log(GLuint program, GLsizei bufSize, GLsizei* length, GLchar* infoLog);
+typedef void gl_validate_program(GLuint program);
 
 global wgl_swap_interval_ext*   wglSwapIntervalEXT;
 global gl_create_shader*        glCreateShader;
@@ -58,14 +63,47 @@ global gl_vertex_attrib4fv*     glVertexAttrib4fv;
 global gl_vertex_attrib1f*      glVertexAttrib1f;
 global gl_uniform_matrix4fv*    glUniformMatrix4fv;
 global gl_get_uniform_location* glGetUniformLocation;
+global gl_get_programiv*        glGetProgramiv;
+global gl_get_program_info_log* glGetProgramInfoLog;
+global gl_validate_program*     glValidateProgram;
+
+
+typedef enum {
+    Cube,
+    General,
+    // Last for count trick
+    _COUNT_shader_program_kind
+} shader_program_kind;
+global char* gl_glbl_shader_program_prefixes[EnumCount(shader_program_kind)] = {
+    Text("cube"),
+    Text("general"),
+};
+
+typedef enum {
+    ProjMat,
+    // Last for count trick
+    _COUNT_uniform_kind
+} uniform_kind;
+global char* gl_glbl_uniform_name[EnumCount(uniform_kind)] = {
+    Text("proj"),
+};
 
 typedef struct {
     GLuint vao_len;
     GLuint vao_handle;
-    GLuint program_handle;
-    GLuint projection_location;
-	bool is_valid;
-} GLPipelineState;
+
+    GLuint program_handles[EnumCount(shader_program_kind)];
+    GLuint uniform_locations[EnumCount(uniform_kind)];
+
+    bool is_valid;
+} gl_renderer_state;
+
+#define CANVAS_GL_CLEAR(name) void name(gl_renderer_state* gl_state, v4 color)
+typedef CANVAS_GL_CLEAR(canvas_gl_clear);
+
+#define CANVAS_GL_DRAW_CUBE(name) void name(gl_renderer_state* gl_state, f64 dt, v4 pos, v4 color)
+typedef CANVAS_GL_DRAW_CUBE(canvas_gl_draw_cube);
+
 
 // --------------------------------------------------------------------------------------------- //
 #endif

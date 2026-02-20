@@ -58,7 +58,7 @@ inline internal void DrawPixel(u32* draw_pixel, u8 red, u8 green, u8 blue, u8 pa
 }
 
 inline internal void
-DrawPixel(CanvasBitMap* bitmap, i32 x, i32 y, u8 red, u8 blue, u8 green, u8 pad) {
+DrawPixel(canvas_bitmap* bitmap, i32 x, i32 y, u8 red, u8 blue, u8 green, u8 pad) {
 
     u32 dx = x + (bitmap->width / 2);
     u32 dy = -y + (bitmap->height / 2);
@@ -72,7 +72,7 @@ DrawPixel(CanvasBitMap* bitmap, i32 x, i32 y, u8 red, u8 blue, u8 green, u8 pad)
     }
 }
 
-internal void DrawPixel(CanvasBitMap* bitmap, i32 x, i32 y, Color c) {
+internal void DrawPixel(canvas_bitmap* bitmap, i32 x, i32 y, Color c) {
 
     u32 dx = x + (bitmap->width / 2);
     u32 dy = -y + (bitmap->height / 2);
@@ -86,7 +86,7 @@ internal void DrawPixel(CanvasBitMap* bitmap, i32 x, i32 y, Color c) {
     }
 }
 
-internal void DrawRectangle(CanvasBitMap* bitmap, i32 x, i32 y, Color c, u32 width, u32 height) {
+internal void DrawRectangle(canvas_bitmap* bitmap, i32 x, i32 y, Color c, u32 width, u32 height) {
 
     for (u32 draw_y = 0; draw_y < height; draw_y += 1) {
         for (u32 draw_x = 0; draw_x < width; draw_x += 1) {
@@ -95,15 +95,15 @@ internal void DrawRectangle(CanvasBitMap* bitmap, i32 x, i32 y, Color c, u32 wid
     }
 }
 
-inline internal void DrawSquare(CanvasBitMap* bitmap, i32 x, i32 y, Color c, u32 size) {
+inline internal void DrawSquare(canvas_bitmap* bitmap, i32 x, i32 y, Color c, u32 size) {
     DrawRectangle(bitmap, x, y, c, size, size);
 }
 
-inline internal void DrawSquareC(CanvasBitMap* bitmap, i32 x, i32 y, Color c, u32 size) {
+inline internal void DrawSquareC(canvas_bitmap* bitmap, i32 x, i32 y, Color c, u32 size) {
     DrawSquare(bitmap, x - (size / 2), y - (size / 2), c, size);
 }
 
-void CaseyCircle(CanvasBitMap* bitmap, i32 cx, i32 cy, u32 r, Color c) {
+void CaseyCircle(canvas_bitmap* bitmap, i32 cx, i32 cy, u32 r, Color c) {
     int r2 = r + r;
 
     int x  = r;
@@ -135,13 +135,13 @@ void CaseyCircle(CanvasBitMap* bitmap, i32 cx, i32 cy, u32 r, Color c) {
     }
 }
 
-internal void FillLine(CanvasBitMap* bitmap, i32 Cx, i32 Cy, i32 x, i32 y, Color c) {
+internal void FillLine(canvas_bitmap* bitmap, i32 Cx, i32 Cy, i32 x, i32 y, Color c) {
     for (i32 i = y; i >= -y; i -= 1) {
         DrawPixel(bitmap, Cx - x, Cy - i, c);
     }
 }
 
-internal void CaseyCircleFill(CanvasBitMap* bitmap, i32 cx, i32 cy, u32 r, Color c) {
+internal void CaseyCircleFill(canvas_bitmap* bitmap, i32 cx, i32 cy, u32 r, Color c) {
     int r2 = r + r;
 
     int x  = r;
@@ -168,7 +168,7 @@ internal void CaseyCircleFill(CanvasBitMap* bitmap, i32 cx, i32 cy, u32 r, Color
     }
 }
 
-internal void BLine(CanvasBitMap* bitmap, i32 x0, i32 y0, i32 x1, i32 y1, Color c, u32 width) {
+internal void BLine(canvas_bitmap* bitmap, i32 x0, i32 y0, i32 x1, i32 y1, Color c, u32 width) {
 
     i32 dx = ((x1 - x0) > 0) ? (x1 - x0) : (x0 - x1);
     i32 dy = ((y1 - y0) > 0) ? (y0 - y1) : (y1 - y0);
@@ -205,6 +205,31 @@ internal void BLine(CanvasBitMap* bitmap, i32 x0, i32 y0, i32 x1, i32 y1, Color 
             e  = e + dx;
             y0 = y0 + sy;
         }
+    }
+}
+
+internal void ClearBitMap(canvas_bitmap* bitmap, u32 x_off, u32 y_off) {
+
+    u8* row = (u8*)bitmap->memory;
+
+    for (u32 y = 0; y < bitmap->height; y += 1) {
+        u32* pixel = (u32*)row;
+        for (u32 x = 0; x < bitmap->width; x += 1) {
+
+            // Blue
+            // uint8 blue  = (uint8)(X + x_off);
+            // uint8 green = (uint8)(Y + y_off);
+            u8 blue  = 34;
+            u8 green = 34;
+            u8 red   = 34;
+            u8 pad   = 0;
+
+            DrawPixel(pixel, red, blue, green, pad);
+
+            pixel += 1;
+        }
+
+        row += bitmap->pitch;
     }
 }
 

@@ -3,7 +3,6 @@
 // Structures Used by the Windows Layer -------------------------------------------------------- //
 
 
-#include <stdio.h>
 #include <math.h>
 #include <windows.h>
 #include <xinput.h>
@@ -12,7 +11,6 @@
 
 #include "base/sugars.hpp"
 #include "canvas.hpp"
-#include "windows_opengl.hpp"
 
 #define OPENGL 1
 
@@ -24,30 +22,29 @@ typedef struct {
     u32        size;
     u32        pitch;
     u32        bytes_per_pixel;
-} WinPlatOffScreenBuffer;
+} winplat_off_screen_buffer;
 
 typedef struct {
     u32 width;
     u32 height;
-} WinPlatDimensions;
+} winplat_dimensions;
 
 typedef struct {
     HMODULE                   game_lib;
     canvas_update_and_render* update_and_render;
     bool                      is_valid;
     FILETIME                  last_write_time;
-} WinPlatGameCode;
+} winplat_game_code;
 
 typedef struct {
     u32          count;
-    CanvasInput* input_stream;
-} WinPlatInputRecord;
+    canvas_input* input_stream;
+} winplat_input_record;
 
 typedef struct {
     i64 counter;
     u64 cycle_count;
-} WinPlatTimeCounter;
-
+} winplat_time_counter;
 
 // --------------------------------------------------------------------------------------------- //
 #endif

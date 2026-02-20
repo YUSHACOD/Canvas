@@ -1,26 +1,23 @@
 #version 460 core
 
-layout(location = 0) in vec4 offset;
-layout(location = 1) in vec4 color;
-layout(location = 2) in vec4 rot2D;
-layout(location = 3) in vec4 input_pos;
-layout(location = 4) in float t;
+layout(location = 1) in vec4 pos;
+layout(location = 2) in vec4 scale;
+layout(location = 3) in vec4 color;
+layout(location = 4) in float lerp_offset;
 
-uniform mat4 proj;
 uniform mat4 world;
 uniform mat4 view;
+uniform mat4 proj;
 
 out VS_OUT {
     vec4 color;
 } vs_out;
 
-vec4 quadratic_bezier(vec4 a, vec4 b, vec4 c, float t) {
-    vec4 d = mix(a, b, t);
-    vec4 e = mix(b, c, t);
+vec4 quadratic_bezier(vec4 a, vec4 b, vec4 c, float lerp_offset) {
+    vec4 d = mix(a, b, lerp_offset);
+    vec4 e = mix(b, c, lerp_offset);
 
-    vec4 p = mix(d, e, t);
-
-    return p;
+    return mix(d, e, lerp_offset);
 }
 
 void main(void) {
@@ -66,40 +63,24 @@ void main(void) {
         );
 
     mat4 cube_scale;
-    cube_scale[0][0] = 0.25;
-    cube_scale[1][1] = 0.25;
-    cube_scale[2][2] = 0.25;
+    cube_scale[0][0] = 20.0;
+    cube_scale[1][1] = 20.0;
+    cube_scale[2][2] = 20.0;
     cube_scale[3][3] = 1.0;
 
-    const vec4 vertices[7] = vec4[7](
-            vec4(0.0, 0.0, 0.5, 1.0),
-            vec4(0.25, 0.0, 0.5, 1.0),
-            vec4(0.0, 0.25, 0.5, 1.0),
-            vec4(0.25, 0.0, 0.5, 1.0),
-            vec4(0.0, 0.25, 0.5, 1.0),
-            vec4(0.25, 0.25, 0.5, 1.0),
-            vec4(0.0, 0.0, 0.5, 1.0)
-        );
-
     vec4 cube_pos = quadratic_bezier(
-            vec4(-1.00, 1.0, 1.0, 1.0),
-            vec4(1.0, 1.0, 0.0, 1.0),
-            vec4(-1.00, -1.0, -1.0, 1.0),
-            t
+            vec4(-210, 450, -950, 1.0),
+            vec4(484, 10, -100, 1.0),
+            vec4(-300, -50, 0, 1.0),
+            lerp_offset
         );
 
     vec4 vertex;
-    if (gl_VertexID > 6) {
-        vertex = cube_offsets[gl_VertexID - 7] + cube_pos + input_pos;
-        vertex = cube_scale * vertex;
-    } else if (gl_VertexID == 6) {
-        vertex = vertices[gl_VertexID] + rot2D + input_pos;
-    } else {
-        vertex = vertices[gl_VertexID] + offset + input_pos;
-    }
+    vertex = cube_scale * cube_offsets[gl_VertexID];
+    vertex = vertex + cube_pos;
 
-    // gl_Position = proj * view * world * vertex;
     gl_Position = proj * vertex;
+	// gl_Position = vec4(proj[2][3], lerp_offset, 0.5, 1.0);
 
-    vs_out.color = mix(vec4(1.0, 0.5, 0.0, 1.0), vec4(0.0, 0.5, 1.0, 1.0), t);
+    vs_out.color = color;
 }
