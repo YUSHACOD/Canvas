@@ -53,12 +53,18 @@ extern "C" CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRender) {
     f32 red_shift   = ((f32)sin(dt) * 0.5f + 0.5f);
     f32 green_shift = ((f32)cos(dt) * 0.5f + 0.5f);
     f32 blue_shift  = 0.0f;
-    // v4  color       = {red_shift, green_shift, blue_shift, 1.0f};
-    v4 color = {0.1f, 0.1f, 0.1f, 1.0f};
-    memory->GLClear(memory->gl_state, color);
+    v4  color       = {red_shift, green_shift, blue_shift, 1.0f};
+    // v4 color = {0.1f, 0.1f, 0.1f, 1.0f};
+    v4 corn_blue = {0.494f, 0.620f, 0.969f, 1.0};
+    memory->GLClear(memory->gl_state, corn_blue);
 
     // Drawing a cube
     // v4  color       = {0.1f, 0.1f, 0.1f, 1.0f};
-    v4 cube_color = {1.0f, 0.0f, 1.0f, 1.0f};
-    memory->GLDrawCube(memory->gl_state, dt, {0}, cube_color);
+    v4  cube_color  = {blue_shift, red_shift, green_shift, 1.0f};
+    f32 lerp_offset = ((f32)sin(dt) * 0.5f + 0.5f);
+    memory->GLDrawCube(memory->gl_state, lerp_offset, {0}, cube_color);
+
+    for (f32 t = 0.0f; t < 1.1f; t += 0.1f) {
+        memory->GLDrawCubeWireframe(memory->gl_state, t, {0}, {0.5f, 0.5f, 0.5f, 1.0f});
+    }
 }

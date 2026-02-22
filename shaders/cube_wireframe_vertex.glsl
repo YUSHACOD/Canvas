@@ -21,34 +21,47 @@ vec4 quadratic_bezier(vec4 a, vec4 b, vec4 c, float lerp_offset) {
 }
 
 void main(void) {
-    const vec4 cube_offsets[8 + 12] = vec4[8 + 12](
-            // Side faces
+    const vec4 cube_offsets[24] = vec4[24](
+            // Upper face
+            vec4(1.0, 1.0, 1.0, 0.0),
+            vec4(1.0, 1.0, -1.0, 0.0),
+
+            vec4(1.0, 1.0, -1.0, 0.0),
+            vec4(-1.0, 1.0, -1.0, 0.0),
+
+            vec4(-1.0, 1.0, -1.0, 0.0),
             vec4(-1.0, 1.0, 1.0, 0.0),
+
+            vec4(-1.0, 1.0, 1.0, 0.0),
+            vec4(1.0, 1.0, 1.0, 0.0),
+
+            // Lower face
+            vec4(1.0, -1.0, 1.0, 0.0),
+            vec4(1.0, -1.0, -1.0, 0.0),
+
+            vec4(1.0, -1.0, -1.0, 0.0),
+            vec4(-1.0, -1.0, -1.0, 0.0),
+
+            vec4(-1.0, -1.0, -1.0, 0.0),
             vec4(-1.0, -1.0, 1.0, 0.0),
+
+            vec4(-1.0, -1.0, 1.0, 0.0),
+            vec4(1.0, -1.0, 1.0, 0.0),
+
+            // Remaining edges
             vec4(1.0, 1.0, 1.0, 0.0),
             vec4(1.0, -1.0, 1.0, 0.0),
+
             vec4(1.0, 1.0, -1.0, 0.0),
             vec4(1.0, -1.0, -1.0, 0.0),
+
             vec4(-1.0, 1.0, -1.0, 0.0),
             vec4(-1.0, -1.0, -1.0, 0.0),
 
-            // Up and down faces
-            vec4(-1.0, -1.0, -1.0, 0.0),
-            vec4(-1.0, -1.0, 1.0, 0.0),
-            vec4(1.0,  -1.0, -1.0, 0.0),
-
-            vec4(-1.0, -1.0,  1.0, 0.0),
-            vec4(1.0,  -1.0, -1.0, 0.0),
-            vec4(1.0,  -1.0,  1.0, 0.0),
-
-            vec4(-1.0, 1.0, -1.0, 0.0),
             vec4(-1.0, 1.0, 1.0, 0.0),
-            vec4(1.0,  1.0, -1.0, 0.0),
-
-            vec4(-1.0, 1.0, 1.0, 0.0),
-            vec4(1.0,  1.0, -1.0, 0.0),
-            vec4(1.0,  1.0, 1.0, 0.0)
+            vec4(-1.0, -1.0, 1.0, 0.0)
         );
+
 
     mat4 cube_scale;
     cube_scale[0][0] = 20.0;
@@ -63,8 +76,8 @@ void main(void) {
 
     float t = lerp_offset;
 
-    vec4 d = mix(a, b, lerp_offset);
-    vec4 e = mix(b, c, lerp_offset);
+	vec4 d = mix(a, b, lerp_offset);
+	vec4 e = mix(b, c, lerp_offset);
     vec4 z4 = d - e;
 
     // Extract direction part
@@ -81,22 +94,15 @@ void main(void) {
     vec4 Y = vec4(y, 0.0);
     vec4 Z = vec4(z, 0.0);
 
-    mat4 direction = mat4(X, Y, Z, vec4(0, 0, 0, 1));
+    mat4 cb = mat4(X, Y, Z, vec4(0, 0, 0, 1));
 
     vec4 vertex;
-    vec4 cube_offset;
-
-    if (gl_VertexID < 24) {
-        int idx = (int(floor(gl_VertexID / 3)) + int((gl_VertexID % 3))) % 8;
-        cube_offset = cube_offsets[idx];
-    } else {
-        cube_offset = cube_offsets[gl_VertexID - 24 + 8];
-    }
-
-    vertex = cube_scale * cube_offset;
-    vertex = direction * vertex;
+    vertex = cube_scale * cube_offsets[gl_VertexID];
+    vertex = cb * vertex;
     vertex = vertex + cube_pos;
 
     gl_Position = proj * vertex;
-    vs_out.color = vec4(0.5, 0.5, 0.5, 1.0) + (0.5 * cube_offset);
+    // gl_Position = vec4(proj[2][3], lerp_offset, 0.5, 1.0);
+
+    vs_out.color = color;
 }

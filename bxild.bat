@@ -71,10 +71,9 @@ popd
 goto :eof
 
 :RunInDebugger
-call :Build-Debug
 echo Debug Session Started
 pushd "%DBGDIR%"
-%DEBUGGER% "%NAME%.exe"
+%DEBUGGER% "%NAME%.exe" --project:"../../canvas_dbg.rad"
 popd
 echo Debug Session Ended
 goto :eof

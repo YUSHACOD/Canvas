@@ -306,8 +306,9 @@ typedef struct {
     dbg_plat_free_file_memory*  DBG_PlatFreeFileMemory;
     dbg_plat_write_entire_file* DBG_PlatWriteEntireFile;
 
-    canvas_gl_clear*     GLClear;
-    canvas_gl_draw_cube* GLDrawCube;
+    canvas_gl_clear*               GLClear;
+    canvas_gl_draw_cube*           GLDrawCube;
+    canvas_gl_draw_cube_wireframe* GLDrawCubeWireframe;
 #endif
 
 } canvas_memory;

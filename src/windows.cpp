@@ -5,21 +5,30 @@
 
 
 /*
- *  TODO: Seperating the Platform layer
- *   - Save Location
- *   - Getting the Handle to our own executable???
- *   - Asset Loading Path
- *   - Threading
- *   - Raw Input
- *   - Sleep / TimeBeginPeriod
- *   - FullScreen support
- *   - WM_SETCURSOR
- *   - QueryCancelAutoPlay
- *   - WM_ACTIVATEAPP
- *   - Blt speed improvements
- *   - Hardware Accelearation (OpenGl or DirectX)
+ * TODO: Seperating the Platform layer
  *
- *   Just a PARTIAL LIST!!!!
+ * Next ->
+ * - helpers to create projection / model-view matrix
+ * - Buffering projection, model-view mats
+ * - world limit definition
+ * - debug camera (that means first have to implement quaternions and other rotation mechs)
+ * - buffering draw calls (push buffers, rendering commands, multirenderer support)
+ * - totatly independent game layer
+ * - maze generation from cubes
+ *
+ *
+ *
+ * - Save Location
+ * - Getting the Handle to our own executable???
+ * - Threading
+ * - Raw Input
+ * - Sleep / TimeBeginPeriod
+ * - WM_SETCURSOR
+ *
+ * - QueryCancelAutoPlay
+ * - WM_ACTIVATEAPP
+ * - Blt speed improvements
+ *
  */
 
 #include <stdio.h>
@@ -687,9 +696,10 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
             memory.DBG_PlatWriteEntireFile = DBG_PlatWriteEntireFile;
 
 #if OPENGL
-            memory.gl_state   = &Global_OpenGLState;
-            memory.GLClear    = GLClear;
-            memory.GLDrawCube = GLDrawCube;
+            memory.gl_state            = &Global_OpenGLState;
+            memory.GLClear             = GLClear;
+            memory.GLDrawCube          = GLDrawCube;
+            memory.GLDrawCubeWireframe = GlDrawCubeWireframe;
 #endif
 #endif
 
@@ -707,7 +717,7 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
                 game_code = WinPlatLoadGameCode(Global_ModulePath);
             }
 
-			ShowCursor(false);
+            ShowCursor(false);
             ShowWindow(window_handle, show_cmd);
 
             // Timing Init
@@ -738,20 +748,6 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
 
                 game_code.update_and_render(
                     &memory, &bitmap, new_input, time_elapsed, &Global_IsRunning);
-
-#if OPENGL
-#else
-                ZeroMemory(bitmap.memory, bitmap.size);
-
-
-                // Drawing the Bitmap
-                WinPlatDimensions window_size = WinPlatGetDimensions(window_handle);
-                WinPlatDisplayBitmap(Global_DeviceCtx,
-                                     &Global_OffScreenBuffer,
-                                     window_size,
-                                     Global_DiplaySize,
-                                     Global_AspectRatio);
-#endif
 
                 // Double buffering input state
                 Swap(canvas_input*, old_input, new_input);

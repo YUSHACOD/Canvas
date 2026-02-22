@@ -1,0 +1,14 @@
+// raddbg 0.9.25 project file
+
+recent_file: path: "src/opengl.cpp"
+recent_file: path: "src/windows.cpp"
+debug_info:
+{
+  path: "C:/Users/91724/cpp/canvas/build/debug/Canvxs.pdb"
+  timestamp: 66207230136327
+}
+debug_info:
+{
+  path: "C:/Users/91724/cpp/canvas/build/debug/canvas.pdb"
+  timestamp: 66207230136793
+}

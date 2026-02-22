@@ -262,6 +262,7 @@ internal void GLPipeLineSetup(gl_renderer_state* gl_state, f32 aspect_ratio) {
     }
     // clang-format on
 
+    glEnable(GL_DEPTH_TEST);
     gl_state->is_valid = true;
 }
 
@@ -303,7 +304,7 @@ internal void GLFixProjection(gl_renderer_state* gl_state,
 }
 
 CANVAS_GL_CLEAR(GLClear) {
-    glUseProgram(gl_state->program_handles[General]);
+    glUseProgram(gl_renderer->program_handles[General]);
 
     glDisable(GL_SCISSOR_TEST);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -313,15 +314,21 @@ CANVAS_GL_CLEAR(GLClear) {
 }
 
 CANVAS_GL_DRAW_CUBE(GLDrawCube) {
-    glUseProgram(gl_state->program_handles[Cube]);
+    glUseProgram(gl_renderer->program_handles[Cube]);
 
     glVertexAttrib4fv(3, (GLfloat*)color.pos);
+    glVertexAttrib1f(4, t);
 
-    f32 lerp_offset = ((f32)sin(dt) * 0.5f + 0.5f);
-    glVertexAttrib1f(4, lerp_offset);
+    // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    glDrawArrays(GL_TRIANGLES, 0, 36);
+    // glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+}
 
-    // glPointSize(20.0f);
-    // glDrawArrays(GL_POINTS, 0, 1);
+CANVAS_GL_DRAW_CUBE_WIREFRAME(GlDrawCubeWireframe) {
+    glUseProgram(gl_renderer->program_handles[CubeWireFrame]);
+
+    glVertexAttrib4fv(3, (GLfloat*)color.pos);
+    glVertexAttrib1f(4, t);
 
     glDrawArrays(GL_LINES, 0, 24);
 }
