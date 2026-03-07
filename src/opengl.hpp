@@ -69,26 +69,14 @@ global gl_get_program_info_log* glGetProgramInfoLog;
 global gl_validate_program*     glValidateProgram;
 
 
-typedef enum {
-    Cube,
-	CubeWireFrame,
-    General,
-    // Last for count trick
-    _COUNT_shader_program_kind
-} shader_program_kind;
+Enum(shader_program_kind, Cube, CubeWireFrame, General);
 global char* gl_glbl_shader_program_prefixes[EnumCount(shader_program_kind)] = {
     Text("cube"),
     Text("cube_wireframe"),
     Text("general"),
 };
 
-typedef enum {
-    ProjMat,
-    ViewMat,
-    WorldMat,
-    // Last for count trick
-    _COUNT_uniform_kind
-} uniform_kind;
+Enum(uniform_kind, ProjMat, ViewMat, WorldMat);
 global char* gl_glbl_uniform_name[EnumCount(uniform_kind)] = {
     Text("proj"),
     Text("view"),
@@ -105,15 +93,7 @@ typedef struct {
     bool is_valid;
 } gl_renderer_state;
 
-#define CANVAS_GL_CLEAR(name) void name(gl_renderer_state* gl_renderer, v4 color)
-typedef CANVAS_GL_CLEAR(canvas_gl_clear);
-
-#define CANVAS_GL_DRAW_CUBE(name) void name(gl_renderer_state* gl_renderer, f32 t, v4 pos, v4 color)
-typedef CANVAS_GL_DRAW_CUBE(canvas_gl_draw_cube);
-
-#define CANVAS_GL_DRAW_CUBE_WIREFRAME(name)                                                        \
-    void name(gl_renderer_state* gl_renderer, f32 t, v4 pos, v4 color)
-typedef CANVAS_GL_DRAW_CUBE_WIREFRAME(canvas_gl_draw_cube_wireframe);
+global gl_renderer_state GLBL_opengl_state;
 
 // --------------------------------------------------------------------------------------------- //
 #endif

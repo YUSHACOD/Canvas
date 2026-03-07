@@ -1,10 +1,13 @@
 
 #include "base/sugars.hpp"
+#include "renderer.hpp"
 #include "canvas.hpp"
 
+#include <cstring>
 #include <math.h>
 
 // #include "canvas_utils.cpp"
+#include "renderer.cpp"
 
 extern "C" CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRender) {
 
@@ -44,27 +47,41 @@ extern "C" CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRender) {
     state->y_off -= (input->keyboard.S.ended_down) ? input_factor : 0.0f;
 
     if (input->keyboard.Control.ended_down && input->keyboard.R.ended_down) {
-        ZeroMem(state, sizeof(canvas_state));
+		memset(state, 0, sizeof(canvas_state));
     }
 
     f64 dt = time_elapsed * 0.0005f;
 
-    // Clearing the opengl buffer
+	// Update clear color
     f32 red_shift   = ((f32)sin(dt) * 0.5f + 0.5f);
     f32 green_shift = ((f32)cos(dt) * 0.5f + 0.5f);
     f32 blue_shift  = 0.0f;
     v4  color       = {red_shift, green_shift, blue_shift, 1.0f};
     // v4 color = {0.1f, 0.1f, 0.1f, 1.0f};
     v4 corn_blue = {0.494f, 0.620f, 0.969f, 1.0};
-    memory->GLClear(memory->gl_state, corn_blue);
 
-    // Drawing a cube
-    // v4  color       = {0.1f, 0.1f, 0.1f, 1.0f};
+	// Draw clear
+    RC_clear2d clear = {};
+    clear.color      = corn_blue;
+    PushClear(push_buffer, clear);
+
+	// Update cube
     v4  cube_color  = {blue_shift, red_shift, green_shift, 1.0f};
     f32 lerp_offset = ((f32)sin(dt) * 0.5f + 0.5f);
-    memory->GLDrawCube(memory->gl_state, lerp_offset, {0}, cube_color);
 
+	// Draw cube
+    RC_cube cube     = {};
+    cube.color       = cube_color;
+    cube.lerp_offset = lerp_offset;
+    PushCube(push_buffer, cube);
+
+	// Update cube_wf's
     for (f32 t = 0.0f; t < 1.1f; t += 0.1f) {
-        memory->GLDrawCubeWireframe(memory->gl_state, t, {0}, {0.5f, 0.5f, 0.5f, 1.0f});
+
+		// Draw cube_wf's
+        RC_cube_wf cube_wf  = {};
+        cube_wf.color       = {0.5f, 0.5f, 0.5f, 1.0f};
+        cube_wf.lerp_offset = t;
+        PushCubeWF(push_buffer, cube_wf);
     }
 }

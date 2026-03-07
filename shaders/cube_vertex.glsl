@@ -1,9 +1,9 @@
 #version 460 core
 
-layout(location = 1) in vec4 pos;
-layout(location = 2) in vec4 scale;
-layout(location = 3) in vec4 color;
-layout(location = 4) in float lerp_offset;
+layout(location = 0) in vec4 pos;
+layout(location = 1) in vec4 scale;
+layout(location = 2) in vec4 color;
+layout(location = 3) in float lerp_offset;
 
 uniform mat4 world;
 uniform mat4 view;

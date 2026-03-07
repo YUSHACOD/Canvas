@@ -31,46 +31,50 @@
  *
  */
 
-#include <stdio.h>
 
 #include "windows.hpp"
+#include "canvas.hpp"
+#include "renderer.hpp"
 #include "opengl.hpp"
 
 #include "opengl.cpp"
 
+#include <stdio.h>
+#include <math.h>
+#include <xinput.h>
+#include <dsound.h>
+#include <malloc.h>
 
 // Globals -------------------------------------------------------------------------------------- //
 #define MAX_CANVAS_PATH 1028
-#define WINDOW_STYLE    (WS_POPUP | WS_THICKFRAME)
+#define WINDOW_STYLE    (WS_TILEDWINDOW & ~WS_MINIMIZEBOX)
 
 // Predefined
-global char* Global_shader_names[2] = {Text("general"), Text("cube")};
-global char* Global_game_dll_name   = Text("canvas.dll");
+global char* GLBL_game_dll_name = Text("canvas.dll");
 
 // Infered at runtime
-global HDC                       Global_DeviceCtx;
-global winplat_dimensions        Global_DiplaySize;
-global f32                       Global_AspectRatio;
-global winplat_off_screen_buffer Global_OffScreenBuffer;
-global gl_renderer_state         Global_OpenGLState;
-global bool                      Global_IsRunning;
-global WINDOWPLACEMENT           Global_PrevWndPlacement;
+global HDC                       GLBL_device_ctx;
+global winplat_dimensions        GLBL_display_size;
+global f32                       GLBL_aspect_ratio;
+global winplat_off_screen_buffer GLBL_offscreen_buffer;
+global bool                      GLBL_is_running;
+global WINDOWPLACEMENT           GLBL_prev_wnd_placement;
 
 // TODO: Special Path Handling Check
-// I am being piggy here?
-global char Global_ModulePath[MAX_CANVAS_PATH];
-global i32  Global_ModulePathLen;
+// Am I being piggy here?
+global char GLBL_module_path[MAX_CANVAS_PATH];
+global i32  GLBL_module_path_len;
 
 internal void LoadModulePath(char* path) {
-    for (i32 i = Global_ModulePathLen; i < MAX_CANVAS_PATH; i += 1) {
-        if (path[i - Global_ModulePathLen] == 0) {
+    for (i32 i = GLBL_module_path_len; i < MAX_CANVAS_PATH; i += 1) {
+        if (path[i - GLBL_module_path_len] == 0) {
             break;
         }
-        Global_ModulePath[i] = path[i - Global_ModulePathLen];
+        GLBL_module_path[i] = path[i - GLBL_module_path_len];
     }
 }
 
-internal void UnloadModulePath() { Global_ModulePath[Global_ModulePathLen] = '\0'; }
+internal void UnloadModulePath() { GLBL_module_path[GLBL_module_path_len] = '\0'; }
 // Globals -------------------------------------------------------------------------------------- //
 
 
@@ -118,13 +122,13 @@ CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRenderStub) {}
 internal winplat_game_code WinPlatLoadGameCode(char* source_dll_path) {
 
     winplat_game_code result = {};
-    result.update_and_render = CanvasUpdateAndRenderStub;
+    result.update_and_draw   = CanvasUpdateAndRenderStub;
 
 #if DEBUG
     char temp_dll_path[MAX_CANVAS_PATH] = {0};
     i32  temp_idx;
-    for (temp_idx = 0; temp_idx < Global_ModulePathLen; temp_idx += 1) {
-        temp_dll_path[temp_idx] = Global_ModulePath[temp_idx];
+    for (temp_idx = 0; temp_idx < GLBL_module_path_len; temp_idx += 1) {
+        temp_dll_path[temp_idx] = GLBL_module_path[temp_idx];
     }
     char temp_suffix[] = "temp_canvas.dll";
     for (i32 i = 0; temp_suffix[i] != '\0'; i += 1) {
@@ -139,14 +143,14 @@ internal winplat_game_code WinPlatLoadGameCode(char* source_dll_path) {
 
     if (result.game_lib) {
         result.last_write_time = WinPlatGetLastWriteTime(source_dll_path);
-        result.update_and_render =
-            (canvas_update_and_render*)GetProcAddress(result.game_lib, "CanvasUpdateAndRender");
+        result.update_and_draw =
+            (canvas_update_and_draw*)GetProcAddress(result.game_lib, "CanvasUpdateAndRender");
 
-        result.is_valid = result.update_and_render;
+        result.is_valid = result.update_and_draw;
     }
 
     if (!result.is_valid) {
-        result.update_and_render = CanvasUpdateAndRenderStub;
+        result.update_and_draw = CanvasUpdateAndRenderStub;
     }
 
     return result;
@@ -158,8 +162,8 @@ internal void WinPlatFreeGameCode(winplat_game_code* game_code) {
         FreeLibrary(game_code->game_lib);
     }
 
-    game_code->is_valid          = false;
-    game_code->update_and_render = CanvasUpdateAndRenderStub;
+    game_code->is_valid        = false;
+    game_code->update_and_draw = CanvasUpdateAndRenderStub;
 }
 // Loading game code ---------------------------------------------------------------------------- //
 
@@ -188,6 +192,25 @@ internal winplat_dimensions WinPlatGetDimensions(HWND window_handle) {
 }
 
 // WinPlat Helpers ------------------------------------------------------------------------------ //
+
+
+// Renderer Helpers ----------------------------------------------------------------------------- //
+RNDR_ALLOCATE_PUSH_BUFFER(AllocatePushBuffer) {
+    push_buffer->cube.cubes = (RC_cube*)VirtualAlloc(
+        0, sizeof(RC_cube) * push_buffer->cube.size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+
+    push_buffer->cube_wf.cubes =
+        (RC_cube_wf*)VirtualAlloc(0,
+                                  sizeof(RC_cube_wf) * push_buffer->cube_wf.size,
+                                  MEM_RESERVE | MEM_COMMIT,
+                                  PAGE_READWRITE);
+}
+
+RNDR_CLEAR_PUSH_BUFFER(ClearPushBuffer) {
+	push_buffer->cube.count = 0;
+	push_buffer->cube_wf.count = 0;
+}
+// Renderer Helpers ----------------------------------------------------------------------------- //
 
 
 // Software Renderer Helpers -------------------------------------------------------------------- //
@@ -396,11 +419,11 @@ internal void ToggleFullScreen(HWND window_handle) {
 
     DWORD window_style = GetWindowLong(window_handle, GWL_STYLE);
 
-    if (window_style & WS_OVERLAPPEDWINDOW) {
+    if (window_style & WINDOW_STYLE) {
 
         MONITORINFO monitor_info = {sizeof(monitor_info)};
 
-        if (GetWindowPlacement(window_handle, &Global_PrevWndPlacement) &&
+        if (GetWindowPlacement(window_handle, &GLBL_prev_wnd_placement) &&
             GetMonitorInfo(MonitorFromWindow(window_handle, MONITOR_DEFAULTTOPRIMARY),
                            &monitor_info)) {
             SetWindowLong(window_handle, GWL_STYLE, window_style & ~WINDOW_STYLE);
@@ -414,7 +437,7 @@ internal void ToggleFullScreen(HWND window_handle) {
         }
     } else {
         SetWindowLong(window_handle, GWL_STYLE, window_style | WINDOW_STYLE);
-        SetWindowPlacement(window_handle, &Global_PrevWndPlacement);
+        SetWindowPlacement(window_handle, &GLBL_prev_wnd_placement);
         SetWindowPos(window_handle,
                      NULL,
                      0,
@@ -493,18 +516,18 @@ internal LRESULT WinPlatWindowCallBack(HWND   window_handle,
         } break;
 
         case WM_DESTROY: {
-            Global_IsRunning = false;
+            GLBL_is_running = false;
         } break;
 
         case WM_CLOSE: {
-            Global_IsRunning = false;
+            GLBL_is_running = false;
         } break;
 
         case WM_ACTIVATEAPP: {
         } break;
 
         case WM_SYSCOMMAND: {
-            if (wParam == SC_MINIMIZE || wParam == SC_MAXIMIZE) {
+            if (wParam == SC_MAXIMIZE) {
                 ToggleFullScreen(window_handle);
             }
         } break;
@@ -512,9 +535,9 @@ internal LRESULT WinPlatWindowCallBack(HWND   window_handle,
         case WM_SIZE: {
 
 #if OPENGL
-            if (Global_OpenGLState.is_valid) {
+            if (GLBL_opengl_state.is_valid) {
                 winplat_dimensions dim = WinPlatGetDimensions(window_handle);
-                GLFixProjection(&Global_OpenGLState, dim, Global_DiplaySize, Global_AspectRatio);
+                GLFixProjection(&GLBL_opengl_state, dim, GLBL_display_size, GLBL_aspect_ratio);
             }
 #else
 #endif
@@ -540,12 +563,13 @@ internal LRESULT WinPlatWindowCallBack(HWND   window_handle,
                 i64 width  = paint.rcPaint.right - x;
                 i64 height = paint.rcPaint.bottom - y;
 
-                PatBlt(Global_DeviceCtx, (i32)x, (i32)y, (i32)width, (i32)height, BLACKNESS);
+                PatBlt(GLBL_device_ctx, (i32)x, (i32)y, (i32)width, (i32)height, BLACKNESS);
             }
             EndPaint(window_handle, &paint);
         } break;
 
 
+#if 0 // This is for having a no border window, there is a top bar with WS_POPUP and WS_THICKFRAME
         case WM_NCCALCSIZE: {
             // This is just for top-border bug for non border resizable window
             // Picked up from stackoverflow
@@ -565,10 +589,8 @@ internal LRESULT WinPlatWindowCallBack(HWND   window_handle,
                                        NULL);
                     borderThickness.left *= -1;
                     borderThickness.top *= -1;
-                    NCCALCSIZE_PARAMS* sz = reinterpret_cast<NCCALCSIZE_PARAMS*>(lParam);
-                    // Add 1 pixel to the top border to make the window resizable from the top
-                    // border
-                    sz->rgrc[0].top += 1;
+                    NCCALCSIZE_PARAMS* sz = (NCCALCSIZE_PARAMS*)(lParam);
+                    sz->rgrc[0].top += 0;
                     sz->rgrc[0].left += borderThickness.left;
                     sz->rgrc[0].right -= borderThickness.right;
                     sz->rgrc[0].bottom -= borderThickness.bottom;
@@ -576,6 +598,7 @@ internal LRESULT WinPlatWindowCallBack(HWND   window_handle,
                 }
             }
         }
+#endif
 
 
         default: {
@@ -592,9 +615,9 @@ internal LRESULT WinPlatWindowCallBack(HWND   window_handle,
 // Main Windows Entry Point --------------------------------------------------------------------- //
 i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int show_cmd) {
 
-    Global_ModulePathLen = GetCurrentDirectoryA(MAX_CANVAS_PATH, Global_ModulePath);
-    Global_ModulePath[Global_ModulePathLen++] = '\\';
-    Assert(Global_ModulePathLen != 0);
+    GLBL_module_path_len = GetCurrentDirectoryA(MAX_CANVAS_PATH, GLBL_module_path);
+    GLBL_module_path[GLBL_module_path_len++] = '\\';
+    Assert(GLBL_module_path_len != 0);
 
     // Frequency
     LARGE_INTEGER freq_struct_result = {};
@@ -629,7 +652,6 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
                                              window_class_name,
                                              "Canvas",
                                              WINDOW_STYLE,
-                                             // Position and Size
                                              CW_USEDEFAULT,
                                              CW_USEDEFAULT,
                                              1280,
@@ -645,33 +667,31 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
             MONITORINFO info;
             info.cbSize = sizeof(MONITORINFO);
             GetMonitorInfo(monitor, &info);
-            Global_DiplaySize.width  = info.rcMonitor.right - info.rcMonitor.left;
-            Global_DiplaySize.height = info.rcMonitor.bottom - info.rcMonitor.top;
-            Global_AspectRatio       = (f32)Global_DiplaySize.width / (f32)Global_DiplaySize.height;
+            GLBL_display_size.width  = info.rcMonitor.right - info.rcMonitor.left;
+            GLBL_display_size.height = info.rcMonitor.bottom - info.rcMonitor.top;
+            GLBL_aspect_ratio        = (f32)GLBL_display_size.width / (f32)GLBL_display_size.height;
 
-            Global_DeviceCtx = GetDC(window_handle);
+            GLBL_device_ctx = GetDC(window_handle);
 
             // Opengl Pipeline Setup
 #if OPENGL
-            Global_OpenGLState.vao_len = 1;
+            GLBL_opengl_state.vao_len = 1;
 
-            GLPipeLineSetup(&Global_OpenGLState, Global_AspectRatio);
+            GLPipeLineSetup(&GLBL_opengl_state, GLBL_aspect_ratio);
 
             glEnable(GL_SCISSOR_TEST);
 
             winplat_dimensions dim = WinPlatGetDimensions(window_handle);
-            GLFixProjection(&Global_OpenGLState, dim, Global_DiplaySize, Global_AspectRatio);
-            canvas_bitmap bitmap = {};
-
+            GLFixProjection(&GLBL_opengl_state, dim, GLBL_display_size, GLBL_aspect_ratio);
 #else
             WinPlatCreateDibSection(&Global_OffScreenBuffer, Global_DiplaySize);
-            CanvasBitMap bitmap    = {};
-            bitmap.memory          = Global_OffScreenBuffer.memory;
-            bitmap.width           = Global_OffScreenBuffer.width;
-            bitmap.height          = Global_OffScreenBuffer.height;
-            bitmap.size            = Global_OffScreenBuffer.size;
-            bitmap.pitch           = Global_OffScreenBuffer.pitch;
-            bitmap.bytes_per_pixel = Global_OffScreenBuffer.bytes_per_pixel;
+            canvas_bitmap bitmap   = {};
+            bitmap.memory          = GLBL_offscreen_buffer.memory;
+            bitmap.width           = GLBL_offscreen_buffer.width;
+            bitmap.height          = GLBL_offscreen_buffer.height;
+            bitmap.size            = GLBL_offscreen_buffer.size;
+            bitmap.pitch           = GLBL_offscreen_buffer.pitch;
+            bitmap.bytes_per_pixel = GLBL_offscreen_buffer.bytes_per_pixel;
 #endif
 
 
@@ -695,16 +715,14 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
             memory.DBG_PlatFreeFileMemory  = DBG_PlatFreeFilememory;
             memory.DBG_PlatWriteEntireFile = DBG_PlatWriteEntireFile;
 
-#if OPENGL
-            memory.gl_state            = &Global_OpenGLState;
-            memory.GLClear             = GLClear;
-            memory.GLDrawCube          = GLDrawCube;
-            memory.GLDrawCubeWireframe = GlDrawCubeWireframe;
 #endif
-#endif
+            render_push_buffer r_push_buffer = {};
+            r_push_buffer.cube.size         = 100;
+            r_push_buffer.cube_wf.size      = 100;
+            AllocatePushBuffer(&r_push_buffer);
 
             // If arena is valid and nothing crashed until now then run
-            Global_IsRunning = (memory.perma_store && memory.trans_store);
+            GLBL_is_running = (memory.perma_store && memory.trans_store);
 
             // Input Init
             canvas_input  inputs[2] = {};
@@ -713,8 +731,8 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
 
             // Gamecode Init
             winplat_game_code game_code;
-            DeferLoop(LoadModulePath(Global_game_dll_name), UnloadModulePath()) {
-                game_code = WinPlatLoadGameCode(Global_ModulePath);
+            DeferLoop(LoadModulePath(GLBL_game_dll_name), UnloadModulePath()) {
+                game_code = WinPlatLoadGameCode(GLBL_module_path);
             }
 
             ShowCursor(false);
@@ -727,13 +745,13 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
             f64 time_elapsed = 0.0f;
 
             // Main Loop ------------------------------------------------------------------------ //
-            while (Global_IsRunning) {
+            while (GLBL_is_running) {
 
 #ifdef DEBUG
-                FILETIME new_write_time = WinPlatGetLastWriteTime(Global_game_dll_name);
+                FILETIME new_write_time = WinPlatGetLastWriteTime(GLBL_game_dll_name);
                 if (CompareFileTime(&new_write_time, &game_code.last_write_time) != 0) {
                     WinPlatFreeGameCode(&game_code);
-                    game_code = WinPlatLoadGameCode(Global_game_dll_name);
+                    game_code = WinPlatLoadGameCode(GLBL_game_dll_name);
                 }
 #endif
 
@@ -742,18 +760,23 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
                     new_input->keyboard.Buttons[idx].ended_down =
                         old_input->keyboard.Buttons[idx].ended_down;
                 }
-                WinPlatProcessWindowMessages(
-                    &new_input->keyboard, window_handle, &Global_IsRunning);
+                WinPlatProcessWindowMessages(&new_input->keyboard, window_handle, &GLBL_is_running);
                 WinPlatProcessXInput(inputs, old_input, new_input);
 
-                game_code.update_and_render(
-                    &memory, &bitmap, new_input, time_elapsed, &Global_IsRunning);
+
+                // Game Layer
+                game_code.update_and_draw(
+                    &memory, &r_push_buffer, new_input, time_elapsed, &GLBL_is_running);
+
+                Render(r_push_buffer);
+
+                ClearPushBuffer(&r_push_buffer);
 
                 // Double buffering input state
                 Swap(canvas_input*, old_input, new_input);
-                SwapBuffers(Global_DeviceCtx);
+                SwapBuffers(GLBL_device_ctx);
 
-                // Timing Stuff ----------------------------------------------------------------- //
+                // Timing ----------------------------------------------------------------------- //
                 winplat_time_counter end = {};
                 WinPlatTimeQuery(&end);
 
@@ -801,7 +824,7 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
                         ms_per_frame,
                         fps,
                         mega_cylces_elapsed);
-                // OutputDebugStringA(buffer);
+                OutputDebugStringA(buffer);
 #endif
                 // Timing Stuff ----------------------------------------------------------------- //
             }
@@ -810,7 +833,7 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
             // Cleanup
 #if OPENGL
             GLDeInit(window_handle);
-            GlPipelineDelete(&Global_OpenGLState);
+            GlPipelineDelete(&GLBL_opengl_state);
 #else
 #endif
         } else {

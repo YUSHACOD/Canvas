@@ -1,5 +1,6 @@
 
 #include "opengl.hpp"
+#include "renderer.hpp"
 #include "windows.hpp"
 #include "windows_debug.hpp"
 
@@ -35,8 +36,9 @@ internal void GL_load_function_globals() {
 internal void GLInit(HWND window_handle) {
 
     PIXELFORMATDESCRIPTOR pixel_format_desc = {};
-    pixel_format_desc.nSize                 = sizeof(PIXELFORMATDESCRIPTOR);
-    pixel_format_desc.nVersion              = 1;
+
+    pixel_format_desc.nSize      = sizeof(PIXELFORMATDESCRIPTOR);
+    pixel_format_desc.nVersion   = 1;
     pixel_format_desc.dwFlags    = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
     pixel_format_desc.iPixelType = PFD_TYPE_RGBA;
     pixel_format_desc.cColorBits = 24;
@@ -188,6 +190,67 @@ internal void GLLoadPrograms(gl_renderer_state* gl_state) {
             }
 }
 
+internal void
+GLLoadProjectionMatrix(f32* proj, f32 aspect_ratio, f32 fov_angle_radians, f32 z_near, f32 z_far) {
+
+    f32 fov = 1.0f / tan(fov_angle_radians / 2.0f);
+
+    // PLEASE REMEMBER THIS -------------------------------
+    // - Even if the z_near and z_far
+    // - are negative values, it doesn't mean
+    // - that the co-ordinate space for z will be negative.
+    // - the co-ordinate space is always positive.
+    // PLEASE REMEMBER THIS -------------------------------
+
+    f32 lmda = z_far / (z_far - z_near);
+
+    f32 x_scale  = fov / aspect_ratio;
+    f32 y_scale  = fov;
+    f32 z_scale  = -lmda;
+    f32 z_offset = lmda * z_near;
+    f32 z_w_copy = -1.0f;
+
+    proj[0]  = x_scale;
+    proj[5]  = y_scale;
+    proj[10] = z_scale;
+    proj[11] = z_w_copy;
+    proj[14] = z_offset;
+
+    // proj = GL_MAT(
+    // 	x_scale,       0,       0,       0,
+    // 	      0, y_scale,       0,       0,
+    // 	      0,       0, z_scale, z_offset,
+    // 	      0,       0,      -1,       0
+    // );
+}
+
+internal void GLLoadViewMatrix(f32* view_transform, v4 pos, v4 orientation) {
+
+    f32 _00 = 1.0f;
+    f32 _01 = 0.0f;
+    f32 _02 = 0.0f;
+    f32 _03 = 0.0f;
+    f32 _04 = 0.0f;
+    f32 _05 = 1.0f;
+    f32 _06 = 0.0f;
+    f32 _07 = 0.0f;
+    f32 _08 = 0.0f;
+    f32 _09 = 0.0f;
+    f32 _10 = 1.0f;
+    f32 _11 = 0.0f;
+    f32 _12 = -pos.x;
+    f32 _13 = -pos.y;
+    f32 _14 = -pos.z;
+    f32 _15 = 1.0f;
+
+    // clang-format off
+	view_transform[ 0]=_00; view_transform[ 4]=_04; view_transform[ 8]=_08; view_transform[12]=_12;
+	view_transform[ 1]=_01; view_transform[ 5]=_05; view_transform[ 9]=_09; view_transform[13]=_13;
+	view_transform[ 2]=_02; view_transform[ 6]=_06; view_transform[10]=_10; view_transform[14]=_14;
+	view_transform[ 3]=_03; view_transform[ 7]=_07; view_transform[11]=_11; view_transform[15]=_15;
+    // clang-format on
+}
+
 internal void GLPipeLineSetup(gl_renderer_state* gl_state, f32 aspect_ratio) {
 
     GLLoadPrograms(gl_state);
@@ -196,41 +259,16 @@ internal void GLPipeLineSetup(gl_renderer_state* gl_state, f32 aspect_ratio) {
     glCreateVertexArrays(gl_state->vao_len, &gl_state->vao_handle);
     glBindVertexArray(gl_state->vao_handle);
 
-    // Projection Matrix
-    // f32 fov    = 1.0f;
-    f32 fov = 1.0f / tan(Pi32 / 4.0f);
-
-    // PLEASE REMEMBER THIS -------------------------------
-    // Even if the z_near and z_far
-    // are negative values, it doesn't mean
-    // that the co-ordinate space for z will be negative.
-    // the co-ordinate space is always positive.
-    // PLEASE REMEMBER THIS -------------------------------
-    f32 z_near = -0.1f;
-    f32 z_far  = -1000.f;
-    f32 lmda   = z_far / (z_far - z_near);
-
-    f32 c0r0 = fov / aspect_ratio;
-    f32 c1r1 = fov;
-    f32 c2r2 = -lmda;
-    f32 c3r2 = lmda * z_near;
-    // f32 c2r2 = 1.0f;
-    // f32 c3r2 = 0.0f;
 
     // clang-format off
-    f32 proj[16] = GL_MAT(
-		c0r0,    0,    0,    0,
-		   0, c1r1,    0,    0,
-		   0,    0, c2r2, c3r2,
-		   0,    0,   -1,    0 
-	);
 
-    f32 view[16] = GL_MAT(
-		   1,    0,    0,    0,
-		   0,    1,    0,    0,
-		   0,    0,    1,    0,
-		   0,    0,    0,    1 
-	);
+    f32 proj[16] = {};
+#define Z_NEAR -0.1f
+#define Z_FAR -1000.0f
+	GLLoadProjectionMatrix(proj, aspect_ratio, DegreestoRadians(110.0f), Z_NEAR,  Z_FAR);
+
+    f32 view[16];
+	GLLoadViewMatrix(view, {0}, {0});
 
     f32 world[16] = GL_MAT(
 		   1,    0,    0,    0,
@@ -303,32 +341,43 @@ internal void GLFixProjection(gl_renderer_state* gl_state,
     glScissor(dest_x, dest_y, dest_width, dest_height);
 }
 
-CANVAS_GL_CLEAR(GLClear) {
-    glUseProgram(gl_renderer->program_handles[General]);
+RNDR_CLEAR(RenderClear) {
+    glUseProgram(GLBL_opengl_state.program_handles[General]);
 
     glDisable(GL_SCISSOR_TEST);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glEnable(GL_SCISSOR_TEST);
 
-    glClearBufferfv(GL_COLOR, 0, (GLfloat*)color.pos);
+    glClearBufferfv(GL_COLOR, 0, (GLfloat*)cmd.color.pos);
 }
 
-CANVAS_GL_DRAW_CUBE(GLDrawCube) {
-    glUseProgram(gl_renderer->program_handles[Cube]);
 
-    glVertexAttrib4fv(3, (GLfloat*)color.pos);
-    glVertexAttrib1f(4, t);
+RNDR_CUBES(RenderCubes) {
+    glUseProgram(GLBL_opengl_state.program_handles[Cube]);
 
-    // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    glDrawArrays(GL_TRIANGLES, 0, 36);
-    // glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    for (u32 idx = 0; idx < rg.count; idx++) {
+        glVertexAttrib4fv(2, (GLfloat*)rg.cubes[idx].color.pos);
+        glVertexAttrib1f(3, rg.cubes[idx].lerp_offset);
+
+        // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+        // glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    }
 }
 
-CANVAS_GL_DRAW_CUBE_WIREFRAME(GlDrawCubeWireframe) {
-    glUseProgram(gl_renderer->program_handles[CubeWireFrame]);
+RNDR_CUBES_WF(RenderCubesWF) {
+    glUseProgram(GLBL_opengl_state.program_handles[CubeWireFrame]);
 
-    glVertexAttrib4fv(3, (GLfloat*)color.pos);
-    glVertexAttrib1f(4, t);
+    for (u32 idx = 0; idx < rg.count; idx++) {
+        glVertexAttrib4fv(2, (GLfloat*)rg.cubes[idx].color.pos);
+        glVertexAttrib1f(3, rg.cubes[idx].lerp_offset);
 
-    glDrawArrays(GL_LINES, 0, 24);
+        glDrawArrays(GL_LINES, 0, 24);
+    }
+}
+
+RNDR_RENDER(Render) {
+    RenderClear(push_buffer.clear);
+    RenderCubes(push_buffer.cube);
+    RenderCubesWF(push_buffer.cube_wf);
 }

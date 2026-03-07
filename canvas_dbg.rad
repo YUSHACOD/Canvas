@@ -1,14 +1,33 @@
 // raddbg 0.9.25 project file
 
-recent_file: path: "src/opengl.cpp"
 recent_file: path: "src/windows.cpp"
+recent_file: path: "E:/tmp/proj-mini/p7/hookdll/hook.cpp"
+recent_file: path: "E:/tmp/proj-mini/p7/sample_targets/MessageBox.cpp"
+recent_file: path: "E:/tmp/proj-mini/p7/Detours/src/detours.cpp"
+recent_file: path: "D:/a/_work/1/s/src/vctools/crt/vcstartup/src/startup/dll_dllmain.cpp"
+recent_file: path: "d:/os/obj/amd64fre/minkernel/crts/ucrt/src/appcrt/startup/mt/objfre/amd64/minkernel/crts/ucrt/src/appcrt/startup/initterm.cpp"
 debug_info:
 {
   path: "C:/Users/91724/cpp/canvas/build/debug/Canvxs.pdb"
-  timestamp: 66207230136327
+  timestamp: 66208646930393
 }
 debug_info:
 {
   path: "C:/Users/91724/cpp/canvas/build/debug/canvas.pdb"
-  timestamp: 66207230136793
+  timestamp: 66208646930599
+}
+debug_info:
+{
+  path: "E:/tmp/proj-mini/p7/builds/debug/samples/MessageBox.pdb"
+  timestamp: 66208270613224
+}
+debug_info:
+{
+  path: "E:/tmp/proj-mini/p7/builds/debug/hook.pdb"
+  timestamp: 66208446780219
+}
+debug_info:
+{
+  path: "E:/tmp/proj-mini/p7/builds/debug/samples/CreateProcessA.pdb"
+  timestamp: 66199332819665
 }

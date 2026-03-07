@@ -73,7 +73,7 @@ goto :eof
 :RunInDebugger
 echo Debug Session Started
 pushd "%DBGDIR%"
-%DEBUGGER% "%NAME%.exe" --project:"../../canvas_dbg.rad"
+%DEBUGGER% --user:"%USERPROFILE%\.config\apeyush.rad" --project:"..\..\canvas_dbg.rad" "%NAME%.exe" --project:"../../canvas_dbg.rad"
 popd
 echo Debug Session Ended
 goto :eof

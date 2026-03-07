@@ -2,12 +2,7 @@
 #define WIN_LAYER_H
 // Structures Used by the Windows Layer -------------------------------------------------------- //
 
-
-#include <math.h>
 #include <windows.h>
-#include <xinput.h>
-#include <dsound.h>
-#include <malloc.h>
 
 #include "base/sugars.hpp"
 #include "canvas.hpp"
@@ -31,7 +26,7 @@ typedef struct {
 
 typedef struct {
     HMODULE                   game_lib;
-    canvas_update_and_render* update_and_render;
+    canvas_update_and_draw* update_and_draw;
     bool                      is_valid;
     FILETIME                  last_write_time;
 } winplat_game_code;

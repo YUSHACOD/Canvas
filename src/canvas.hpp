@@ -3,8 +3,9 @@
 // The Game Interface --------------------------------------------------------------------------- //
 
 #include "base/sugars.hpp"
-#include "opengl.hpp"
 #include "windows_debug.hpp"
+#include "renderer.hpp"
+
 
 typedef struct {
     void* memory;
@@ -299,16 +300,10 @@ typedef struct {
     u64   trans_size;
     void* trans_store;
 
-    gl_renderer_state* gl_state;
-
 #ifdef DEBUG
     dbg_plat_read_entire_file*  DBG_PlatReadEntireFile;
     dbg_plat_free_file_memory*  DBG_PlatFreeFileMemory;
     dbg_plat_write_entire_file* DBG_PlatWriteEntireFile;
-
-    canvas_gl_clear*               GLClear;
-    canvas_gl_draw_cube*           GLDrawCube;
-    canvas_gl_draw_cube_wireframe* GLDrawCubeWireframe;
 #endif
 
 } canvas_memory;
@@ -316,12 +311,12 @@ typedef struct {
 
 
 #define CANVAS_UPDATE_AND_RENDER(name)                                                             \
-    void name(canvas_memory* memory,                                                               \
-              canvas_bitmap* bitmap,                                                               \
-              canvas_input*  input,                                                                \
-              f64            time_elapsed,                                                         \
-              bool*          running)
-typedef CANVAS_UPDATE_AND_RENDER(canvas_update_and_render);
+    void name(canvas_memory*      memory,                                                          \
+              render_push_buffer* push_buffer,                                                     \
+              canvas_input*       input,                                                           \
+              f64                 time_elapsed,                                                    \
+              bool*               running)
+typedef CANVAS_UPDATE_AND_RENDER(canvas_update_and_draw);
 CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRenderStub);
 
 
