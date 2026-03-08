@@ -42,6 +42,7 @@ typedef void  gl_get_programiv(GLuint program, GLenum pname, GLint* params);
 typedef void
 gl_get_program_info_log(GLuint program, GLsizei bufSize, GLsizei* length, GLchar* infoLog);
 typedef void gl_validate_program(GLuint program);
+typedef void gl_vertex_attrib3fv(GLuint index, const GLfloat* v);
 
 
 global wgl_swap_interval_ext*   wglSwapIntervalEXT;
@@ -67,6 +68,7 @@ global gl_get_uniform_location* glGetUniformLocation;
 global gl_get_programiv*        glGetProgramiv;
 global gl_get_program_info_log* glGetProgramInfoLog;
 global gl_validate_program*     glValidateProgram;
+global gl_vertex_attrib3fv*     glVertexAttrib3fv;
 
 
 Enum(shader_program_kind, Cube, CubeWireFrame, General);
@@ -76,19 +78,18 @@ global char* gl_glbl_shader_program_prefixes[EnumCount(shader_program_kind)] = {
     Text("general"),
 };
 
-Enum(uniform_kind, ProjMat, ViewMat, WorldMat);
+Enum(uniform_kind, ProjMat, ViewMat);
 global char* gl_glbl_uniform_name[EnumCount(uniform_kind)] = {
     Text("proj"),
     Text("view"),
-    Text("world"),
 };
 
 typedef struct {
     GLuint vao_len;
     GLuint vao_handle;
+    f32    aspect_ratio;
 
     GLuint program_handles[EnumCount(shader_program_kind)];
-    GLuint uniform_locations[EnumCount(uniform_kind)];
 
     bool is_valid;
 } gl_renderer_state;

@@ -319,23 +319,5 @@ typedef struct {
 typedef CANVAS_UPDATE_AND_RENDER(canvas_update_and_draw);
 CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRenderStub);
 
-
-
-typedef struct {
-    f32 jx;
-    f32 jy;
-
-    f32 x_off;
-    f32 y_off;
-
-    f32 weight;
-
-    f32 dx;
-    f32 dy;
-    f32 dz;
-
-    f32 theta;
-} canvas_state;
-
 // ---------------------------------------------------------------------------------------------- //
 #endif

@@ -5,7 +5,7 @@
 #include <windows.h>
 
 #include "base/sugars.hpp"
-#include "canvas.hpp"
+#include "canvas_platform.hpp"
 
 #define OPENGL 1
 

@@ -1,102 +1,78 @@
 #version 460 core
 
-layout(location = 0) in vec4 pos;
-layout(location = 1) in vec4 scale;
-layout(location = 2) in vec4 color;
-layout(location = 3) in float lerp_offset;
+layout(location = 0) in vec3 pos;
+layout(location = 1) in vec3 scale;
+layout(location = 2) in vec4 quat;
+layout(location = 3) in vec4 color;
 
-uniform mat4 world;
-uniform mat4 view;
-uniform mat4 proj;
+layout(location = 0) uniform mat4 proj;
+layout(location = 1) uniform mat4 view;
 
 out VS_OUT {
     vec4 color;
 } vs_out;
 
-vec4 quadratic_bezier(vec4 a, vec4 b, vec4 c, float lerp_offset) {
-    vec4 d = mix(a, b, lerp_offset);
-    vec4 e = mix(b, c, lerp_offset);
 
-    return mix(d, e, lerp_offset);
+mat4 createModelMatrix(vec3 pos, vec3 scale, vec4 quat) {
+    // Assumes quat is already normalized
+    float xx = quat.x * quat.x;
+    float yy = quat.y * quat.y;
+    float zz = quat.z * quat.z;
+    float xy = quat.x * quat.y;
+    float xz = quat.x * quat.z;
+    float yz = quat.y * quat.z;
+    float wx = quat.w * quat.x;
+    float wy = quat.w * quat.y;
+    float wz = quat.w * quat.z;
+    
+    return mat4(
+        (1.0 - 2.0 * (yy + zz)) * scale.x,
+        (2.0 * (xy + wz)) * scale.x,
+        (2.0 * (xz - wy)) * scale.x,
+        0.0,
+        
+        (2.0 * (xy - wz)) * scale.y,
+        (1.0 - 2.0 * (xx + zz)) * scale.y,
+        (2.0 * (yz + wx)) * scale.y,
+        0.0,
+        
+        (2.0 * (xz + wy)) * scale.z,
+        (2.0 * (yz - wx)) * scale.z,
+        (1.0 - 2.0 * (xx + yy)) * scale.z,
+        0.0,
+        
+        pos.x, pos.y, pos.z, 1.0
+    );
 }
 
 void main(void) {
-    const vec4 cube_offsets[8 + 12] = vec4[8 + 12](
-            // Side faces
-            vec4(-1.0, 1.0, 1.0, 0.0),
-            vec4(-1.0, -1.0, 1.0, 0.0),
-            vec4(1.0, 1.0, 1.0, 0.0),
-            vec4(1.0, -1.0, 1.0, 0.0),
-            vec4(1.0, 1.0, -1.0, 0.0),
-            vec4(1.0, -1.0, -1.0, 0.0),
-            vec4(-1.0, 1.0, -1.0, 0.0),
-            vec4(-1.0, -1.0, -1.0, 0.0),
-
-            // Up and down faces
-            vec4(-1.0, -1.0, -1.0, 0.0),
-            vec4(-1.0, -1.0, 1.0, 0.0),
-            vec4(1.0,  -1.0, -1.0, 0.0),
-
-            vec4(-1.0, -1.0,  1.0, 0.0),
-            vec4(1.0,  -1.0, -1.0, 0.0),
-            vec4(1.0,  -1.0,  1.0, 0.0),
-
-            vec4(-1.0, 1.0, -1.0, 0.0),
-            vec4(-1.0, 1.0, 1.0, 0.0),
-            vec4(1.0,  1.0, -1.0, 0.0),
-
-            vec4(-1.0, 1.0, 1.0, 0.0),
-            vec4(1.0,  1.0, -1.0, 0.0),
-            vec4(1.0,  1.0, 1.0, 0.0)
+    // Position table for cube corners
+    const vec3 positions[8] = vec3[](
+            vec3(-0.5, -0.5, -0.5), vec3(0.5, -0.5, -0.5),
+            vec3(0.5, 0.5, -0.5), vec3(-0.5, 0.5, -0.5),
+            vec3(-0.5, -0.5, 0.5), vec3(0.5, -0.5, 0.5),
+            vec3(0.5, 0.5, 0.5), vec3(-0.5, 0.5, 0.5)
         );
 
-    mat4 cube_scale;
-    cube_scale[0][0] = 20.0;
-    cube_scale[1][1] = 20.0;
-    cube_scale[2][2] = 20.0;
-    cube_scale[3][3] = 1.0;
+    // Index table for each face
+    const int indices[36] = int[](
+            0, 1, 2, 2, 3, 0, // back
+            4, 5, 6, 6, 7, 4, // front
+            0, 1, 5, 5, 4, 0, // bottom
+            2, 3, 7, 7, 6, 2, // top
+            0, 3, 7, 7, 4, 0, // left
+            1, 2, 6, 6, 5, 1 // right
+        );
 
-    vec4 a = vec4(-210, 450, -950, 1.0);
-    vec4 b = vec4(484, 10, -100, 1.0);
-    vec4 c = vec4(-100, -50, -70, 1.0);
-    vec4 cube_pos = quadratic_bezier(a, b, c, lerp_offset);
+    vec3 vert = positions[indices[gl_VertexID]];
 
-    float t = lerp_offset;
+	mat4 transform = createModelMatrix(pos, scale, quat);
+    vec4 vertex = transform * vec4(vert, 1.0);
 
-    vec4 d = mix(a, b, lerp_offset);
-    vec4 e = mix(b, c, lerp_offset);
-    vec4 z4 = d - e;
+    gl_Position = proj * view * vertex;
 
-    // Extract direction part
-    vec3 z = normalize(z4.xyz);
+	// Gradient Cube
+    vs_out.color = vec4(0.5, 0.5, 0.5, 0.0) + vec4(vert, 1.0);
 
-    vec3 up = vec3(0.0, 1.0, 0.0);
-
-    // Build orthonormal basis
-    vec3 x = normalize(cross(up, z));
-    vec3 y = cross(z, x);
-
-    // Rebuild as vec4 (direction vectors → w = 0)
-    vec4 X = vec4(x, 0.0);
-    vec4 Y = vec4(y, 0.0);
-    vec4 Z = vec4(z, 0.0);
-
-    mat4 direction = mat4(X, Y, Z, vec4(0, 0, 0, 1));
-
-    vec4 vertex;
-    vec4 cube_offset;
-
-    if (gl_VertexID < 24) {
-        int idx = (int(floor(gl_VertexID / 3)) + int((gl_VertexID % 3))) % 8;
-        cube_offset = cube_offsets[idx];
-    } else {
-        cube_offset = cube_offsets[gl_VertexID - 24 + 8];
-    }
-
-    vertex = cube_scale * cube_offset;
-    vertex = direction * vertex;
-    vertex = vertex + cube_pos;
-
-    gl_Position = proj * vertex;
-    vs_out.color = vec4(0.5, 0.5, 0.5, 1.0) + (0.5 * cube_offset);
+    // vs_out.color = color;
 }

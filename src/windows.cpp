@@ -9,11 +9,10 @@
  *
  * Next ->
  * - helpers to create projection / model-view matrix
+ * - Bug: input clear when window is not focused
  * - Buffering projection, model-view mats
  * - world limit definition
  * - debug camera (that means first have to implement quaternions and other rotation mechs)
- * - buffering draw calls (push buffers, rendering commands, multirenderer support)
- * - totatly independent game layer
  * - maze generation from cubes
  *
  *
@@ -33,7 +32,7 @@
 
 
 #include "windows.hpp"
-#include "canvas.hpp"
+#include "canvas_platform.hpp"
 #include "renderer.hpp"
 #include "opengl.hpp"
 
@@ -196,19 +195,19 @@ internal winplat_dimensions WinPlatGetDimensions(HWND window_handle) {
 
 // Renderer Helpers ----------------------------------------------------------------------------- //
 RNDR_ALLOCATE_PUSH_BUFFER(AllocatePushBuffer) {
-    push_buffer->cube.cubes = (RC_cube*)VirtualAlloc(
-        0, sizeof(RC_cube) * push_buffer->cube.size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+    push_buffer->cube_buffer.cubes = (RC_cube*)VirtualAlloc(
+        0, sizeof(RC_cube) * push_buffer->cube_buffer.size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 
-    push_buffer->cube_wf.cubes =
+    push_buffer->cube_wf_buffer.cubes =
         (RC_cube_wf*)VirtualAlloc(0,
-                                  sizeof(RC_cube_wf) * push_buffer->cube_wf.size,
+                                  sizeof(RC_cube_wf) * push_buffer->cube_wf_buffer.size,
                                   MEM_RESERVE | MEM_COMMIT,
                                   PAGE_READWRITE);
 }
 
 RNDR_CLEAR_PUSH_BUFFER(ClearPushBuffer) {
-	push_buffer->cube.count = 0;
-	push_buffer->cube_wf.count = 0;
+    push_buffer->cube_buffer.count    = 0;
+    push_buffer->cube_wf_buffer.count = 0;
 }
 // Renderer Helpers ----------------------------------------------------------------------------- //
 
@@ -675,9 +674,7 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
 
             // Opengl Pipeline Setup
 #if OPENGL
-            GLBL_opengl_state.vao_len = 1;
-
-            GLPipeLineSetup(&GLBL_opengl_state, GLBL_aspect_ratio);
+            GLPipeLineSetup(&GLBL_opengl_state, GLBL_aspect_ratio, 1);
 
             glEnable(GL_SCISSOR_TEST);
 
@@ -717,8 +714,8 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
 
 #endif
             render_push_buffer r_push_buffer = {};
-            r_push_buffer.cube.size         = 100;
-            r_push_buffer.cube_wf.size      = 100;
+            r_push_buffer.cube_buffer.size          = 100;
+            r_push_buffer.cube_wf_buffer.size       = 100;
             AllocatePushBuffer(&r_push_buffer);
 
             // If arena is valid and nothing crashed until now then run
@@ -735,8 +732,8 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
                 game_code = WinPlatLoadGameCode(GLBL_module_path);
             }
 
+            bool window_shown = false;
             ShowCursor(false);
-            ShowWindow(window_handle, show_cmd);
 
             // Timing Init
             winplat_time_counter last = {};
@@ -824,9 +821,13 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
                         ms_per_frame,
                         fps,
                         mega_cylces_elapsed);
-                OutputDebugStringA(buffer);
+                // OutputDebugStringA(buffer);
 #endif
                 // Timing Stuff ----------------------------------------------------------------- //
+                if (!window_shown) {
+                    ShowWindow(window_handle, show_cmd);
+					window_shown = true;
+                }
             }
             // Main Loop ------------------------------------------------------------------------ //
 

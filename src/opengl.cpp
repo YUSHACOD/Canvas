@@ -24,6 +24,7 @@ internal void GL_load_function_globals() {
     glGetShaderiv        = (gl_get_shaderiv*)wglGetProcAddress("glGetShaderiv");
     glGetShaderInfoLog   = (gl_get_shader_info_log*)wglGetProcAddress("glGetShaderInfoLog");
     glClearBufferfv      = (gl_clear_bufferfv*)wglGetProcAddress("glClearBufferfv");
+    glVertexAttrib3fv    = (gl_vertex_attrib3fv*)wglGetProcAddress("glVertexAttrib3fv");
     glVertexAttrib4fv    = (gl_vertex_attrib4fv*)wglGetProcAddress("glVertexAttrib4fv");
     glVertexAttrib1f     = (gl_vertex_attrib1f*)wglGetProcAddress("glVertexAttrib1f");
     glUniformMatrix4fv   = (gl_uniform_matrix4fv*)wglGetProcAddress("glUniformMatrix4fv");
@@ -224,7 +225,7 @@ GLLoadProjectionMatrix(f32* proj, f32 aspect_ratio, f32 fov_angle_radians, f32 z
     // );
 }
 
-internal void GLLoadViewMatrix(f32* view_transform, v4 pos, v4 orientation) {
+internal void GLLoadViewMatrix(f32* view_transform, v3 pos, v4 orientation) {
 
     f32 _00 = 1.0f;
     f32 _01 = 0.0f;
@@ -251,8 +252,10 @@ internal void GLLoadViewMatrix(f32* view_transform, v4 pos, v4 orientation) {
     // clang-format on
 }
 
-internal void GLPipeLineSetup(gl_renderer_state* gl_state, f32 aspect_ratio) {
+internal void GLPipeLineSetup(gl_renderer_state* gl_state, f32 aspect_ratio, GLuint vao_len) {
 
+    GLBL_opengl_state.vao_len      = vao_len;
+    GLBL_opengl_state.aspect_ratio = aspect_ratio;
     GLLoadPrograms(gl_state);
 
     // Vertex Array Object Creation
@@ -260,45 +263,6 @@ internal void GLPipeLineSetup(gl_renderer_state* gl_state, f32 aspect_ratio) {
     glBindVertexArray(gl_state->vao_handle);
 
 
-    // clang-format off
-
-    f32 proj[16] = {};
-#define Z_NEAR -0.1f
-#define Z_FAR -1000.0f
-	GLLoadProjectionMatrix(proj, aspect_ratio, DegreestoRadians(110.0f), Z_NEAR,  Z_FAR);
-
-    f32 view[16];
-	GLLoadViewMatrix(view, {0}, {0});
-
-    f32 world[16] = GL_MAT(
-		   1,    0,    0,    0,
-		   0,    1,    0,    0,
-		   0,    0,    1,    0,
-		   0,    0,    0,    1 
-	);
-
-	f32* uniforms[EnumCount(uniform_kind)] = {0};
-	uniforms[ProjMat]  = proj;
-	uniforms[ViewMat]  = view;
-	uniforms[WorldMat] = world;
-
-    for EachEnumVal(shader_program_kind, shdr) {
-		for EachEnumVal(uniform_kind, u) {
-
-			gl_state->uniform_locations[u] = glGetUniformLocation(
-					gl_state->program_handles[shdr], 
-					gl_glbl_uniform_name[u]
-			);
-
-			// One has to load the program 
-			// to load a uniform into it
-			glUseProgram(gl_state->program_handles[shdr]);
-
-			glUniformMatrix4fv(gl_state->uniform_locations[u], 1, GL_FALSE, uniforms[u]);
-
-		}
-    }
-    // clang-format on
 
     glEnable(GL_DEPTH_TEST);
     gl_state->is_valid = true;
@@ -341,43 +305,83 @@ internal void GLFixProjection(gl_renderer_state* gl_state,
     glScissor(dest_x, dest_y, dest_width, dest_height);
 }
 
-RNDR_CLEAR(RenderClear) {
+RNDR_INIT_FRAME(InitFrame) {
+
     glUseProgram(GLBL_opengl_state.program_handles[General]);
 
     glDisable(GL_SCISSOR_TEST);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glEnable(GL_SCISSOR_TEST);
 
-    glClearBufferfv(GL_COLOR, 0, (GLfloat*)cmd.color.pos);
+
+    f32 proj[16] = {};
+#define Z_NEAR -0.1f
+#define Z_FAR  -1000.0f
+    GLLoadProjectionMatrix(
+        proj, GLBL_opengl_state.aspect_ratio, DegreestoRadians(60.0f), Z_NEAR, Z_FAR);
+
+    f32 view[16];
+    GLLoadViewMatrix(view, push_buffer.camera.pos, push_buffer.camera.orientation);
+
+    f32* uniforms[EnumCount(uniform_kind)] = {0};
+    uniforms[ProjMat]                      = proj;
+    uniforms[ViewMat]                      = view;
+
+    // clang-format off
+    for EachEnumVal(shader_program_kind, shdr) {
+		for EachEnumVal(uniform_kind, u) {
+
+			// One has to load the program to load a uniform into it
+			glUseProgram(GLBL_opengl_state.program_handles[shdr]);
+			glUniformMatrix4fv(u, 1, GL_FALSE, uniforms[u]);
+		}
+    }
+    // clang-format on
+}
+
+void RenderClear(RC_clear2d cmd) {
+
+    glUseProgram(GLBL_opengl_state.program_handles[General]);
+    glClearBufferfv(GL_COLOR, 0, (GLfloat*)cmd.color.arr);
 }
 
 
-RNDR_CUBES(RenderCubes) {
+void RenderCubes(RG_cube rg) {
     glUseProgram(GLBL_opengl_state.program_handles[Cube]);
 
+    // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     for (u32 idx = 0; idx < rg.count; idx++) {
-        glVertexAttrib4fv(2, (GLfloat*)rg.cubes[idx].color.pos);
-        glVertexAttrib1f(3, rg.cubes[idx].lerp_offset);
 
-        // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        glVertexAttrib3fv(0, (GLfloat*)rg.cubes[idx].pos.arr);
+        glVertexAttrib3fv(1, (GLfloat*)rg.cubes[idx].scale.arr);
+        glVertexAttrib4fv(2, (GLfloat*)rg.cubes[idx].rotation.arr);
+
+        glVertexAttrib4fv(3, (GLfloat*)rg.cubes[idx].color.arr);
+
         glDrawArrays(GL_TRIANGLES, 0, 36);
-        // glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     }
+    // glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 }
 
-RNDR_CUBES_WF(RenderCubesWF) {
+void RenderCubesWF(RG_cube_wf rg) {
     glUseProgram(GLBL_opengl_state.program_handles[CubeWireFrame]);
 
     for (u32 idx = 0; idx < rg.count; idx++) {
-        glVertexAttrib4fv(2, (GLfloat*)rg.cubes[idx].color.pos);
-        glVertexAttrib1f(3, rg.cubes[idx].lerp_offset);
+
+        glVertexAttrib3fv(0, (GLfloat*)rg.cubes[idx].pos.arr);
+        glVertexAttrib3fv(1, (GLfloat*)rg.cubes[idx].scale.arr);
+        glVertexAttrib4fv(2, (GLfloat*)rg.cubes[idx].rotation.arr);
+
+        glVertexAttrib4fv(3, (GLfloat*)rg.cubes[idx].color.arr);
 
         glDrawArrays(GL_LINES, 0, 24);
     }
 }
 
 RNDR_RENDER(Render) {
+    InitFrame(push_buffer);
+
     RenderClear(push_buffer.clear);
-    RenderCubes(push_buffer.cube);
-    RenderCubesWF(push_buffer.cube_wf);
+    RenderCubes(push_buffer.cube_buffer);
+    RenderCubesWF(push_buffer.cube_wf_buffer);
 }

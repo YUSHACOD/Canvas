@@ -11,15 +11,17 @@ typedef struct {
 } RC_clear2d;
 
 typedef struct {
-    v4  pos;
-    v4  color;
-    f32 lerp_offset;
+    v3 pos;
+    v3 scale;
+    v4 rotation;
+    v4 color;
 } RC_cube;
 
 typedef struct {
-    v4  pos;
-    v4  color;
-    f32 lerp_offset;
+    v3 pos;
+    v3 scale;
+    v4 rotation;
+    v4 color;
 } RC_cube_wf;
 
 typedef struct {
@@ -35,10 +37,18 @@ typedef struct {
 } RG_cube_wf;
 
 typedef struct {
-    RG_cube    cube;
-    RG_cube_wf cube_wf;
-    RC_clear2d clear;
+    f32 fov;
+    v3  pos;
+    v4  orientation;
+} render_camera;
+
+typedef struct {
+    RG_cube       cube_buffer;
+    RG_cube_wf    cube_wf_buffer;
+    RC_clear2d    clear;
+    render_camera camera;
 } render_push_buffer;
+
 
 // Platform implementation declarations
 #define RNDR_ALLOCATE_PUSH_BUFFER(name) void name(render_push_buffer* push_buffer)
@@ -61,14 +71,8 @@ PUSH_CUBE_WF(PushCubeWF);
 
 
 // Renderer implementation declarations
-#define RNDR_CLEAR(name) void name(RC_clear2d cmd)
-RNDR_CLEAR(RenderClear);
-
-#define RNDR_CUBES(name) void name(RG_cube rg)
-RNDR_CUBES(RenderCubes);
-
-#define RNDR_CUBES_WF(name) void name(RG_cube_wf rg)
-RNDR_CUBES_WF(RenderCubesWF);
+#define RNDR_INIT_FRAME(name) void name(render_push_buffer push_buffer)
+RNDR_INIT_FRAME(InitFrame);
 
 #define RNDR_RENDER(name) void name(render_push_buffer push_buffer)
 RNDR_RENDER(Render);
