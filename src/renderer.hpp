@@ -1,6 +1,6 @@
 #ifndef RENDERER_H
 #define RENDERER_H
-// Renderer interface to be used by the game and all renderer backends ------------------------- //
+//  Renderer interfaces : ------------------------------------------------------------ (section)  //
 
 #include "base/sugars.hpp"
 
@@ -49,17 +49,17 @@ typedef struct {
     render_camera camera;
 } render_push_buffer;
 
-
-// Platform implementation declarations
+//  platform layer declares : -------------------------------------------------------- (section)  //
 #define RNDR_ALLOCATE_PUSH_BUFFER(name) void name(render_push_buffer* push_buffer)
 RNDR_ALLOCATE_PUSH_BUFFER(AllocatePushBuffer);
 
 #define RNDR_CLEAR_PUSH_BUFFER(name) void name(render_push_buffer* push_buffer)
 RNDR_CLEAR_PUSH_BUFFER(ClearPushBuffer);
+//  (section) -------------------------------------------------------- : platform layer declares  //
 
 
 
-// Self implementation declarations
+//  renderer utils : ----------------------------------------------------------------- (section)  //
 #define PUSH_CLEAR(name) void name(render_push_buffer* push_buffer, RC_clear2d clear)
 PUSH_CLEAR(PushClear);
 
@@ -68,15 +68,17 @@ PUSH_CUBE(PushCube);
 
 #define PUSH_CUBE_WF(name) void name(render_push_buffer* push_buffer, RC_cube_wf cube_wf)
 PUSH_CUBE_WF(PushCubeWF);
+//  (section) ----------------------------------------------------------------- : renderer utils  //
 
 
-// Renderer implementation declarations
+//  renderer implementation declares : ----------------------------------------------- (section)  //
 #define RNDR_INIT_FRAME(name) void name(render_push_buffer push_buffer)
 RNDR_INIT_FRAME(InitFrame);
 
 #define RNDR_RENDER(name) void name(render_push_buffer push_buffer)
 RNDR_RENDER(Render);
+//  (section) ----------------------------------------------- : renderer implementation declares  //
 
 
-// Renderer interface to be used by the game and all renderer backends ------------------------- //
+//  (section) ------------------------------------------------------------ : Renderer interfaces  //
 #endif

@@ -4,7 +4,7 @@
 #include "windows_debug.hpp"
 
 
-// Debug File IO -------------------------------------------------------------------------------- //
+//  debug file io : ------------------------------------------------------------------ (section)  //
 DBG_PLAT_READ_ENTIRE_FILE(DBG_PlatReadEntireFile) {
     DBG_FileStruct result = {};
 
@@ -70,4 +70,4 @@ DBG_PLAT_WRITE_ENTIRE_FILE(DBG_PlatWriteEntireFile) {
 
     return result;
 }
-// Debug File IO -------------------------------------------------------------------------------- //
+//  (section) ------------------------------------------------------------------ : debug file io  //

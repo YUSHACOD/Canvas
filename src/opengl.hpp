@@ -1,6 +1,7 @@
 #ifndef WIN_OPENGL_H
 #define WIN_OPENGL_H
-// Opengl macros, function globals, and structs ------------------------------------------------ //
+//  Opengl interfaces : -------------------------------------------------------------- (section)  //
+
 
 #include <windows.h>
 #include <GL\gl.h>
@@ -9,12 +10,17 @@
 
 typedef char GLchar;
 
+//  gl defines : --------------------------------------------------------------------- (section)  //
 #define GL_FRAGMENT_SHADER 0x8B30
 #define GL_VERTEX_SHADER   0x8B31
 #define GL_COMPILE_STATUS  0x8B81
 #define GL_LINK_STATUS     0x8B82
 #define GL_VALIDATE_STATUS 0x8B83
+//  (section) --------------------------------------------------------------------- : gl defines  //
 
+
+
+//  gl types : ----------------------------------------------------------------------- (section)  //
 typedef BOOL   wgl_swap_interval_ext(int interval);
 typedef GLuint gl_create_shader(GLenum type);
 typedef void
@@ -43,8 +49,10 @@ typedef void
 gl_get_program_info_log(GLuint program, GLsizei bufSize, GLsizei* length, GLchar* infoLog);
 typedef void gl_validate_program(GLuint program);
 typedef void gl_vertex_attrib3fv(GLuint index, const GLfloat* v);
+//  (section) ----------------------------------------------------------------------- : gl types  //
 
 
+//  gl globals : --------------------------------------------------------------------- (section)  //
 global wgl_swap_interval_ext*   wglSwapIntervalEXT;
 global gl_create_shader*        glCreateShader;
 global gl_shader_source*        glShaderSource;
@@ -69,6 +77,7 @@ global gl_get_programiv*        glGetProgramiv;
 global gl_get_program_info_log* glGetProgramInfoLog;
 global gl_validate_program*     glValidateProgram;
 global gl_vertex_attrib3fv*     glVertexAttrib3fv;
+//  (section) --------------------------------------------------------------------- : gl globals  //
 
 
 Enum(shader_program_kind, Cube, CubeWireFrame, General);
@@ -96,5 +105,5 @@ typedef struct {
 
 global gl_renderer_state GLBL_opengl_state;
 
-// --------------------------------------------------------------------------------------------- //
+//  (section) -------------------------------------------------------------- : Opengl interfaces  //
 #endif

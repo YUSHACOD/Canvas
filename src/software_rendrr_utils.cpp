@@ -1,8 +1,9 @@
 #ifndef CANVAS_UTILS_H
 #define CANVAS_UTILS_H
-// ---------------------------------------------------------------------------------------------- //
+//  Software renderer utils : -------------------------------------------------------- (section)  //
 
-#include "canvas.hpp"
+
+#include "canvas_platform.hpp"
 
 typedef struct {
     f32 x;
@@ -16,7 +17,8 @@ typedef struct {
 } Point;
 
 
-// Colors --------------------------------------------------------------------------------------- //
+//  Colors : ------------------------------------------------------------------------- (section)  //
+
 typedef struct {
     u8 red;
     u8 green;
@@ -51,7 +53,7 @@ typedef struct {
 #define LIME   Color{50, 205, 50, 0}
 #define GOLD   Color{255, 215, 0, 0}
 #define SILVER Color{192, 192, 192, 0}
-// Colors --------------------------------------------------------------------------------------- //
+//  (section) ------------------------------------------------------------------------- : Colors  //
 
 inline internal void DrawPixel(u32* draw_pixel, u8 red, u8 green, u8 blue, u8 pad) {
     *draw_pixel = ((u32)pad << 24) | ((u32)red << 16) | ((u32)green << 8) | ((u32)blue);
@@ -233,5 +235,5 @@ internal void ClearBitMap(canvas_bitmap* bitmap, u32 x_off, u32 y_off) {
     }
 }
 
-// ---------------------------------------------------------------------------------------------- //
+//  (section) -------------------------------------------------------- : Software renderer utils  //
 #endif

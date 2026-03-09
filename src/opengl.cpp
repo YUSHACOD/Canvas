@@ -8,6 +8,8 @@
 
 #include <cmath>
 
+
+//  loading gl funcs : --------------------------------------------------------------- (section)  //
 internal void GL_load_function_globals() {
     glCreateShader       = (gl_create_shader*)wglGetProcAddress("glCreateShader");
     glShaderSource       = (gl_shader_source*)wglGetProcAddress("glShaderSource");
@@ -33,7 +35,10 @@ internal void GL_load_function_globals() {
     glGetProgramInfoLog  = (gl_get_program_info_log*)wglGetProcAddress("glGetProgramInfoLog");
     glValidateProgram    = (gl_validate_program*)wglGetProcAddress("glValidateProgram");
 }
+//  (section) --------------------------------------------------------------- : loading gl funcs  //
 
+
+//  opengl init : -------------------------------------------------------------------- (section)  //
 internal void GLInit(HWND window_handle) {
 
     PIXELFORMATDESCRIPTOR pixel_format_desc = {};
@@ -87,7 +92,10 @@ internal void GLDeInit(HWND window_handle) {
         wglDeleteContext(rendering_context);
     }
 }
+//  (section) -------------------------------------------------------------------- : opengl init  //
 
+
+//  gl pipeline init : --------------------------------------------------------------- (section)  //
 #if DEBUG
 internal char* GLLoadShaderSource(shader_program_kind kind, char* suffix) {
     char buffer[512]  = "../../shaders/";
@@ -191,6 +199,37 @@ internal void GLLoadPrograms(gl_renderer_state* gl_state) {
             }
 }
 
+internal void GLPipeLineSetup(gl_renderer_state* gl_state, f32 aspect_ratio, GLuint vao_len) {
+
+    GLBL_opengl_state.vao_len      = vao_len;
+    GLBL_opengl_state.aspect_ratio = aspect_ratio;
+    GLLoadPrograms(gl_state);
+
+    // Vertex Array Object Creation
+    glCreateVertexArrays(gl_state->vao_len, &gl_state->vao_handle);
+    glBindVertexArray(gl_state->vao_handle);
+
+
+
+    glEnable(GL_DEPTH_TEST);
+    gl_state->is_valid = true;
+}
+
+// clang-format off
+internal void GlPipelineDelete(gl_renderer_state* gl_state) {
+	for EachEnumVal(shader_program_kind, idx) { 
+		glDeleteProgram(gl_state->program_handles[idx]);
+	}
+
+    glDeleteVertexArrays(gl_state->vao_len, &gl_state->vao_handle);
+}
+// clang-format on
+
+//  (section) --------------------------------------------------------------- : gl pipeline init  //
+
+
+
+//  frame setup : -------------------------------------------------------------------- (section)  //
 internal void
 GLLoadProjectionMatrix(f32* proj, f32 aspect_ratio, f32 fov_angle_radians, f32 z_near, f32 z_far) {
 
@@ -252,32 +291,6 @@ internal void GLLoadViewMatrix(f32* view_transform, v3 pos, v4 orientation) {
     // clang-format on
 }
 
-internal void GLPipeLineSetup(gl_renderer_state* gl_state, f32 aspect_ratio, GLuint vao_len) {
-
-    GLBL_opengl_state.vao_len      = vao_len;
-    GLBL_opengl_state.aspect_ratio = aspect_ratio;
-    GLLoadPrograms(gl_state);
-
-    // Vertex Array Object Creation
-    glCreateVertexArrays(gl_state->vao_len, &gl_state->vao_handle);
-    glBindVertexArray(gl_state->vao_handle);
-
-
-
-    glEnable(GL_DEPTH_TEST);
-    gl_state->is_valid = true;
-}
-
-// clang-format off
-internal void GlPipelineDelete(gl_renderer_state* gl_state) {
-	for EachEnumVal(shader_program_kind, idx) { 
-		glDeleteProgram(gl_state->program_handles[idx]);
-	}
-
-    glDeleteVertexArrays(gl_state->vao_len, &gl_state->vao_handle);
-}
-// clang-format on
-
 internal void GLFixProjection(gl_renderer_state* gl_state,
                               winplat_dimensions window,
                               winplat_dimensions display,
@@ -338,7 +351,11 @@ RNDR_INIT_FRAME(InitFrame) {
     }
     // clang-format on
 }
+//  (section) -------------------------------------------------------------------- : frame setup  //
 
+
+
+//  Renderer utils : ----------------------------------------------------------------- (section)  //
 void RenderClear(RC_clear2d cmd) {
 
     glUseProgram(GLBL_opengl_state.program_handles[General]);
@@ -385,3 +402,4 @@ RNDR_RENDER(Render) {
     RenderCubes(push_buffer.cube_buffer);
     RenderCubesWF(push_buffer.cube_wf_buffer);
 }
+//  (section) ----------------------------------------------------------------- : Renderer utils  //

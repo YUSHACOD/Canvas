@@ -1,6 +1,6 @@
 #ifndef CANVXS_GAME_H
 #define CANVXS_GAME_H
-// Game related stuff -------------------------------------------------------------------------- //
+//  Game related stuff : ------------------------------------------------------------- (section)  //
 
 #include "base/sugars.hpp"
 
@@ -21,5 +21,5 @@ typedef struct {
     f32 theta;
 } canvas_state;
 
-// Game related stuff -------------------------------------------------------------------------- //
+//  (section) ------------------------------------------------------------- : Game related stuff  //
 #endif

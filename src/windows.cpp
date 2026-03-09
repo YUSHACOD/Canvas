@@ -20,7 +20,7 @@
  * - Save Location
  * - Getting the Handle to our own executable???
  * - Threading
- * - Raw Input
+* - Raw Input
  * - Sleep / TimeBeginPeriod
  * - WM_SETCURSOR
  *
@@ -44,7 +44,7 @@
 #include <dsound.h>
 #include <malloc.h>
 
-// Globals -------------------------------------------------------------------------------------- //
+//  globals : ------------------------------------------------------------------------ (section)  //
 #define MAX_CANVAS_PATH 1028
 #define WINDOW_STYLE    (WS_TILEDWINDOW & ~WS_MINIMIZEBOX)
 
@@ -74,10 +74,9 @@ internal void LoadModulePath(char* path) {
 }
 
 internal void UnloadModulePath() { GLBL_module_path[GLBL_module_path_len] = '\0'; }
-// Globals -------------------------------------------------------------------------------------- //
+//  (section) ------------------------------------------------------------------------ : globals  //
 
-
-// Loading XInput ------------------------------------------------------------------------------- //
+//  xinput loading : ----------------------------------------------------------------- (section)  //
 #define XINPUT_GET(name) DWORD WINAPI name(DWORD UserIndex, XINPUT_STATE* State)
 typedef XINPUT_GET(xinput_get_state);
 XINPUT_GET(xInputGetStateStub) { return ERROR_DEVICE_NOT_CONNECTED; }
@@ -101,10 +100,10 @@ internal void WinPlatLoadXInput() {
         OutputDebugStringA("Couldn't Load XInput\n");
     }
 }
-// Loading XInput ------------------------------------------------------------------------------- //
+//  (section) ----------------------------------------------------------------- : xinput loading  //
 
 
-// Loading game code ---------------------------------------------------------------------------- //
+//  game code loading : -------------------------------------------------------------- (section)  //
 internal FILETIME WinPlatGetLastWriteTime(char* filename) {
 
     FILETIME last_write_time = {};
@@ -164,10 +163,9 @@ internal void WinPlatFreeGameCode(winplat_game_code* game_code) {
     game_code->is_valid        = false;
     game_code->update_and_draw = CanvasUpdateAndRenderStub;
 }
-// Loading game code ---------------------------------------------------------------------------- //
+//  (section) -------------------------------------------------------------- : game code loading  //
 
-
-// WinPlat Helpers ------------------------------------------------------------------------------ //
+//  winplat helpers : ---------------------------------------------------------------- (section)  //
 inline internal i64 WinPlatGetTime() {
     LARGE_INTEGER time_counter = {};
     QueryPerformanceCounter(&time_counter);
@@ -189,14 +187,16 @@ internal winplat_dimensions WinPlatGetDimensions(HWND window_handle) {
 
     return winplat_dimensions{width, height};
 }
+//  (section) ---------------------------------------------------------------- : winplat helpers  //
 
-// WinPlat Helpers ------------------------------------------------------------------------------ //
 
-
-// Renderer Helpers ----------------------------------------------------------------------------- //
+//  renderer helpers : --------------------------------------------------------------- (section)  //
 RNDR_ALLOCATE_PUSH_BUFFER(AllocatePushBuffer) {
-    push_buffer->cube_buffer.cubes = (RC_cube*)VirtualAlloc(
-        0, sizeof(RC_cube) * push_buffer->cube_buffer.size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+    push_buffer->cube_buffer.cubes =
+        (RC_cube*)VirtualAlloc(0,
+                               sizeof(RC_cube) * push_buffer->cube_buffer.size,
+                               MEM_RESERVE | MEM_COMMIT,
+                               PAGE_READWRITE);
 
     push_buffer->cube_wf_buffer.cubes =
         (RC_cube_wf*)VirtualAlloc(0,
@@ -209,10 +209,10 @@ RNDR_CLEAR_PUSH_BUFFER(ClearPushBuffer) {
     push_buffer->cube_buffer.count    = 0;
     push_buffer->cube_wf_buffer.count = 0;
 }
-// Renderer Helpers ----------------------------------------------------------------------------- //
+//  (section) --------------------------------------------------------------- : renderer helpers  //
 
 
-// Software Renderer Helpers -------------------------------------------------------------------- //
+//  bitmap : ------------------------------------------------------------------------- (section)  //
 internal void WinPlatCreateDibSection(winplat_off_screen_buffer* bitmap,
                                       winplat_dimensions         display_dim) {
 
@@ -238,7 +238,6 @@ internal void WinPlatCreateDibSection(winplat_off_screen_buffer* bitmap,
 
     bitmap->pitch = bitmap->width * bitmap->bytes_per_pixel;
 }
-
 
 
 internal void WinPlatDisplayBitmap(HDC                        device_ctx,
@@ -282,10 +281,10 @@ internal void WinPlatDisplayBitmap(HDC                        device_ctx,
                   DIB_RGB_COLORS,
                   SRCCOPY);
 }
-// Software Renderer Helpers -------------------------------------------------------------------- //
+//  (section) ------------------------------------------------------------------------- : bitmap  //
 
 
-// XInput Processing ---------------------------------------------------------------------------- //
+//  xinput processing : -------------------------------------------------------------- (section)  //
 internal void
 WinPlatProcessXInputButton(canvas_button_state* prev, canvas_button_state* next, bool is_set) {
     next->ended_down = is_set;
@@ -408,10 +407,10 @@ WinPlatProcessXInput(canvas_input* inputs, canvas_input* old_input, canvas_input
         }
     }
 }
-// XInput Processing ---------------------------------------------------------------------------- //
+//  (section) -------------------------------------------------------------- : xinput processing  //
 
 
-// Windows Message Processing ------------------------------------------------------------------- //
+//  wm message processing : ---------------------------------------------------------- (section)  //
 
 // Raymond Cheng toggle fullscreen function
 internal void ToggleFullScreen(HWND window_handle) {
@@ -607,12 +606,13 @@ internal LRESULT WinPlatWindowCallBack(HWND   window_handle,
 
     return result;
 }
-// Windows Message Processing ------------------------------------------------------------------- //
+//  (section) ---------------------------------------------------------- : wm message processing  //
 
 
 
-// Main Windows Entry Point --------------------------------------------------------------------- //
+//  main entry point : --------------------------------------------------------------- (section)  //
 i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int show_cmd) {
+
 
     GLBL_module_path_len = GetCurrentDirectoryA(MAX_CANVAS_PATH, GLBL_module_path);
     GLBL_module_path[GLBL_module_path_len++] = '\\';
@@ -672,8 +672,9 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
 
             GLBL_device_ctx = GetDC(window_handle);
 
-            // Opengl Pipeline Setup
+            //  opengl pipeline setup : ---------------------------------------------- (section)  //
 #if OPENGL
+
             GLPipeLineSetup(&GLBL_opengl_state, GLBL_aspect_ratio, 1);
 
             glEnable(GL_SCISSOR_TEST);
@@ -692,8 +693,9 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
 #endif
 
 
-            // Game Arena Allocations
+            //  game memory allocations : -------------------------------------------- (section)  //
             canvas_memory memory = {};
+
             memory.is_valid      = false;
             memory.perma_size    = MegaBytes(64);
 #ifdef DEBUG
@@ -713,20 +715,20 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
             memory.DBG_PlatWriteEntireFile = DBG_PlatWriteEntireFile;
 
 #endif
-            render_push_buffer r_push_buffer = {};
-            r_push_buffer.cube_buffer.size          = 100;
-            r_push_buffer.cube_wf_buffer.size       = 100;
+            render_push_buffer r_push_buffer  = {};
+            r_push_buffer.cube_buffer.size    = 100;
+            r_push_buffer.cube_wf_buffer.size = 100;
             AllocatePushBuffer(&r_push_buffer);
 
             // If arena is valid and nothing crashed until now then run
             GLBL_is_running = (memory.perma_store && memory.trans_store);
 
-            // Input Init
+            //  input init : --------------------------------------------------------- (section)  //
             canvas_input  inputs[2] = {};
             canvas_input* old_input = &inputs[0];
             canvas_input* new_input = &inputs[1];
 
-            // Gamecode Init
+            //  gamecode init : ------------------------------------------------------ (section)  //
             winplat_game_code game_code;
             DeferLoop(LoadModulePath(GLBL_game_dll_name), UnloadModulePath()) {
                 game_code = WinPlatLoadGameCode(GLBL_module_path);
@@ -735,13 +737,15 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
             bool window_shown = false;
             ShowCursor(false);
 
-            // Timing Init
+
+			//  timing init : -------------------------------------------------------- (section)  //
             winplat_time_counter last = {};
             WinPlatTimeQuery(&last);
 
+
             f64 time_elapsed = 0.0f;
 
-            // Main Loop ------------------------------------------------------------------------ //
+            //  main loop : ---------------------------------------------------------- (section)  //
             while (GLBL_is_running) {
 
 #ifdef DEBUG
@@ -761,9 +765,10 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
                 WinPlatProcessXInput(inputs, old_input, new_input);
 
 
-                // Game Layer
+				//  game layer call : ------------------------------------------------ (section)  //
                 game_code.update_and_draw(
                     &memory, &r_push_buffer, new_input, time_elapsed, &GLBL_is_running);
+
 
                 Render(r_push_buffer);
 
@@ -773,9 +778,10 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
                 Swap(canvas_input*, old_input, new_input);
                 SwapBuffers(GLBL_device_ctx);
 
-                // Timing ----------------------------------------------------------------------- //
+				//  timing : --------------------------------------------------------- (section)  //
                 winplat_time_counter end = {};
                 WinPlatTimeQuery(&end);
+
 
                 f64 mega_cylces_elapsed =
                     (((f64)end.cycle_count - (f64)last.cycle_count) / (1000.0f * 1000.0f));
@@ -823,18 +829,20 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
                         mega_cylces_elapsed);
                 // OutputDebugStringA(buffer);
 #endif
-                // Timing Stuff ----------------------------------------------------------------- //
+
+				// showing window after one frame is painted
                 if (!window_shown) {
                     ShowWindow(window_handle, show_cmd);
-					window_shown = true;
+                    window_shown = true;
                 }
             }
-            // Main Loop ------------------------------------------------------------------------ //
 
-            // Cleanup
+            //  cleanup : ------------------------------------------------------------ (section)  //
 #if OPENGL
             GLDeInit(window_handle);
             GlPipelineDelete(&GLBL_opengl_state);
+
+
 #else
 #endif
         } else {
@@ -846,4 +854,4 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
 
     return 0;
 }
-// Main Windows Entry Point --------------------------------------------------------------------- //
+//  (section) --------------------------------------------------------------- : main entry point  //

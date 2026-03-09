@@ -20,7 +20,8 @@ camera_control(canvas_state* state, canvas_input* input, render_push_buffer* pus
 }
 
 
-// Main Entry Point for the game code ---------------------------------------------------------- //
+//  Main entry point of the game code : ---------------------------------------------- (section)  //
+//
 extern "C" CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRender) {
 
 #ifdef DEBUG
@@ -64,8 +65,8 @@ extern "C" CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRender) {
     if (input->keyboard.Control.ended_down && input->keyboard.R.ended_down) {
         memset(state, 0, sizeof(canvas_state));
     }
-	
-	camera_control(state, input, push_buffer);
+
+    camera_control(state, input, push_buffer);
     // Input Handling -------------------------------------------------
 
 
@@ -98,13 +99,13 @@ extern "C" CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRender) {
     PushCube(push_buffer, cube);
 
     // Update cube_wf's
-    RC_cube_wf cube_w= {};
+    RC_cube_wf cube_w = {};
     cube_w.pos        = {0.0f, 0.0f, -50.0f};
     cube_w.scale      = {20.0f, 20.0f, 20.0f};
     cube_w.color      = {1.0f, 1.0f, 1.0f, 1.0f};
     PushCubeWF(push_buffer, cube_w);
 
-    RC_cube_wf cube0= {};
+    RC_cube_wf cube0 = {};
     cube0.pos        = {0.0f, 0.0f, -150.0f};
     cube0.scale      = {20.0f, 20.0f, 20.0f};
     cube0.color      = {0.0f, 0.0f, 0.0f, 1.0f};
@@ -116,22 +117,22 @@ extern "C" CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRender) {
     cube1.color      = {1.0f, 0.0f, 0.0f, 1.0f};
     PushCubeWF(push_buffer, cube1);
 
-    RC_cube_wf cube2= {};
+    RC_cube_wf cube2 = {};
     cube2.pos        = {50.0f, 0.0f, -100.0f};
     cube2.scale      = {20.0f, 20.0f, 20.0f};
     cube2.color      = {0.0f, 0.0f, 1.0f, 1.0f};
     PushCubeWF(push_buffer, cube2);
 
-    RC_cube_wf cube3= {};
+    RC_cube_wf cube3 = {};
     cube3.pos        = {0.0f, -50.0f, -100.0f};
     cube3.scale      = {20.0f, 20.0f, 20.0f};
     cube3.color      = {1.0f, 1.0f, 0.0f, 1.0f};
     PushCubeWF(push_buffer, cube3);
 
-    RC_cube_wf cube4= {};
+    RC_cube_wf cube4 = {};
     cube4.pos        = {0.0f, 50.0f, -100.0f};
     cube4.scale      = {20.0f, 20.0f, 20.0f};
     cube4.color      = {1.0f, 0.0f, 1.0f, 1.0f};
     PushCubeWF(push_buffer, cube4);
 }
-// Main Entry Point for the game code ---------------------------------------------------------- //
+//  (section) ---------------------------------------------- : Main entry point of the game code  //

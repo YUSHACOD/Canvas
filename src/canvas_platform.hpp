@@ -1,6 +1,6 @@
 #ifndef CANVAS_H
 #define CANVAS_H
-// The Game Interface --------------------------------------------------------------------------- //
+//  Game code interfaces : ----------------------------------------------------------- (section)  //
 
 #include "base/sugars.hpp"
 #include "windows_debug.hpp"
@@ -319,5 +319,5 @@ typedef struct {
 typedef CANVAS_UPDATE_AND_RENDER(canvas_update_and_draw);
 CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRenderStub);
 
-// ---------------------------------------------------------------------------------------------- //
+//  (section) ----------------------------------------------------------- : Game code interfaces  //
 #endif

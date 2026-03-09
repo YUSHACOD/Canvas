@@ -1,7 +1,7 @@
 #ifndef WIN_DEBUG
 #define WIN_DEBUG
-// Windows Debug Code / Utility Code to be converted into utility code -------------------------- //
-  
+//  windows debug code interfaces : -------------------------------------------------- (section)  //
+
 #include "base/sugars.hpp"
 
 typedef struct {
@@ -18,5 +18,5 @@ typedef DBG_PLAT_FREE_FILE_MEMORY(dbg_plat_free_file_memory);
 #define DBG_PLAT_WRITE_ENTIRE_FILE(name) bool name(char* file_name, void* memory, u32 memory_size)
 typedef DBG_PLAT_WRITE_ENTIRE_FILE(dbg_plat_write_entire_file);
 
-// Windows Debug Code / Utility Code to be converted into utility code -------------------------- //
+//  (section) -------------------------------------------------- : windows debug code interfaces  //
 #endif

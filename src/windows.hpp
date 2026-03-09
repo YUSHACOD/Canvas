@@ -1,11 +1,12 @@
 #ifndef WIN_LAYER_H
 #define WIN_LAYER_H
-// Structures Used by the Windows Layer -------------------------------------------------------- //
+//  Windows interfaces : ------------------------------------------------------------- (section)  //
 
 #include <windows.h>
 
 #include "base/sugars.hpp"
 #include "canvas_platform.hpp"
+
 
 #define OPENGL 1
 
@@ -41,5 +42,5 @@ typedef struct {
     u64 cycle_count;
 } winplat_time_counter;
 
-// --------------------------------------------------------------------------------------------- //
+//  (section) ------------------------------------------------------------- : Windows interfaces  //
 #endif
