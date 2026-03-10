@@ -6,7 +6,7 @@
 #include <windows.h>
 #include <GL\gl.h>
 
-#include "base/sugars.hpp"
+#include "base/include.cpp"
 
 typedef char GLchar;
 

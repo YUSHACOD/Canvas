@@ -1,5 +1,5 @@
 
-#include "base/sugars.hpp"
+#include "base/include.cpp"
 
 #include "canvas_platform.hpp"
 #include "canvas_game.hpp"
@@ -33,11 +33,11 @@ draw_grid(render_push_buffer* push_buffer, v3 pos, u32 rows, u32 cols, f32 pad, 
 
 
                 RC_cube cube = {0};
-
                 V3_veci(cube.pos,
                         (pad + size) * x - x_off,
                         (pad + size) * y - y_off,
                         (pad + size) * z - (z_off * 3.8f));
+                cube.rotation = euler_to_quat(DegToRad(0), DegToRad(145), DegToRad(45));
 
                 V3_veci(cube.scale, size, size, size);
                 // V4_colori(cube.color, 1.0f, 1.0f, 0.0f, 1.0f);
@@ -94,14 +94,23 @@ extern "C" CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRender) {
         memset(state, 0, sizeof(canvas_state));
     }
 
-    camera_control(state, input, push_buffer);
+
+	//  todo(debug camera) : --------------------------------------------------------- (section)  //
+    // state->debug_camera_mode =
+    //     (input->keyboard.Control.ended_down && input->keyboard.Num4.ended_down)
+
+    //         ? !(state->debug_camera_mode)
+    //         : (state->debug_camera_mode);
+
+    // if (state->debug_camera_mode) {
+        camera_control(state, input, push_buffer);
+    // }
     //  ----------------------------------------------------------------------------------------  //
 
 
 
     //  test updates and draws : ----------------------------------------------------- (section)  //
     f64 dt = time_elapsed * 0.001f;
-
 
     // Update clear color
     f32 red_shift      = ((f32)sin(dt) * 0.5f + 0.5f);
@@ -121,11 +130,13 @@ extern "C" CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRender) {
     v4 cube_color = {1.0, 1.0, 1.0f, 1.0f};
 
     // Draw cube
-    RC_cube_wf cube = {};
+    RC_cube cube = {};
     V3_veci(cube.pos, 0.0f, 0.0f, -100.0f);
     V3_veci(cube.scale, 20.0f, 20.0f, 20.0f);
+    // cube.rotation =
+    //     euler_to_quat(DegToRad(state->y_off), DegToRad(state->x_off), DegToRad(state->z_off));
     cube.color = corn_blue;
-    // PushCubeWF(push_buffer, cube);
+    // PushCube(push_buffer, cube);
 
     // Update cube_wf's
     if (0) {
@@ -167,6 +178,7 @@ extern "C" CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRender) {
     }
 
     V3_vecd(pos, 0.0f, 0.0f, 0.0f);
-    draw_grid(push_buffer, pos, 5, 5, 5.0f, 20.0f);
+    f32 t = ((f32)cos(dt) * 0.5f + 0.5f);
+    draw_grid(push_buffer, pos, 5, 5, Lerp(t, 15.0f, 75.0f), 20.0f);
 }
 //  (section) ---------------------------------------------------------------- : main game entry  //

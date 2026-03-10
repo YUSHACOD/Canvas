@@ -331,7 +331,7 @@ RNDR_INIT_FRAME(InitFrame) {
 #define Z_NEAR -0.1f
 #define Z_FAR  -1000.0f
     GLLoadProjectionMatrix(
-        proj, GLBL_opengl_state.aspect_ratio, DegreestoRadians(60.0f), Z_NEAR, Z_FAR);
+        proj, GLBL_opengl_state.aspect_ratio, DegToRad(60.0f), Z_NEAR, Z_FAR);
 
     f32 view[16];
     GLLoadViewMatrix(view, push_buffer.camera.pos, push_buffer.camera.orientation);

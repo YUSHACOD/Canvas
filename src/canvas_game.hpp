@@ -2,7 +2,7 @@
 #define CANVXS_GAME_H
 //  Game related stuff : ------------------------------------------------------------- (section)  //
 
-#include "base/sugars.hpp"
+#include "base/include.cpp"
 
 typedef struct {
     f32 jx;
@@ -14,11 +14,14 @@ typedef struct {
 
     f32 weight;
 
+
     f32 dx;
     f32 dy;
     f32 dz;
 
     f32 theta;
+
+	bool debug_camera_mode;
 } canvas_state;
 
 //  (section) ------------------------------------------------------------- : Game related stuff  //
