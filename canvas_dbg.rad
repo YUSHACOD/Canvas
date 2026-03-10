@@ -16,10 +16,10 @@ recent_file: path: "d:/os/obj/amd64fre/minkernel/crts/ucrt/src/appcrt/startup/mt
 debug_info:
 {
   path: "C:/Users/91724/cpp/canvas/build/debug/Canvxs.pdb"
-  timestamp: 66208756221289
+  timestamp: 66208922461444
 }
 debug_info:
 {
   path: "C:/Users/91724/cpp/canvas/build/debug/canvas.pdb"
-  timestamp: 66208756221505
+  timestamp: 66208922481888
 }

@@ -30,8 +30,11 @@
  *
  */
 
+#include <windows.h>
+#include <stdio.h>
+#include <math.h>
+#include <xinput.h>
 
-#include "base/sugars.hpp"
 #include "windows.hpp"
 #include "canvas_platform.hpp"
 #include "renderer.hpp"
@@ -39,11 +42,6 @@
 
 #include "opengl.cpp"
 
-#include <stdio.h>
-#include <math.h>
-#include <xinput.h>
-#include <dsound.h>
-#include <malloc.h>
 
 //  globals : ------------------------------------------------------------------------ (section)  //
 #define MAX_CANVAS_PATH 1028
@@ -717,8 +715,8 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
 
 #endif
             render_push_buffer r_push_buffer  = {};
-            r_push_buffer.cube_buffer.size    = 100;
-            r_push_buffer.cube_wf_buffer.size = 100;
+            r_push_buffer.cube_buffer.size    = 200;
+            r_push_buffer.cube_wf_buffer.size = 200;
             AllocatePushBuffer(&r_push_buffer);
 
             // If arena is valid and nothing crashed until now then run
