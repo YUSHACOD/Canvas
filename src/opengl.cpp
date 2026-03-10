@@ -264,7 +264,7 @@ GLLoadProjectionMatrix(f32* proj, f32 aspect_ratio, f32 fov_angle_radians, f32 z
     // );
 }
 
-internal void GLLoadViewMatrix(f32* view_transform, v3 pos, v4 orientation) {
+internal void GLLoadViewMatrix(f32* view_transform, v3 pos, quat orientation) {
 
     f32 _00 = 1.0f;
     f32 _01 = 0.0f;

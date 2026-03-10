@@ -11,17 +11,17 @@ typedef struct {
 } RC_clear2d;
 
 typedef struct {
-    v3 pos;
-    v3 scale;
-    v4 rotation;
-    v4 color;
+    v3   pos;
+    v3   scale;
+    quat rotation;
+    v4   color;
 } RC_cube;
 
 typedef struct {
-    v3 pos;
-    v3 scale;
-    v4 rotation;
-    v4 color;
+    v3   pos;
+    v3   scale;
+    quat rotation;
+    v4   color;
 } RC_cube_wf;
 
 typedef struct {
@@ -37,9 +37,9 @@ typedef struct {
 } RG_cube_wf;
 
 typedef struct {
-    f32 fov;
-    v3  pos;
-    v4  orientation;
+    f32  fov;
+    v3   pos;
+    quat orientation;
 } render_camera;
 
 typedef struct {

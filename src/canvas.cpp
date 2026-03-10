@@ -20,7 +20,12 @@ camera_control(canvas_state* state, canvas_input* input, render_push_buffer* pus
 }
 
 
-//  Main entry point of the game code : ---------------------------------------------- (section)  //
+internal void draw_grid(v3 pos, u32 rows, u32 cols, f32 pad) {
+
+}
+
+
+//  main game entry : ---------------------------------------------------------------- (section)  //
 //
 extern "C" CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRender) {
 
@@ -33,7 +38,7 @@ extern "C" CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRender) {
         memory->is_valid = true;
     }
 
-    // Input Handling -------------------------------------------------
+    //  input handling : ------------------------------------------------------------- (section)  //
     canvas_controller_input* input1 = &input->gamepads[0];
 
     state->jx = (200.0f * input1->LeftStickX.end);
@@ -67,12 +72,13 @@ extern "C" CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRender) {
     }
 
     camera_control(state, input, push_buffer);
-    // Input Handling -------------------------------------------------
+    //  ----------------------------------------------------------------------------------------  //
 
 
 
-    // Test Updates and Draws ----------------------------------------------------------
+    //  test updates and draws : ----------------------------------------------------- (section)  //
     f64 dt = time_elapsed * 0.001f;
+
 
     // Update clear color
     f32 red_shift      = ((f32)sin(dt) * 0.5f + 0.5f);
@@ -93,40 +99,40 @@ extern "C" CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRender) {
 
     // Draw cube
     RC_cube cube = {};
-    cube.pos     = {0.0f, 0.0f, -100.0f};
-    cube.scale   = {20.0f, 20.0f, 20.0f};
-    cube.color   = corn_blue;
+    V3_veci(cube.pos, 0.0f, 0.0f, -100.0f);
+    V3_veci(cube.scale, 20.0f, 20.0f, 20.0f);
+    cube.color = corn_blue;
     PushCube(push_buffer, cube);
 
     // Update cube_wf's
     RC_cube_wf cube_w = {};
-    cube_w.pos        = {0.0f, 0.0f, -50.0f};
-    cube_w.scale      = {20.0f, 20.0f, 20.0f};
-    cube_w.color      = {1.0f, 1.0f, 1.0f, 1.0f};
+    V3_veci(cube_w.pos, 0.0f, 0.0f, -50.0f);
+    V3_veci(cube_w.scale, 20.0f, 20.0f, 20.0f);
+    V4_colori(cube_w.color, 1.0f, 1.0f, 1.0f, 1.0f);
     PushCubeWF(push_buffer, cube_w);
 
     RC_cube_wf cube0 = {};
-    cube0.pos        = {0.0f, 0.0f, -150.0f};
-    cube0.scale      = {20.0f, 20.0f, 20.0f};
-    cube0.color      = {0.0f, 0.0f, 0.0f, 1.0f};
+    V3_veci(cube0.pos, 0.0f, 0.0f, -150.0f);
+    V3_veci(cube0.scale, 20.0f, 20.0f, 20.0f);
+    V4_colori(cube0.color, 0.0f, 0.0f, 0.0f, 1.0f);
     PushCubeWF(push_buffer, cube0);
 
     RC_cube_wf cube1 = {};
-    cube1.pos        = {-50.0f, 0.0f, -100.0f};
-    cube1.scale      = {20.0f, 20.0f, 20.0f};
-    cube1.color      = {1.0f, 0.0f, 0.0f, 1.0f};
+    V3_veci(cube1.pos, -50.0f, 0.0f, -100.0f);
+    V3_veci(cube1.scale, 20.0f, 20.0f, 20.0f);
+    V4_colori(cube1.color, 1.0f, 0.0f, 0.0f, 1.0f);
     PushCubeWF(push_buffer, cube1);
 
     RC_cube_wf cube2 = {};
-    cube2.pos        = {50.0f, 0.0f, -100.0f};
-    cube2.scale      = {20.0f, 20.0f, 20.0f};
-    cube2.color      = {0.0f, 0.0f, 1.0f, 1.0f};
+    V3_veci(cube2.pos, 50.0f, 0.0f, -100.0f);
+    V3_veci(cube2.scale, 20.0f, 20.0f, 20.0f);
+    V4_colori(cube2.color, 0.0f, 0.0f, 1.0f, 1.0f);
     PushCubeWF(push_buffer, cube2);
 
     RC_cube_wf cube3 = {};
-    cube3.pos        = {0.0f, -50.0f, -100.0f};
-    cube3.scale      = {20.0f, 20.0f, 20.0f};
-    cube3.color      = {1.0f, 1.0f, 0.0f, 1.0f};
+    V3_veci(cube3.pos, 0.0f, -50.0f, -100.0f);
+    V3_veci(cube3.scale, 20.0f, 20.0f, 20.0f);
+    V4_colori(cube3.color, 1.0f, 1.0f, 0.0f, 1.0f);
     PushCubeWF(push_buffer, cube3);
 
     RC_cube_wf cube4 = {};
@@ -134,5 +140,9 @@ extern "C" CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRender) {
     cube4.scale      = {20.0f, 20.0f, 20.0f};
     cube4.color      = {1.0f, 0.0f, 1.0f, 1.0f};
     PushCubeWF(push_buffer, cube4);
+
+    V3_vecd(pos, 0.0f, 0.0f, 0.0f);
+    draw_grid(pos, 5, 5, 10.0f);
+
 }
-//  (section) ---------------------------------------------- : Main entry point of the game code  //
+//  (section) ---------------------------------------------------------------- : main game entry  //

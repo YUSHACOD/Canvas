@@ -31,6 +31,7 @@
  */
 
 
+#include "base/sugars.hpp"
 #include "windows.hpp"
 #include "canvas_platform.hpp"
 #include "renderer.hpp"

@@ -26,14 +26,14 @@ typedef struct {
 } winplat_dimensions;
 
 typedef struct {
-    HMODULE                   game_lib;
+    HMODULE                 game_lib;
     canvas_update_and_draw* update_and_draw;
-    bool                      is_valid;
-    FILETIME                  last_write_time;
+    bool                    is_valid;
+    FILETIME                last_write_time;
 } winplat_game_code;
 
 typedef struct {
-    u32          count;
+    u32           count;
     canvas_input* input_stream;
 } winplat_input_record;
 
