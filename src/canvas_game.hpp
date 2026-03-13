@@ -19,9 +19,17 @@ typedef struct {
     f32 dy;
     f32 dz;
 
-    f32 theta;
+    i8 x;
+    i8 y;
 
-	bool debug_camera_mode;
+    f32 anim_t;
+
+    v3 prev_pos;
+	v3 piece_pos;
+
+	bool is_moving;
+
+    bool debug_camera_mode;
 } canvas_state;
 
 //  (section) ------------------------------------------------------------- : Game related stuff  //

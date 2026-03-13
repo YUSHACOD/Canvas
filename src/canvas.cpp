@@ -11,13 +11,13 @@
 #include <math.h>
 
 // #include "canvas_utils.cpp"
+#include "canvas_math.cpp"
 #include "renderer.cpp"
 
 inline void
 camera_control(canvas_state* state, canvas_input* input, render_push_buffer* push_buffer) {
 
     Mat4_I(view_mat);
-
     V3_vecd(pos, -state->x_off, -state->y_off, -state->z_off);
 
     view_mat.vec4 = pos;
@@ -48,7 +48,7 @@ inline void set_camera_to_look_at(render_push_buffer* push_buffer, v3 at, v3 fro
 
 
 internal void
-draw_grid(render_push_buffer* push_buffer, v3 pos, u32 rows, u32 cols, f32 pad, f32 size) {
+draw_grid3d(render_push_buffer* push_buffer, v3 pos, u32 rows, u32 cols, f32 pad, f32 size) {
 
     f32 x_off = ((size + pad) * (cols - 1)) / 2;
     f32 y_off = ((size + pad) * (rows - 1)) / 2;
@@ -59,21 +59,41 @@ draw_grid(render_push_buffer* push_buffer, v3 pos, u32 rows, u32 cols, f32 pad, 
             for (u32 z = 0; z < cols; z += 1) {
 
 
-                RC_cube cube = {0};
+                RC_cube_wf cube = {0};
                 V3_veci(cube.pos,
                         (pad + size) * x - x_off,
                         (pad + size) * y - y_off,
                         (pad + size) * z - z_off);
-                cube.rotation = euler_to_quat(DegToRad(0), DegToRad(145), DegToRad(45));
+                // cube.rotation = euler_to_quat(DegToRad(0), DegToRad(145), DegToRad(45));
 
                 V3_veci(cube.scale, size, size, size);
-                // V4_colori(cube.color, 1.0f, 1.0f, 0.0f, 1.0f);
-                PushCube(push_buffer, cube);
+                V4_colori(cube.color, 0.5f, 0.5f, 0.5f, 1.0f);
+                PushCubeWF(push_buffer, cube);
             }
         }
     }
 }
 
+internal void
+draw_grid2d(render_push_buffer* push_buffer, v3 pos, u32 rows, u32 cols, f32 pad, f32 size) {
+
+    f32 x_off = ((size + pad) * (cols - 1)) / 2;
+    f32 z_off = ((size + pad) * (rows - 1)) / 2;
+
+    for (u32 x = 0; x < cols; x += 1) {
+        for (u32 z = 0; z < cols; z += 1) {
+
+
+            RC_cube_wf cube = {0};
+            V3_veci(cube.pos, (pad + size) * x - x_off, 0, (pad + size) * z - z_off);
+            // cube.rotation = euler_to_quat(DegToRad(0), DegToRad(145), DegToRad(45));
+
+            V3_veci(cube.scale, size, size, size);
+            V4_colori(cube.color, 0.5f, 0.5f, 0.5f, 1.0f);
+            PushCubeWF(push_buffer, cube);
+        }
+    }
+}
 
 //  main game entry : ---------------------------------------------------------------- (section)  //
 //
@@ -137,7 +157,7 @@ extern "C" CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRender) {
 
 
     //  test updates and draws : ----------------------------------------------------- (section)  //
-    f64 dt = time_elapsed * 0.001f;
+    f64 dt = time_elapsed * 0.0007f;
 
     // Update clear color
     f32 red_shift      = ((f32)sin(dt) * 0.5f + 0.5f);
@@ -149,74 +169,36 @@ extern "C" CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRender) {
     v4 corn_blue = {0.494f, 0.620f, 0.969f, 1.0};
 
     // Draw clear
-    RC_clear2d clear = {};
-    clear.color      = changing_color;
+    RC_clear2d clear = {0};
+    clear.color      = corn_blue;
     PushClear(push_buffer, clear);
 
-    // Update cube
-    v4 cube_color = {1.0, 1.0, 1.0f, 1.0f};
 
-    // Draw cube
-    RC_cube cube = {};
-    V3_veci(cube.pos, 0, 0, -50.0f);
-    V3_veci(cube.scale, 20.0f, 20.0f, 20.0f);
-    // cube.rotation =
-    //     euler_to_quat(DegToRad(state->y_off), DegToRad(state->x_off), DegToRad(state->z_off));
-    cube.color = corn_blue;
-    // PushCube(push_buffer, cube);
-
-
-    // Update cube_wf's
-    if (0) {
-        RC_cube_wf cube_w = {};
-        V3_veci(cube_w.pos, 0.0f, 0.0f, -50.0f);
-        V3_veci(cube_w.scale, 20.0f, 20.0f, 20.0f);
-        V4_colori(cube_w.color, 1.0f, 1.0f, 1.0f, 1.0f);
-        PushCubeWF(push_buffer, cube_w);
-
-        RC_cube_wf cube0 = {};
-        V3_veci(cube0.pos, 0.0f, 0.0f, -150.0f);
-        V3_veci(cube0.scale, 20.0f, 20.0f, 20.0f);
-        V4_colori(cube0.color, 0.0f, 0.0f, 0.0f, 1.0f);
-        PushCubeWF(push_buffer, cube0);
-
-        RC_cube_wf cube1 = {};
-        V3_veci(cube1.pos, -50.0f, 0.0f, -100.0f);
-        V3_veci(cube1.scale, 20.0f, 20.0f, 20.0f);
-        V4_colori(cube1.color, 1.0f, 0.0f, 0.0f, 1.0f);
-        PushCubeWF(push_buffer, cube1);
-
-        RC_cube_wf cube2 = {};
-        V3_veci(cube2.pos, 50.0f, 0.0f, -100.0f);
-        V3_veci(cube2.scale, 20.0f, 20.0f, 20.0f);
-        V4_colori(cube2.color, 0.0f, 0.0f, 1.0f, 1.0f);
-        PushCubeWF(push_buffer, cube2);
-
-        RC_cube_wf cube3 = {};
-        V3_veci(cube3.pos, 0.0f, -50.0f, -100.0f);
-        V3_veci(cube3.scale, 20.0f, 20.0f, 20.0f);
-        V4_colori(cube3.color, 1.0f, 1.0f, 0.0f, 1.0f);
-        PushCubeWF(push_buffer, cube3);
-
-        RC_cube_wf cube4 = {};
-        cube4.pos        = {0.0f, 50.0f, -100.0f};
-        cube4.scale      = {20.0f, 20.0f, 20.0f};
-        cube4.color      = {1.0f, 0.0f, 1.0f, 1.0f};
-        PushCubeWF(push_buffer, cube4);
-    }
-
-
-    V3_vecd(pos, 0.0f, 0.0f, -50.0f);
-    // f32 t = ((f32)cos(dt) * 0.5f + 0.5f);
+    V3_vecd(pos, 0.0f, 0.0f, 0.0f);
+    f32 t = ((f32)cos(dt) * 0.5f + 0.5f);
     // draw_grid(push_buffer, pos, 5, 5, Lerp(t, 15.0f, 75.0f), 20.0f);
-    draw_grid(push_buffer, pos, 5, 5, 30.0f, 20.0f);
+    draw_grid2d(push_buffer, pos, 8, 8, 10.f, 20.f);
 
-    f32 r = 200.0f;
-    V3_veci(pos, 0.f, 0.f, 0.f);
-    V3_vecd(vantage_point,
-            ((f32)cos(dt) * r) + cube.pos.x,
-            0.0f + cube.pos.y,
-            ((f32)sin(dt) * r) + cube.pos.z);
-    set_camera_to_look_at(push_buffer, pos, vantage_point);
+    V3_vecd(vp, 0.0f, 100.0f, -200.0f);
+    set_camera_to_look_at(push_buffer, pos, vp);
+
+	// RC_cube piece = {0};
+	// V3_veci(piece.scale, 20.f, 20.f, 20.f);
+	// PushCube(push_buffer, piece);
+	
+
+
+    if (0) { // random bezier move
+
+        V3_vecd(a, 150.f, 120.f, -400.f);
+        V3_vecd(c, -180.f, -180.f, 400.f);
+
+        V3_vecd(b, 484.f, 260.f, 0.f);
+
+
+        f32 r = 200.0f;
+        // V3_vecd(vantage_point, 25.f, -52.f, Lerp(t, -320.f, 320.f));
+        set_camera_to_look_at(push_buffer, pos, quad_bezier(a, b, c, t));
+    }
 }
 //  (section) ---------------------------------------------------------------- : main game entry  //

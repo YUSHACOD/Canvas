@@ -4,23 +4,24 @@
 #pragma comment(lib, "opengl32.lib")
 
 
+
+//  Todo : -------------------------------------------------------------------------- (section)  //
 /*
  * TODO: Seperating the Platform layer
  *
  * Next ->
- * - helpers to create projection / model-view matrix
+ * - mouse input WM_MOUSEMOVE
  * - Bug: input clear when window is not focused
  * - Buffering projection, model-view mats
  * - world limit definition
- * - debug camera (that means first have to implement quaternions and other rotation mechs)
+ * - debug camera
  * - maze generation from cubes
  *
  *
- *
  * - Save Location
- * - Getting the Handle to our own executable???
+ * - Getting the Handle to our own executable??? for what?
  * - Threading
-* - Raw Input
+ * - Raw Input
  * - Sleep / TimeBeginPeriod
  * - WM_SETCURSOR
  *
@@ -695,8 +696,8 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
             //  game memory allocations : -------------------------------------------- (section)  //
             canvas_memory memory = {};
 
-            memory.is_valid      = false;
-            memory.perma_size    = MegaBytes(64);
+            memory.is_valid   = false;
+            memory.perma_size = MegaBytes(64);
 #ifdef DEBUG
             LPVOID base_address = (LPVOID)TeraBytes(2);
 #else
@@ -715,8 +716,8 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
 
 #endif
             render_push_buffer r_push_buffer  = {};
-            r_push_buffer.cube_buffer.size    = 200;
-            r_push_buffer.cube_wf_buffer.size = 200;
+            r_push_buffer.cube_buffer.size    = 300;
+            r_push_buffer.cube_wf_buffer.size = 300;
             AllocatePushBuffer(&r_push_buffer);
 
             // If arena is valid and nothing crashed until now then run
@@ -737,7 +738,7 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
             ShowCursor(false);
 
 
-			//  timing init : -------------------------------------------------------- (section)  //
+            //  timing init : -------------------------------------------------------- (section)  //
             winplat_time_counter last = {};
             WinPlatTimeQuery(&last);
 
@@ -764,9 +765,9 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
                 WinPlatProcessXInput(inputs, old_input, new_input);
 
 
-				//  game layer call : ------------------------------------------------ (section)  //
-				V3_vecd(v, 4, -2, -1);
-				v3 sol = normal(v);
+                //  game layer call : ------------------------------------------------ (section)  //
+                V3_vecd(v, 4, -2, -1);
+                v3 sol = normal(v);
                 game_code.update_and_draw(
                     &memory, &r_push_buffer, new_input, time_elapsed, &GLBL_is_running);
 
@@ -779,7 +780,7 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
                 Swap(canvas_input*, old_input, new_input);
                 SwapBuffers(GLBL_device_ctx);
 
-				//  timing : --------------------------------------------------------- (section)  //
+                //  timing : --------------------------------------------------------- (section)  //
                 winplat_time_counter end = {};
                 WinPlatTimeQuery(&end);
 
@@ -831,7 +832,7 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
                 // OutputDebugStringA(buffer);
 #endif
 
-				// showing window after one frame is painted
+                // showing window after one frame is painted
                 if (!window_shown) {
                     ShowWindow(window_handle, show_cmd);
                     window_shown = true;
