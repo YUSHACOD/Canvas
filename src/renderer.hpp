@@ -43,10 +43,10 @@ typedef struct {
 } render_camera;
 
 typedef struct {
-    RG_cube       cube_buffer;
-    RG_cube_wf    cube_wf_buffer;
-    RC_clear2d    clear;
-    render_camera camera;
+    RG_cube    cube_buffer;
+    RG_cube_wf cube_wf_buffer;
+    RC_clear2d clear;
+    mat4       view_mat;
 } render_push_buffer;
 
 //  platform layer declares : -------------------------------------------------------- (section)  //

@@ -765,6 +765,8 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
 
 
 				//  game layer call : ------------------------------------------------ (section)  //
+				V3_vecd(v, 4, -2, -1);
+				v3 sol = normal(v);
                 game_code.update_and_draw(
                     &memory, &r_push_buffer, new_input, time_elapsed, &GLBL_is_running);
 

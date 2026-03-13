@@ -333,12 +333,10 @@ RNDR_INIT_FRAME(InitFrame) {
     GLLoadProjectionMatrix(
         proj, GLBL_opengl_state.aspect_ratio, DegToRad(60.0f), Z_NEAR, Z_FAR);
 
-    f32 view[16];
-    GLLoadViewMatrix(view, push_buffer.camera.pos, push_buffer.camera.orientation);
 
     f32* uniforms[EnumCount(uniform_kind)] = {0};
     uniforms[ProjMat]                      = proj;
-    uniforms[ViewMat]                      = view;
+    uniforms[ViewMat]                      = push_buffer.view_mat.arr;
 
     // clang-format off
     for EachEnumVal(shader_program_kind, shdr) {
