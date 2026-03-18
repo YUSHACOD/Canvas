@@ -4,30 +4,44 @@
 
 #include "base/include.cpp"
 
-typedef struct {
-    f32 jx;
-    f32 jy;
+#define PIECE_SIZE 20.0f
+#define PIECE_MOVE_TIME 125.f
 
+typedef struct {
+    f32 t;
+	f32 t1;
+    v3  prev_position;
+    v3  current_position;
+} PieceAnimation;
+
+typedef struct {
+    u8  x;
+    u8  y;
+	u8  z;
+} Piece;
+
+typedef struct {
+    u8  rows;
+    u8  cols;
+	u8  layers;
+    v3  pos;
+    f32 cube_size;
+} Grid;
+
+typedef struct {
+
+#if DEBUG
     f32 x_off;
     f32 y_off;
     f32 z_off;
 
-    f32 weight;
+    f32 dt;
+#endif
 
+    Grid grid;
 
-    f32 dx;
-    f32 dy;
-    f32 dz;
-
-    i8 x;
-    i8 y;
-
-    f32 anim_t;
-
-    v3 prev_pos;
-	v3 piece_pos;
-
-	bool is_moving;
+    Piece          piece;
+    PieceAnimation p_anim;
 
     bool debug_camera_mode;
 } canvas_state;

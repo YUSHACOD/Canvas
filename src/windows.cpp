@@ -820,7 +820,7 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
 #ifdef DEBUG
                 counter_elapsed  = WinPlatGetTime() - temp;
                 f64 ms_per_frame = (1000.0f * (f64)counter_elapsed) / (f64)perf_counter_freq;
-                time_elapsed += ms_per_frame;
+                time_elapsed = ms_per_frame;
                 f64  fps = 1000.0f / ms_per_frame;
                 char buffer[256];
 

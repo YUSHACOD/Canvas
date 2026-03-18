@@ -209,8 +209,6 @@ internal void GLPipeLineSetup(gl_renderer_state* gl_state, f32 aspect_ratio, GLu
     glCreateVertexArrays(gl_state->vao_len, &gl_state->vao_handle);
     glBindVertexArray(gl_state->vao_handle);
 
-
-
     glEnable(GL_DEPTH_TEST);
     gl_state->is_valid = true;
 }
@@ -330,8 +328,7 @@ RNDR_INIT_FRAME(InitFrame) {
     f32 proj[16] = {};
 #define Z_NEAR -0.1f
 #define Z_FAR  -1000.0f
-    GLLoadProjectionMatrix(
-        proj, GLBL_opengl_state.aspect_ratio, DegToRad(60.0f), Z_NEAR, Z_FAR);
+    GLLoadProjectionMatrix(proj, GLBL_opengl_state.aspect_ratio, DegToRad(60.0f), Z_NEAR, Z_FAR);
 
 
     f32* uniforms[EnumCount(uniform_kind)] = {0};

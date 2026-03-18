@@ -42,57 +42,70 @@ inline void set_camera_to_look_at(render_push_buffer* push_buffer, v3 at, v3 fro
     V3_veci(view_mat.vec4, -(x_a * from), -(y_a * from), (z_a * from));
 
     push_buffer->view_mat = view_mat;
-
-    NoOp;
 }
 
+internal v3 grid_to_world_pos(Grid grid, u8 x, u8 y, u8 z) {
 
-internal void
-draw_grid3d(render_push_buffer* push_buffer, v3 pos, u32 rows, u32 cols, f32 pad, f32 size) {
+    f32 size = grid.cube_size;
 
-    f32 x_off = ((size + pad) * (cols - 1)) / 2;
-    f32 y_off = ((size + pad) * (rows - 1)) / 2;
-    f32 z_off = ((size + pad) * (rows - 1)) / 2;
+    f32 x_off = (size * (grid.cols - 1)) / 2;
+    f32 y_off = (size * (grid.layers - 1)) / 2;
+    f32 z_off = (size * (grid.rows - 1)) / 2;
 
-    for (u32 y = 0; y < rows; y += 1) {
-        for (u32 x = 0; x < cols; x += 1) {
-            for (u32 z = 0; z < cols; z += 1) {
+    v3 res = {0};
+    V3_veci(res,
+            size * x - x_off + grid.pos.x,
+            size * y - y_off + grid.pos.y,
+            (-size * z) + z_off + grid.pos.z);
 
+    return res;
+}
+
+internal void draw_grid3d(render_push_buffer* push_buffer, Grid grid) {
+
+    f32 size = grid.cube_size;
+
+    for (u32 y = 0; y < grid.layers; y += 1) {
+        for (u32 z = 0; z < grid.rows; z += 1) {
+            for (u32 x = 0; x < grid.cols; x += 1) {
 
                 RC_cube_wf cube = {0};
-                V3_veci(cube.pos,
-                        (pad + size) * x - x_off,
-                        (pad + size) * y - y_off,
-                        (pad + size) * z - z_off);
-                // cube.rotation = euler_to_quat(DegToRad(0), DegToRad(145), DegToRad(45));
 
+                cube.pos = grid_to_world_pos(grid, (u8)x, (u8)y, (u8)z);
                 V3_veci(cube.scale, size, size, size);
                 V4_colori(cube.color, 0.5f, 0.5f, 0.5f, 1.0f);
+
                 PushCubeWF(push_buffer, cube);
             }
         }
     }
 }
 
-internal void
-draw_grid2d(render_push_buffer* push_buffer, v3 pos, u32 rows, u32 cols, f32 pad, f32 size) {
+internal void draw_grid2d(render_push_buffer* push_buffer, Grid grid) {
 
-    f32 x_off = ((size + pad) * (cols - 1)) / 2;
-    f32 z_off = ((size + pad) * (rows - 1)) / 2;
+    f32 size = grid.cube_size;
 
-    for (u32 x = 0; x < cols; x += 1) {
-        for (u32 z = 0; z < cols; z += 1) {
 
+    for (u32 z = 0; z < grid.rows; z += 1) {
+        for (u32 x = 0; x < grid.cols; x += 1) {
 
             RC_cube_wf cube = {0};
-            V3_veci(cube.pos, (pad + size) * x - x_off, 0, (pad + size) * z - z_off);
-            // cube.rotation = euler_to_quat(DegToRad(0), DegToRad(145), DegToRad(45));
 
+            cube.pos = grid_to_world_pos(grid, (u8)x, 0, (u8)z);
+            // cube.pos.y = 0.0f;
             V3_veci(cube.scale, size, size, size);
-            V4_colori(cube.color, 0.5f, 0.5f, 0.5f, 1.0f);
+            V4_colori(cube.color, 1.0f, 1.0f, 1.0f, 0.0f);
+
             PushCubeWF(push_buffer, cube);
         }
     }
+}
+
+internal void draw_piece(canvas_state* state, render_push_buffer* push_buffer) {
+    RC_cube piece = {0};
+    piece.pos     = grid_to_world_pos(state->grid, state->piece.x, state->piece.y, state->piece.z);
+    V3_veci(piece.scale, PIECE_SIZE, PIECE_SIZE, PIECE_SIZE);
+    PushCube(push_buffer, piece);
 }
 
 //  main game entry : ---------------------------------------------------------------- (section)  //
@@ -108,11 +121,17 @@ extern "C" CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRender) {
         memory->is_valid = true;
     }
 
+    //  game state init : ------------------------------------------------------------ (section)  //
+    state->grid.cube_size = 20.f;
+    state->grid.rows      = 2;
+    state->grid.cols      = 8;
+    state->grid.layers    = 1;
+
+
     //  input handling : ------------------------------------------------------------- (section)  //
     canvas_controller_input* input1 = &input->gamepads[0];
 
-    state->jx = (200.0f * input1->LeftStickX.end);
-    state->jy = (200.0f * input1->LeftStickY.end);
+
 
     f32 input_factor = 1.0f;
     state->x_off -= (input1->Left.ended_down) ? input_factor : 0.0f;
@@ -121,8 +140,6 @@ extern "C" CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRender) {
     state->y_off += (input1->Up.ended_down) ? input_factor : 0.0f;
     state->y_off -= (input1->Down.ended_down) ? input_factor : 0.0f;
 
-    state->weight += (5.0f * input1->RightTrigger.end);
-    state->weight -= (5.0f * input1->LeftTrigger.end);
 
     if (input1->Stop.ended_down) {
         *running = false;
@@ -136,6 +153,34 @@ extern "C" CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRender) {
 
     state->z_off += (input->keyboard.S.ended_down) ? input_factor : 0.0f;
     state->z_off -= (input->keyboard.W.ended_down) ? input_factor : 0.0f;
+
+    state->p_anim.t1 += (f32)time_elapsed;
+    if ((state->p_anim.t1 - state->p_anim.t) >= 0) {
+        if (input->keyboard.D.ended_down) {
+            state->p_anim.t = (f32)state->p_anim.t1 + PIECE_MOVE_TIME;
+            if (state->piece.x < (state->grid.cols - 1)) {
+                state->piece.x += 1;
+            }
+        }
+        if (input->keyboard.A.ended_down) {
+            state->p_anim.t = (f32)state->p_anim.t1 + PIECE_MOVE_TIME;
+            if (state->piece.x >= 1) {
+                state->piece.x -= 1;
+            }
+        }
+        if (input->keyboard.W.ended_down) {
+            state->p_anim.t = (f32)state->p_anim.t1 + PIECE_MOVE_TIME;
+            if (state->piece.z < (state->grid.rows - 1)) {
+                state->piece.z += 1;
+            }
+        }
+        if (input->keyboard.S.ended_down) {
+            state->p_anim.t = (f32)state->p_anim.t1 + PIECE_MOVE_TIME;
+            if (state->piece.z >= 1) {
+                state->piece.z -= 1;
+            }
+        }
+    }
 
     if (input->keyboard.Control.ended_down && input->keyboard.R.ended_down) {
         memset(state, 0, sizeof(canvas_state));
@@ -157,12 +202,12 @@ extern "C" CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRender) {
 
 
     //  test updates and draws : ----------------------------------------------------- (section)  //
-    f64 dt = time_elapsed * 0.0007f;
+    state->dt += (f32)time_elapsed * 0.0005f;
 
     // Update clear color
-    f32 red_shift      = ((f32)sin(dt) * 0.5f + 0.5f);
+    f32 red_shift      = ((f32)sin(state->dt) * 0.5f + 0.5f);
     f32 green_shift    = 0.0f;
-    f32 blue_shift     = ((f32)cos(dt) * 0.5f + 0.5f);
+    f32 blue_shift     = ((f32)cos(state->dt) * 0.5f + 0.5f);
     v4  changing_color = {red_shift, green_shift, blue_shift, 1.0f};
 
     // v4 color = {0.1f, 0.1f, 0.1f, 1.0f};
@@ -174,22 +219,17 @@ extern "C" CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRender) {
     PushClear(push_buffer, clear);
 
 
-    V3_vecd(pos, 0.0f, 0.0f, 0.0f);
-    f32 t = ((f32)cos(dt) * 0.5f + 0.5f);
-    // draw_grid(push_buffer, pos, 5, 5, Lerp(t, 15.0f, 75.0f), 20.0f);
-    draw_grid2d(push_buffer, pos, 8, 8, 10.f, 20.f);
+    f32 t = ((f32)cos(state->dt) * 0.5f + 0.5f);
 
-    V3_vecd(vp, 0.0f, 100.0f, -200.0f);
+    V3_vecd(pos, 0.0f, 0.0f, 0.0f);
+    draw_grid2d(push_buffer, state->grid);
+
+    V3_vecd(vp, 0.0f, 70.0f, 150.0f);
     set_camera_to_look_at(push_buffer, pos, vp);
 
-	// RC_cube piece = {0};
-	// V3_veci(piece.scale, 20.f, 20.f, 20.f);
-	// PushCube(push_buffer, piece);
-	
-
+    draw_piece(state, push_buffer);
 
     if (0) { // random bezier move
-
         V3_vecd(a, 150.f, 120.f, -400.f);
         V3_vecd(c, -180.f, -180.f, 400.f);
 
