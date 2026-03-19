@@ -44,7 +44,7 @@ inline void set_camera_to_look_at(render_push_buffer* push_buffer, v3 at, v3 fro
     push_buffer->view_mat = view_mat;
 }
 
-internal v3 grid_to_world_pos(Grid grid, u8 x, u8 y, u8 z) {
+internal v3 grid_to_world_pos(Grid grid, GridPos pos) {
 
     f32 size = grid.cube_size;
 
@@ -54,9 +54,9 @@ internal v3 grid_to_world_pos(Grid grid, u8 x, u8 y, u8 z) {
 
     v3 res = {0};
     V3_veci(res,
-            size * x - x_off + grid.pos.x,
-            size * y - y_off + grid.pos.y,
-            (-size * z) + z_off + grid.pos.z);
+            size * pos.x - x_off + grid.pos.x,
+            size * pos.y - y_off + grid.pos.y,
+            (-size * pos.z) + z_off + grid.pos.z);
 
     return res;
 }
@@ -71,7 +71,7 @@ internal void draw_grid3d(render_push_buffer* push_buffer, Grid grid) {
 
                 RC_cube_wf cube = {0};
 
-                cube.pos = grid_to_world_pos(grid, (u8)x, (u8)y, (u8)z);
+                cube.pos = grid_to_world_pos(grid, {(u8)x, (u8)y, (u8)z});
                 V3_veci(cube.scale, size, size, size);
                 V4_colori(cube.color, 0.5f, 0.5f, 0.5f, 1.0f);
 
@@ -91,7 +91,7 @@ internal void draw_grid2d(render_push_buffer* push_buffer, Grid grid) {
 
             RC_cube_wf cube = {0};
 
-            cube.pos = grid_to_world_pos(grid, (u8)x, 0, (u8)z);
+            cube.pos = grid_to_world_pos(grid, {(u8)x, 0, (u8)z});
             // cube.pos.y = 0.0f;
             V3_veci(cube.scale, size, size, size);
             V4_colori(cube.color, 1.0f, 1.0f, 1.0f, 0.0f);
@@ -101,9 +101,52 @@ internal void draw_grid2d(render_push_buffer* push_buffer, Grid grid) {
     }
 }
 
+float easeInOutQuad(float x) {
+    if (x < 0.5f) {
+        return 2.0f * x * x;
+    } else {
+        float t = -2.0f * x + 2.0f;
+        return 1.0f - (t * t) / 2.0f;
+    }
+}
+
+float easeInQuart(f32 x) {
+	return x * x * x * x;
+}
+
+float easeInOutBack(float x) {
+    const float c1 = 1.70158f;
+    const float c2 = c1 * 1.525f;
+
+    if (x < 0.5f) {
+        float t = 2.0f * x;
+        return (t * t * ((c2 + 1.0f) * t - c2)) / 2.0f;
+    } else {
+        float t = 2.0f * x - 2.0f;
+        return (t * t * ((c2 + 1.0f) * t + c2) + 2.0f) / 2.0f;
+    }
+}
+
 internal void draw_piece(canvas_state* state, render_push_buffer* push_buffer) {
     RC_cube piece = {0};
-    piece.pos     = grid_to_world_pos(state->grid, state->piece.x, state->piece.y, state->piece.z);
+
+    if (state->p_anim.active) {
+        f32 lerp_off = (state->p_anim.t / PIECE_MOVE_TIME);
+        if (lerp_off >= 1.f) {
+            state->p_anim.active = false;
+			state->p_anim.t = 0.f;
+        }
+        lerp_off = ClampTop(lerp_off, 1);
+		lerp_off = easeInOutBack(lerp_off);
+
+        piece.pos = lerp(grid_to_world_pos(state->grid, state->piece.pos),
+                         state->p_anim.prev_position,
+                         lerp_off);
+    } else {
+
+        piece.pos = grid_to_world_pos(state->grid, state->piece.pos);
+    }
+
     V3_veci(piece.scale, PIECE_SIZE, PIECE_SIZE, PIECE_SIZE);
     PushCube(push_buffer, piece);
 }
@@ -123,7 +166,7 @@ extern "C" CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRender) {
 
     //  game state init : ------------------------------------------------------------ (section)  //
     state->grid.cube_size = 20.f;
-    state->grid.rows      = 2;
+    state->grid.rows      = 8;
     state->grid.cols      = 8;
     state->grid.layers    = 1;
 
@@ -154,33 +197,42 @@ extern "C" CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRender) {
     state->z_off += (input->keyboard.S.ended_down) ? input_factor : 0.0f;
     state->z_off -= (input->keyboard.W.ended_down) ? input_factor : 0.0f;
 
-    state->p_anim.t1 += (f32)time_elapsed;
-    if ((state->p_anim.t1 - state->p_anim.t) >= 0) {
+    if (!state->p_anim.active) {
         if (input->keyboard.D.ended_down) {
-            state->p_anim.t = (f32)state->p_anim.t1 + PIECE_MOVE_TIME;
-            if (state->piece.x < (state->grid.cols - 1)) {
-                state->piece.x += 1;
+            if (state->piece.pos.x < (state->grid.cols - 1)) {
+				state->p_anim.t += (f32)time_elapsed;
+                state->p_anim.active        = true;
+                state->p_anim.prev_position = grid_to_world_pos(state->grid, state->piece.pos);
+                state->piece.pos.x += 1;
             }
         }
         if (input->keyboard.A.ended_down) {
-            state->p_anim.t = (f32)state->p_anim.t1 + PIECE_MOVE_TIME;
-            if (state->piece.x >= 1) {
-                state->piece.x -= 1;
+            if (state->piece.pos.x >= 1) {
+				state->p_anim.t += (f32)time_elapsed;
+                state->p_anim.active        = true;
+                state->p_anim.prev_position = grid_to_world_pos(state->grid, state->piece.pos);
+                state->piece.pos.x -= 1;
             }
         }
         if (input->keyboard.W.ended_down) {
-            state->p_anim.t = (f32)state->p_anim.t1 + PIECE_MOVE_TIME;
-            if (state->piece.z < (state->grid.rows - 1)) {
-                state->piece.z += 1;
+            if (state->piece.pos.z < (state->grid.rows - 1)) {
+				state->p_anim.t += (f32)time_elapsed;
+                state->p_anim.active        = true;
+                state->p_anim.prev_position = grid_to_world_pos(state->grid, state->piece.pos);
+                state->piece.pos.z += 1;
             }
         }
         if (input->keyboard.S.ended_down) {
-            state->p_anim.t = (f32)state->p_anim.t1 + PIECE_MOVE_TIME;
-            if (state->piece.z >= 1) {
-                state->piece.z -= 1;
+            if (state->piece.pos.z >= 1) {
+				state->p_anim.t += (f32)time_elapsed;
+                state->p_anim.active        = true;
+                state->p_anim.prev_position = grid_to_world_pos(state->grid, state->piece.pos);
+                state->piece.pos.z -= 1;
             }
         }
-    }
+    } else {
+		state->p_anim.t += (f32)time_elapsed;
+	}
 
     if (input->keyboard.Control.ended_down && input->keyboard.R.ended_down) {
         memset(state, 0, sizeof(canvas_state));

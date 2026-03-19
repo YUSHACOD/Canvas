@@ -4,26 +4,29 @@
 
 #include "base/include.cpp"
 
-#define PIECE_SIZE 20.0f
-#define PIECE_MOVE_TIME 125.f
+#define PIECE_SIZE      20.0f
+#define PIECE_MOVE_TIME 500.f
 
 typedef struct {
-    f32 t;
-	f32 t1;
-    v3  prev_position;
-    v3  current_position;
+    u8 x;
+    u8 y;
+    u8 z;
+} GridPos;
+
+typedef struct {
+    f32     t;
+    v3 prev_position;
+    bool    active;
 } PieceAnimation;
 
 typedef struct {
-    u8  x;
-    u8  y;
-	u8  z;
+	GridPos pos;
 } Piece;
 
 typedef struct {
     u8  rows;
     u8  cols;
-	u8  layers;
+    u8  layers;
     v3  pos;
     f32 cube_size;
 } Grid;
