@@ -43,7 +43,7 @@ internal void GL_load_function_globals() {
 
 
 //  opengl init : -------------------------------------------------------------------- (section)  //
-internal void GLInit(HWND window_handle) {
+internal void GL_Init(HWND window_handle) {
 
     // NOTE: Bootstrap a dummy context to load WGL extension functions,
     //       which are required to create a Core Profile context for RenderDoc.
@@ -78,7 +78,7 @@ internal void GLInit(HWND window_handle) {
 
     // NOTE: Must use wglChoosePixelFormatARB (not ChoosePixelFormat) when
     //       going through the ARB context creation path.
-    const int pf_attribs[] = {0x2001,
+    const i32 pf_attribs[] = {0x2001,
                               1, // WGL_DRAW_TO_WINDOW_ARB
                               0x2010,
                               1, // WGL_SUPPORT_OPENGL_ARB
@@ -104,7 +104,7 @@ internal void GLInit(HWND window_handle) {
     SetPixelFormat(device_ctx, pixel_fmt_idx, &pixel_fmt_desc_final);
 
     // NOTE: Core Profile flag is the critical piece RenderDoc hooks into.
-    const int ctx_attribs[] = {0x2091,
+    const i32 ctx_attribs[] = {0x2091,
                                4, // WGL_CONTEXT_MAJOR_VERSION_ARB
                                0x2092,
                                6, // WGL_CONTEXT_MINOR_VERSION_ARB
@@ -132,7 +132,7 @@ internal void GLInit(HWND window_handle) {
 }
 
 
-internal void GLDeInit(HWND window_handle) {
+internal void GL_Release(HWND window_handle) {
 
     HGLRC rendering_context = wglGetCurrentContext();
 
@@ -149,7 +149,7 @@ internal void GLDeInit(HWND window_handle) {
 
 //  gl pipeline init : --------------------------------------------------------------- (section)  //
 #if DEBUG
-internal char* GLLoadShaderSource(shader_program_kind kind, char* suffix) {
+internal char* GL_load_shader_source(shader_program_kind kind, char* suffix) {
     char buffer[512]  = "../../shaders/";
     i32  buff_pre_len = 14;
     i32  path_len;
@@ -166,18 +166,18 @@ internal char* GLLoadShaderSource(shader_program_kind kind, char* suffix) {
 }
 #endif
 
-internal void GLLoadShaders(gl_renderer_state* gl_state) {
+internal void GL_load_shaders(gl_renderer_state* gl_state) {
         for
             EachEnumVal(shader_program_kind, idx) {
                 GLchar* vertex_source;
                 GLchar* fragment_source;
                 {
                     char vert_suffix[] = "_vertex.glsl";
-                    vertex_source      = GLLoadShaderSource(idx, vert_suffix);
+                    vertex_source      = GL_load_shader_source(idx, vert_suffix);
                 }
                 {
                     char frag_suffix[] = "_fragment.glsl";
-                    fragment_source    = GLLoadShaderSource(idx, frag_suffix);
+                    fragment_source    = GL_load_shader_source(idx, frag_suffix);
                 }
 
                 GLuint vertex_shader   = glCreateShader(GL_VERTEX_SHADER);
@@ -251,7 +251,7 @@ internal void GLLoadShaders(gl_renderer_state* gl_state) {
             }
 }
 
-internal void GLLoadTextures(gl_renderer_state* rs) {
+internal void GL_load_textures(gl_renderer_state* rs) {
     glGenTextures(1, &rs->texture_handle);
     glBindTexture(GL_TEXTURE_2D, rs->texture_handle);
 
@@ -275,24 +275,24 @@ internal void GLLoadTextures(gl_renderer_state* rs) {
     stbi_image_free(data);
 }
 
-internal void GLPipeLineSetup(gl_renderer_state* gl_state, f32 aspect_ratio, GLuint vao_len) {
+internal void GL_PipeLineSetup(gl_renderer_state* gl_state, f32 aspect_ratio, GLuint vao_len) {
 
     ogl_state.vao_len      = vao_len;
     ogl_state.aspect_ratio = aspect_ratio;
-    GLLoadShaders(gl_state);
+    GL_load_shaders(gl_state);
 
     // Vertex Array Object Creation
     glCreateVertexArrays(gl_state->vao_len, &gl_state->vao_handle);
     glBindVertexArray(gl_state->vao_handle);
 
-    GLLoadTextures(gl_state);
+    GL_load_textures(gl_state);
 
     glEnable(GL_DEPTH_TEST);
     gl_state->is_valid = true;
 }
 
 // clang-format off
-internal void GlPipelineDelete(gl_renderer_state* gl_state) {
+internal void GL_PipelineDelete(gl_renderer_state* gl_state) {
 	for EachEnumVal(shader_program_kind, idx) { 
 		glDeleteProgram(gl_state->program_handles[idx]);
 	}
@@ -307,7 +307,7 @@ internal void GlPipelineDelete(gl_renderer_state* gl_state) {
 
 //  frame setup : -------------------------------------------------------------------- (section)  //
 internal void
-GLLoadProjectionMatrix(f32* proj, f32 aspect_ratio, f32 fov_angle_radians, f32 z_near, f32 z_far) {
+GL_load_projection_matrix(f32* proj, f32 aspect_ratio, f32 fov_angle_radians, f32 z_near, f32 z_far) {
 
     f32 fov = 1.0f / tan(fov_angle_radians / 2.0f);
 
@@ -340,7 +340,7 @@ GLLoadProjectionMatrix(f32* proj, f32 aspect_ratio, f32 fov_angle_radians, f32 z
     // );
 }
 
-internal void GLLoadViewMatrix(f32* view_transform, v3 pos, quat orientation) {
+internal void GL_load_view_matrix(f32* view_transform, v3 pos, quat orientation) {
 
     f32 _00 = 1.0f;
     f32 _01 = 0.0f;
@@ -367,7 +367,7 @@ internal void GLLoadViewMatrix(f32* view_transform, v3 pos, quat orientation) {
     // clang-format on
 }
 
-internal void GLFixProjection(gl_renderer_state* gl_state, winplat_dimensions window) {
+internal void GL_FixProjection(gl_renderer_state* gl_state, winplat_dimensions window) {
 
     f32 window_aspect_ratio = (f32)window.width / (f32)window.height;
     gl_state->aspect_ratio  = window_aspect_ratio;
@@ -375,7 +375,7 @@ internal void GLFixProjection(gl_renderer_state* gl_state, winplat_dimensions wi
     glViewport(0, 0, window.width, window.height);
 }
 
-RNDR_INIT_FRAME(InitFrame) {
+void GL_init_frame(render_push_buffer* push_buffer) {
 
     glUseProgram(ogl_state.program_handles[General]);
 
@@ -385,7 +385,7 @@ RNDR_INIT_FRAME(InitFrame) {
     f32 proj[16] = {};
 #define Z_NEAR -0.1f
 #define Z_FAR  -1000.0f
-    GLLoadProjectionMatrix(proj, ogl_state.aspect_ratio, DegToRad(60.0f), Z_NEAR, Z_FAR);
+    GL_load_projection_matrix(proj, ogl_state.aspect_ratio, DegToRad(60.0f), Z_NEAR, Z_FAR);
 
 
     f32* uniforms[EnumCount(uniform_kind)] = {0};
@@ -408,14 +408,14 @@ RNDR_INIT_FRAME(InitFrame) {
 
 
 //  Renderer utils : ----------------------------------------------------------------- (section)  //
-void RenderClear(RC_clear2d cmd) {
+void GL_render_clear(RC_clear2d cmd) {
 
     glUseProgram(ogl_state.program_handles[General]);
     glClearBufferfv(GL_COLOR, 0, (GLfloat*)cmd.color.arr);
 }
 
 
-void RenderCubes(RG_cube rg) {
+void GL_render_cubes(RG_cube rg) {
     glUseProgram(ogl_state.program_handles[Cube]);
 
     // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -432,7 +432,7 @@ void RenderCubes(RG_cube rg) {
     // glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 }
 
-void RenderCubesWF(RG_cube_wf rg) {
+void GL_render_cubes_wf(RG_cube_wf rg) {
     glUseProgram(ogl_state.program_handles[CubeWireFrame]);
 
     for (u32 idx = 0; idx < rg.count; idx++) {
@@ -447,11 +447,11 @@ void RenderCubesWF(RG_cube_wf rg) {
     }
 }
 
-RNDR_RENDER(Render) {
-    InitFrame(push_buffer);
+R_RENDER(R_Render) {
+    GL_init_frame(push_buffer);
 
-    RenderClear(push_buffer->clear);
-    RenderCubes(push_buffer->cube_buffer);
-    RenderCubesWF(push_buffer->cube_wf_buffer);
+    GL_render_clear(push_buffer->clear);
+    GL_render_cubes(push_buffer->cube_buffer);
+    GL_render_cubes_wf(push_buffer->cube_wf_buffer);
 }
 //  (section) ----------------------------------------------------------------- : Renderer utils  //

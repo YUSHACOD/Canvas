@@ -3,9 +3,9 @@
 
 #include "renderer.hpp"
 
-PUSH_CLEAR(PushClear) { push_buffer->clear.color = clear.color; }
+R_PUSH_CLEAR(R_PushClear) { push_buffer->clear.color = clear.color; }
 
-PUSH_CUBE(PushCube) {
+R_PUSH_CUBE(R_PushCube) {
     u32 idx = push_buffer->cube_buffer.count;
 
     if (idx < push_buffer->cube_buffer.size) {
@@ -17,7 +17,7 @@ PUSH_CUBE(PushCube) {
     }
 }
 
-PUSH_CUBE_WF(PushCubeWF) {
+R_PUSH_CUBE_WF(R_PushCubeWF) {
     u32 idx = push_buffer->cube_wf_buffer.count;
 
     if (idx < push_buffer->cube_wf_buffer.size) {

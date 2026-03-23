@@ -79,7 +79,7 @@ internal void draw_grid3d(render_push_buffer* push_buffer, Grid grid) {
                 V3_veci(cube.scale, size, size, size);
                 V4_colori(cube.color, grey, grey, grey, 1.0f);
 
-                PushCubeWF(push_buffer, cube);
+                R_PushCubeWF(push_buffer, cube);
             }
         }
     }
@@ -100,7 +100,7 @@ internal void draw_grid2d(render_push_buffer* push_buffer, Grid grid) {
             V3_veci(cube.scale, size, size, size);
             V4_colori(cube.color, 1.0f, 1.0f, 1.0f, 0.0f);
 
-            PushCubeWF(push_buffer, cube);
+            R_PushCubeWF(push_buffer, cube);
         }
     }
 }
@@ -133,7 +133,7 @@ internal void draw_piece(canvas_state* state, render_push_buffer* push_buffer) {
         V3_veci(piece.scale, PIECE_SIZE, PIECE_SIZE, PIECE_SIZE);
     }
 
-    PushCube(push_buffer, piece);
+    R_PushCube(push_buffer, piece);
 }
 
 f32 triangle_wave(f32 time_ms, f32 period_ms) {
@@ -286,7 +286,7 @@ extern "C" CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRender) {
     RC_clear2d clear = {0};
     // clear.color      = corn_blue;
 	// V4_colori(clear.color, 0.1f, .1f, .1f, 1.f);
-    PushClear(push_buffer, clear);
+    R_PushClear(push_buffer, clear);
 
 
     // f32 t = ((f32)cos(state->dt) * 0.5f + 0.5f);

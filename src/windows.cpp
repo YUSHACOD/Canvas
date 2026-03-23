@@ -65,7 +65,7 @@ global winplat_main_ctx          wp_ctx;
 global char wp_module_path[MAX_CANVAS_PATH];
 global i32  wp_module_path_len;
 
-internal void LoadModulePath(char* path) {
+internal void load_module_path(char* path) {
     for (i32 i = wp_module_path_len; i < MAX_CANVAS_PATH; i += 1) {
         if (path[i - wp_module_path_len] == 0) {
             break;
@@ -74,7 +74,7 @@ internal void LoadModulePath(char* path) {
     }
 }
 
-internal void UnloadModulePath() { wp_module_path[wp_module_path_len] = '\0'; }
+internal void unload_module_path() { wp_module_path[wp_module_path_len] = '\0'; }
 //  (section) ------------------------------------------------------------------------ : globals  //
 
 //  xinput loading : ----------------------------------------------------------------- (section)  //
@@ -90,7 +90,7 @@ XINPUT_SET(xInputSetStateStub) { return ERROR_DEVICE_NOT_CONNECTED; }
 global xinput_set_state* XInputSetState_ = xInputSetStateStub;
 #define XInputSetState XInputSetState_
 
-internal void WinPlatLoadXInput() {
+internal void WP_load_xinput() {
 
     HMODULE XInputLibrary = LoadLibraryA("xinput1_3.dll");
 
@@ -105,7 +105,7 @@ internal void WinPlatLoadXInput() {
 
 
 //  game code loading : -------------------------------------------------------------- (section)  //
-internal FILETIME WinPlatGetLastWriteTime(char* filename) {
+internal FILETIME WP_get_last_writeTime(char* filename) {
 
     FILETIME last_write_time = {};
 
@@ -118,7 +118,7 @@ internal FILETIME WinPlatGetLastWriteTime(char* filename) {
 }
 
 CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRenderStub) {}
-internal winplat_game_code WinPlatLoadGameCode(char* source_dll_path) {
+internal winplat_game_code WP_load_game_code(char* source_dll_path) {
 
     winplat_game_code result = {};
     result.update_and_draw   = CanvasUpdateAndRenderStub;
@@ -141,7 +141,7 @@ internal winplat_game_code WinPlatLoadGameCode(char* source_dll_path) {
 #endif
 
     if (result.game_lib) {
-        result.last_write_time = WinPlatGetLastWriteTime(source_dll_path);
+        result.last_write_time = WP_get_last_writeTime(source_dll_path);
         result.update_and_draw =
             (canvas_update_and_draw*)GetProcAddress(result.game_lib, "CanvasUpdateAndRender");
 
@@ -155,7 +155,7 @@ internal winplat_game_code WinPlatLoadGameCode(char* source_dll_path) {
     return result;
 }
 
-internal void WinPlatFreeGameCode(winplat_game_code* game_code) {
+internal void WP_free_game_code(winplat_game_code* game_code) {
 
     if (game_code->game_lib) {
         FreeLibrary(game_code->game_lib);
@@ -167,18 +167,18 @@ internal void WinPlatFreeGameCode(winplat_game_code* game_code) {
 //  (section) -------------------------------------------------------------- : game code loading  //
 
 //  winplat helpers : ---------------------------------------------------------------- (section)  //
-inline internal i64 WinPlatGetTime() {
+inline internal i64 WP_get_time() {
     LARGE_INTEGER time_counter = {};
     QueryPerformanceCounter(&time_counter);
     return time_counter.QuadPart;
 }
 
-inline internal void WinPlatTimeQuery(winplat_time_counter* q) {
-    q->counter     = WinPlatGetTime();
+inline internal void WP_time_query(winplat_time_counter* q) {
+    q->counter     = WP_get_time();
     q->cycle_count = __rdtsc();
 }
 
-internal winplat_dimensions WinPlatGetDimensions(HWND window_handle) {
+internal winplat_dimensions WP_get_dimensions(HWND window_handle) {
 
     RECT client_rect;
     GetClientRect(window_handle, &client_rect);
@@ -192,7 +192,7 @@ internal winplat_dimensions WinPlatGetDimensions(HWND window_handle) {
 
 
 //  renderer helpers : --------------------------------------------------------------- (section)  //
-RNDR_ALLOCATE_PUSH_BUFFER(AllocatePushBuffer) {
+R_ALLOCATE_PUSH_BUFFER(R_AllocatePushBuffer) {
     push_buffer->cube_buffer.cubes =
         (RC_cube*)VirtualAlloc(0,
                                sizeof(RC_cube) * push_buffer->cube_buffer.size,
@@ -206,7 +206,7 @@ RNDR_ALLOCATE_PUSH_BUFFER(AllocatePushBuffer) {
                                   PAGE_READWRITE);
 }
 
-RNDR_CLEAR_PUSH_BUFFER(ClearPushBuffer) {
+R_CLEAR_PUSH_BUFFER(R_ClearPushBuffer) {
     push_buffer->cube_buffer.count    = 0;
     push_buffer->cube_wf_buffer.count = 0;
 }
@@ -214,8 +214,8 @@ RNDR_CLEAR_PUSH_BUFFER(ClearPushBuffer) {
 
 
 //  bitmap : ------------------------------------------------------------------------- (section)  //
-internal void WinPlatCreateDibSection(winplat_off_screen_buffer* bitmap,
-                                      winplat_dimensions         display_dim) {
+internal void WP_fill_bitmap_info(winplat_off_screen_buffer* bitmap,
+                                  winplat_dimensions         display_dim) {
 
     if (bitmap->memory) {
         VirtualFree(bitmap->memory, 0, MEM_RELEASE);
@@ -241,11 +241,11 @@ internal void WinPlatCreateDibSection(winplat_off_screen_buffer* bitmap,
 }
 
 
-internal void WinPlatDisplayBitmap(HDC                        device_ctx,
-                                   winplat_off_screen_buffer* bitmap,
-                                   winplat_dimensions         window_size,
-                                   winplat_dimensions         display_size,
-                                   f32                        display_aspect_ratio) {
+internal void WP_display_bitmap(HDC                        device_ctx,
+                                winplat_off_screen_buffer* bitmap,
+                                winplat_dimensions         window_size,
+                                winplat_dimensions         display_size,
+                                f32                        display_aspect_ratio) {
 
     u32 dest_width  = window_size.width;
     u32 dest_height = window_size.height;
@@ -287,20 +287,20 @@ internal void WinPlatDisplayBitmap(HDC                        device_ctx,
 
 //  xinput processing : -------------------------------------------------------------- (section)  //
 internal void
-WinPlatProcessXInputButton(canvas_button_state* prev, canvas_button_state* next, bool is_set) {
+WP_process_xinput_button(canvas_button_state* prev, canvas_button_state* next, bool is_set) {
     next->ended_down = is_set;
     next->transition += (prev->ended_down ^ next->ended_down) ? 1 : 0;
 }
 
 internal void
-WinPlatProcessXInputAnalog(canvas_analog_state* prev, canvas_analog_state* next, f32 val) {
+WP_process_xinput_analog(canvas_analog_state* prev, canvas_analog_state* next, f32 val) {
     next->end = next->min = next->max = val;
     next->start                       = prev->end;
 }
 
 
 internal void
-WinPlatProcessXInput(canvas_input* inputs, canvas_input* old_input, canvas_input* new_input) {
+WP_process_xinput(canvas_input* inputs, canvas_input* old_input, canvas_input* new_input) {
 
     u32 max_controller_count = XUSER_MAX_COUNT;
 
@@ -357,42 +357,42 @@ WinPlatProcessXInput(canvas_input* inputs, canvas_input* old_input, canvas_input
             canvas_controller_input* new_controller = &(new_input->gamepads[idx]);
 
             // Digital ------------------------------------------------------------------- //
-            WinPlatProcessXInputButton(&old_controller->Up, &new_controller->Up, Up);
-            WinPlatProcessXInputButton(&old_controller->Down, &new_controller->Down, Down);
-            WinPlatProcessXInputButton(&old_controller->Left, &new_controller->Left, Left);
-            WinPlatProcessXInputButton(&old_controller->Right, &new_controller->Right, Right);
+            WP_process_xinput_button(&old_controller->Up, &new_controller->Up, Up);
+            WP_process_xinput_button(&old_controller->Down, &new_controller->Down, Down);
+            WP_process_xinput_button(&old_controller->Left, &new_controller->Left, Left);
+            WP_process_xinput_button(&old_controller->Right, &new_controller->Right, Right);
 
-            WinPlatProcessXInputButton(&old_controller->Start, &new_controller->Start, Start);
-            WinPlatProcessXInputButton(&old_controller->Stop, &new_controller->Stop, Stop);
+            WP_process_xinput_button(&old_controller->Start, &new_controller->Start, Start);
+            WP_process_xinput_button(&old_controller->Stop, &new_controller->Stop, Stop);
 
-            WinPlatProcessXInputButton(&old_controller->LT, &new_controller->LT, LT);
-            WinPlatProcessXInputButton(&old_controller->RT, &new_controller->RT, RT);
+            WP_process_xinput_button(&old_controller->LT, &new_controller->LT, LT);
+            WP_process_xinput_button(&old_controller->RT, &new_controller->RT, RT);
 
-            WinPlatProcessXInputButton(&old_controller->LS, &new_controller->LS, LS);
-            WinPlatProcessXInputButton(&old_controller->RS, &new_controller->RS, RS);
+            WP_process_xinput_button(&old_controller->LS, &new_controller->LS, LS);
+            WP_process_xinput_button(&old_controller->RS, &new_controller->RS, RS);
 
-            WinPlatProcessXInputButton(&old_controller->A, &new_controller->A, A);
-            WinPlatProcessXInputButton(&old_controller->B, &new_controller->B, B);
-            WinPlatProcessXInputButton(&old_controller->X, &new_controller->X, X);
-            WinPlatProcessXInputButton(&old_controller->Y, &new_controller->Y, Y);
+            WP_process_xinput_button(&old_controller->A, &new_controller->A, A);
+            WP_process_xinput_button(&old_controller->B, &new_controller->B, B);
+            WP_process_xinput_button(&old_controller->X, &new_controller->X, X);
+            WP_process_xinput_button(&old_controller->Y, &new_controller->Y, Y);
             // --------------------------------------------------------------------------- //
 
             // Analog -------------------------------------------------------------------- //
-            WinPlatProcessXInputAnalog(
+            WP_process_xinput_analog(
                 &old_controller->LeftTrigger, &new_controller->LeftTrigger, LeftTrigger);
 
-            WinPlatProcessXInputAnalog(
+            WP_process_xinput_analog(
                 &old_controller->RightTrigger, &new_controller->RightTrigger, RightTrigger);
 
 
-            WinPlatProcessXInputAnalog(
+            WP_process_xinput_analog(
                 &old_controller->LeftStickY, &new_controller->LeftStickY, LStickY);
-            WinPlatProcessXInputAnalog(
+            WP_process_xinput_analog(
                 &old_controller->LeftStickX, &new_controller->LeftStickX, LStickX);
 
-            WinPlatProcessXInputAnalog(
+            WP_process_xinput_analog(
                 &old_controller->RightStickY, &new_controller->RightStickY, RStickY);
-            WinPlatProcessXInputAnalog(
+            WP_process_xinput_analog(
                 &old_controller->RightStickX, &new_controller->RightStickX, RStickX);
             // --------------------------------------------------------------------------- //
 
@@ -413,7 +413,7 @@ WinPlatProcessXInput(canvas_input* inputs, canvas_input* old_input, canvas_input
 
 
 // Raymond Cheng toggle fullscreen function
-internal void ToggleFullScreen(HWND window_handle) {
+internal void WP_toggle_full_screen(HWND window_handle) {
 
     DWORD window_style = GetWindowLong(window_handle, GWL_STYLE);
 
@@ -446,9 +446,8 @@ internal void ToggleFullScreen(HWND window_handle) {
     }
 }
 
-internal void WinPlatProcessWindowMessages(canvas_keyboard_input* keyboard,
-                                           HWND                   window_handle,
-                                           bool*                  is_running) {
+internal void
+WP_process_window_messages(canvas_keyboard_input* keyboard, HWND window_handle, bool* is_running) {
 
     MSG message;
     while (PeekMessageA(&message, 0, 0, 0, PM_REMOVE) && *is_running) {
@@ -484,7 +483,7 @@ internal void WinPlatProcessWindowMessages(canvas_keyboard_input* keyboard,
                 }
 
                 if (keyboard->F11.ended_down) {
-                    ToggleFullScreen(window_handle);
+                    WP_toggle_full_screen(window_handle);
                 }
             } break;
 
@@ -500,15 +499,15 @@ internal void WinPlatProcessWindowMessages(canvas_keyboard_input* keyboard,
 //  Totat Update : ------------------------------------------------------------------- (section)  //
 //
 //  the show_cmd should be 0 always but the first time
-internal void WinPlatUpdate(winplat_main_ctx* ctx) {
+internal void WP_update(winplat_main_ctx* ctx) {
 
     // Input Processing
     for (u32 idx = 0; idx < ArrayLen(ctx->old_input->keyboard.Buttons); idx += 1) {
         ctx->new_input->keyboard.Buttons[idx].ended_down =
             ctx->old_input->keyboard.Buttons[idx].ended_down;
     }
-    WinPlatProcessWindowMessages(&ctx->new_input->keyboard, ctx->window_handle, &wp_is_running);
-    WinPlatProcessXInput(ctx->inputs, ctx->old_input, ctx->new_input);
+    WP_process_window_messages(&ctx->new_input->keyboard, ctx->window_handle, &wp_is_running);
+    WP_process_xinput(ctx->inputs, ctx->old_input, ctx->new_input);
 
 
     //  game layer call : ------------------------------------------------ (section)  //
@@ -516,8 +515,8 @@ internal void WinPlatUpdate(winplat_main_ctx* ctx) {
         &ctx->memory, &ctx->r_push_buffer, ctx->new_input, ctx->time_elapsed, &wp_is_running);
 
 
-    Render(&ctx->r_push_buffer);
-    ClearPushBuffer(&ctx->r_push_buffer);
+    R_Render(&ctx->r_push_buffer);
+    R_ClearPushBuffer(&ctx->r_push_buffer);
 
     // Double buffering input state
     Swap(canvas_input*, ctx->old_input, ctx->new_input);
@@ -526,7 +525,7 @@ internal void WinPlatUpdate(winplat_main_ctx* ctx) {
 
     //  timing : --------------------------------------------------------- (section)  //
     winplat_time_counter end = {};
-    WinPlatTimeQuery(&end);
+    WP_time_query(&end);
 
 
     f64 mega_cylces_elapsed =
@@ -551,17 +550,17 @@ internal void WinPlatUpdate(winplat_main_ctx* ctx) {
             Sleep(SleepTime);
         }
         while (time_elapsed_for_frame < ctx->max_time_per_frame) {
-            counter_elapsed        = WinPlatGetTime() - ctx->last.counter;
+            counter_elapsed        = WP_get_time() - ctx->last.counter;
             time_elapsed_for_frame = (f32)counter_elapsed / (f32)ctx->perf_counter_freq;
         }
     } else {
     }
 
     i64 temp              = ctx->last.counter;
-    ctx->last.counter     = WinPlatGetTime();
+    ctx->last.counter     = WP_get_time();
     ctx->last.cycle_count = end.cycle_count;
 #ifdef DEBUG
-    counter_elapsed   = WinPlatGetTime() - temp;
+    counter_elapsed   = WP_get_time() - temp;
     f64 ms_per_frame  = (1000.0f * (f64)counter_elapsed) / (f64)ctx->perf_counter_freq;
     ctx->time_elapsed = ms_per_frame;
     f64  fps          = 1000.0f / ms_per_frame;
@@ -582,10 +581,10 @@ internal void WinPlatUpdate(winplat_main_ctx* ctx) {
 
 
 //  wm message processing : ---------------------------------------------------------- (section)  //
-internal LRESULT WinPlatWindowCallBack(HWND   window_handle,
-                                       UINT   message,
-                                       WPARAM wParam,
-                                       LPARAM lParam) {
+internal LRESULT WP_window_call_back(HWND   window_handle,
+                                     UINT   message,
+                                     WPARAM wParam,
+                                     LPARAM lParam) {
 
     LRESULT result = 0;
 
@@ -593,7 +592,7 @@ internal LRESULT WinPlatWindowCallBack(HWND   window_handle,
 
         case WM_CREATE: {
 #if OPENGL
-            GLInit(window_handle);
+            GL_Init(window_handle);
 #endif
         } break;
 
@@ -621,9 +620,9 @@ internal LRESULT WinPlatWindowCallBack(HWND   window_handle,
         case WM_SIZE: {
 #if OPENGL
             if (ogl_state.is_valid) {
-                winplat_dimensions dim = WinPlatGetDimensions(window_handle);
-                GLFixProjection(&ogl_state, dim);
-                WinPlatUpdate(&wp_ctx);
+                winplat_dimensions dim = WP_get_dimensions(window_handle);
+                GL_FixProjection(&ogl_state, dim);
+                WP_update(&wp_ctx);
             }
 #else
 #endif
@@ -651,7 +650,7 @@ internal LRESULT WinPlatWindowCallBack(HWND   window_handle,
             //
             //     PatBlt(wp_device_ctx, (i32)x, (i32)y, (i32)width, (i32)height, BLACKNESS);
             // }
-            WinPlatUpdate(&wp_ctx);
+            WP_update(&wp_ctx);
             EndPaint(window_handle, &paint);
         } break;
 
@@ -722,14 +721,14 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, i32 sho
     u64 refresh_rate          = (u64)device_mode.dmDisplayFrequency;
     wp_ctx.max_time_per_frame = 1.0f / (f64)refresh_rate;
 
-    WinPlatLoadXInput();
+    WP_load_xinput();
 
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 
-    LPCSTR    window_class_name = "WinPlatWindowClass";
+    LPCSTR    window_class_name = "WP_WindowClass";
     WNDCLASSA window_class      = {};
     window_class.style          = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
-    window_class.lpfnWndProc    = WinPlatWindowCallBack;
+    window_class.lpfnWndProc    = WP_window_call_back;
     window_class.hInstance      = instance;
     window_class.lpszClassName  = window_class_name;
 
@@ -764,12 +763,12 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, i32 sho
             //  opengl pipeline setup : ---------------------------------------------- (section)  //
 #if OPENGL
 
-            GLPipeLineSetup(&ogl_state, wp_aspect_ratio, 1);
+            GL_PipeLineSetup(&ogl_state, wp_aspect_ratio, 1);
 
-            winplat_dimensions dim = WinPlatGetDimensions(wp_ctx.window_handle);
-            GLFixProjection(&ogl_state, dim);
+            winplat_dimensions dim = WP_get_dimensions(wp_ctx.window_handle);
+            GL_FixProjection(&ogl_state, dim);
 #else
-            WinPlatCreateDibSection(&Global_OffScreenBuffer, Global_DiplaySize);
+            WP_CreateDibSection(&Global_OffScreenBuffer, Global_DiplaySize);
             canvas_bitmap bitmap   = {};
             bitmap.memory          = wp_offscreen_buffer.memory;
             bitmap.width           = wp_offscreen_buffer.width;
@@ -805,7 +804,7 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, i32 sho
             render_push_buffer* r_push_buffer  = &wp_ctx.r_push_buffer;
             r_push_buffer->cube_buffer.size    = 300;
             r_push_buffer->cube_wf_buffer.size = 600;
-            AllocatePushBuffer(r_push_buffer);
+            R_AllocatePushBuffer(r_push_buffer);
 
             // If arena is valid and nothing crashed until now then run
             wp_is_running = (memory->perma_store && memory->trans_store);
@@ -816,13 +815,13 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, i32 sho
 
             //  gamecode init : ------------------------------------------------------ (section)  //
             winplat_game_code* game_code = &wp_ctx.game_code;
-            DeferLoop(LoadModulePath(wp_game_dll_name), UnloadModulePath()) {
-                *game_code = WinPlatLoadGameCode(wp_module_path);
+            DeferLoop(load_module_path(wp_game_dll_name), unload_module_path()) {
+                *game_code = WP_load_game_code(wp_module_path);
             }
 
 
             //  timing init : -------------------------------------------------------- (section)  //
-            WinPlatTimeQuery(&wp_ctx.last);
+            WP_time_query(&wp_ctx.last);
 
             wp_ctx.time_elapsed = 0.0f;
             wp_ctx.window_shown = false;
@@ -831,19 +830,19 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, i32 sho
             while (wp_is_running) {
 
 #ifdef DEBUG
-                FILETIME new_write_time = WinPlatGetLastWriteTime(wp_game_dll_name);
+                FILETIME new_write_time = WP_get_last_writeTime(wp_game_dll_name);
                 if (CompareFileTime(&new_write_time, &wp_ctx.game_code.last_write_time) != 0) {
-                    WinPlatFreeGameCode(&wp_ctx.game_code);
-                    wp_ctx.game_code = WinPlatLoadGameCode(wp_game_dll_name);
+                    WP_free_game_code(&wp_ctx.game_code);
+                    wp_ctx.game_code = WP_load_game_code(wp_game_dll_name);
                 }
 #endif
-                WinPlatUpdate(&wp_ctx);
+                WP_update(&wp_ctx);
             }
 
             //  cleanup : ------------------------------------------------------------ (section)  //
 #if OPENGL
-            GLDeInit(wp_ctx.window_handle);
-            GlPipelineDelete(&ogl_state);
+            GL_Release(wp_ctx.window_handle);
+            GL_PipelineDelete(&ogl_state);
 #else
 #endif
         } else {

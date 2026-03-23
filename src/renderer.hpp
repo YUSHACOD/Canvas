@@ -50,33 +50,30 @@ typedef struct {
 } render_push_buffer;
 
 //  platform layer declares : -------------------------------------------------------- (section)  //
-#define RNDR_ALLOCATE_PUSH_BUFFER(name) void name(render_push_buffer* push_buffer)
-RNDR_ALLOCATE_PUSH_BUFFER(AllocatePushBuffer);
+#define R_ALLOCATE_PUSH_BUFFER(name) void name(render_push_buffer* push_buffer)
+R_ALLOCATE_PUSH_BUFFER(R_AllocatePushBuffer);
 
-#define RNDR_CLEAR_PUSH_BUFFER(name) void name(render_push_buffer* push_buffer)
-RNDR_CLEAR_PUSH_BUFFER(ClearPushBuffer);
+#define R_CLEAR_PUSH_BUFFER(name) void name(render_push_buffer* push_buffer)
+R_CLEAR_PUSH_BUFFER(R_ClearPushBuffer);
 //  (section) -------------------------------------------------------- : platform layer declares  //
 
 
 
 //  renderer utils : ----------------------------------------------------------------- (section)  //
-#define PUSH_CLEAR(name) void name(render_push_buffer* push_buffer, RC_clear2d clear)
-PUSH_CLEAR(PushClear);
+#define R_PUSH_CLEAR(name) void name(render_push_buffer* push_buffer, RC_clear2d clear)
+R_PUSH_CLEAR(R_PushClear);
 
-#define PUSH_CUBE(name) void name(render_push_buffer* push_buffer, RC_cube cube)
-PUSH_CUBE(PushCube);
+#define R_PUSH_CUBE(name) void name(render_push_buffer* push_buffer, RC_cube cube)
+R_PUSH_CUBE(R_PushCube);
 
-#define PUSH_CUBE_WF(name) void name(render_push_buffer* push_buffer, RC_cube_wf cube_wf)
-PUSH_CUBE_WF(PushCubeWF);
+#define R_PUSH_CUBE_WF(name) void name(render_push_buffer* push_buffer, RC_cube_wf cube_wf)
+R_PUSH_CUBE_WF(R_PushCubeWF);
 //  (section) ----------------------------------------------------------------- : renderer utils  //
 
 
 //  renderer implementation declares : ----------------------------------------------- (section)  //
-#define RNDR_INIT_FRAME(name) void name(render_push_buffer* push_buffer)
-RNDR_INIT_FRAME(InitFrame);
-
-#define RNDR_RENDER(name) void name(render_push_buffer* push_buffer)
-RNDR_RENDER(Render);
+#define R_RENDER(name) void name(render_push_buffer* push_buffer)
+R_RENDER(R_Render);
 //  (section) ----------------------------------------------- : renderer implementation declares  //
 
 
