@@ -42,5 +42,21 @@ typedef struct {
     u64 cycle_count;
 } winplat_time_counter;
 
+typedef struct {
+    HWND                 window_handle;
+    winplat_game_code    game_code;
+    canvas_input         inputs[2];
+    canvas_input*        old_input;
+    canvas_input*        new_input;
+    render_push_buffer   r_push_buffer;
+    canvas_memory        memory;
+    f64                  time_elapsed;
+    winplat_time_counter last;
+    i64                  perf_counter_freq;
+    f64                  max_time_per_frame;
+    bool                 is_time_proper;
+    bool                 window_shown;
+} winplat_main_ctx;
+
 //  (section) ------------------------------------------------------------- : Windows interfaces  //
 #endif

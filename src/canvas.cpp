@@ -115,7 +115,7 @@ internal void draw_piece(canvas_state* state, render_push_buffer* push_buffer) {
         }
         lerp_off = ClampTop(lerp_off, 1);
 
-		lerp_off  = interps[IK_InOutCirc](lerp_off);
+		lerp_off  = interps[state->interp_type](lerp_off);
 
         piece.pos = lerp(grid_to_world_pos(state->grid, state->piece.pos),
                          state->p_anim.prev_position,
@@ -161,9 +161,9 @@ extern "C" CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRender) {
     }
 
     //  game state init : ------------------------------------------------------------ (section)  //
-    state->grid.cube_size = 50.f;
-    state->grid.rows      = 5;
-    state->grid.cols      = 5;
+    state->grid.cube_size = 30.f;
+    state->grid.rows      = 8;
+    state->grid.cols      = 8;
     state->grid.layers    = 1;
 
 
@@ -271,6 +271,7 @@ extern "C" CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRender) {
 
     //  test updates and draws : ----------------------------------------------------- (section)  //
     state->dt += (f32)time_elapsed * 0.0005f;
+	state->interp_type = IK_OutSine;
 
     // Update clear color
     f32 red_shift      = ((f32)sin(state->dt) * 0.5f + 0.5f);
@@ -284,19 +285,19 @@ extern "C" CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRender) {
     // Draw clear
     RC_clear2d clear = {0};
     // clear.color      = corn_blue;
-	V4_colori(clear.color, 0.1f, .1f, .1f, 1.f);
+	// V4_colori(clear.color, 0.1f, .1f, .1f, 1.f);
     PushClear(push_buffer, clear);
 
 
     // f32 t = ((f32)cos(state->dt) * 0.5f + 0.5f);
     f32 t = triangle_wave(state->dt, 8.f);
-	t = interps[IK_InOutBounce](t);
+	t = interps[state->interp_type](t);
 
     V3_vecd(pos, 0.0f, 0.0f, 0.0f);
     draw_grid3d(push_buffer, state->grid);
 
     // V3_vecd(vp, -250.0f, 400.0f, 250.0f);
-    V3_vecd(vp, 0, 30.0f, 140.0f);
+    V3_vecd(vp, 0, 200.0f, 250.0f);
     set_camera_to_look_at(push_buffer, pos, vp);
 
     draw_piece(state, push_buffer);

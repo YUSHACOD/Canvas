@@ -72,10 +72,10 @@ PUSH_CUBE_WF(PushCubeWF);
 
 
 //  renderer implementation declares : ----------------------------------------------- (section)  //
-#define RNDR_INIT_FRAME(name) void name(render_push_buffer push_buffer)
+#define RNDR_INIT_FRAME(name) void name(render_push_buffer* push_buffer)
 RNDR_INIT_FRAME(InitFrame);
 
-#define RNDR_RENDER(name) void name(render_push_buffer push_buffer)
+#define RNDR_RENDER(name) void name(render_push_buffer* push_buffer)
 RNDR_RENDER(Render);
 //  (section) ----------------------------------------------- : renderer implementation declares  //
 

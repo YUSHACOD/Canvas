@@ -277,8 +277,8 @@ internal void GLLoadTextures(gl_renderer_state* rs) {
 
 internal void GLPipeLineSetup(gl_renderer_state* gl_state, f32 aspect_ratio, GLuint vao_len) {
 
-    GLBL_opengl_state.vao_len      = vao_len;
-    GLBL_opengl_state.aspect_ratio = aspect_ratio;
+    ogl_state.vao_len      = vao_len;
+    ogl_state.aspect_ratio = aspect_ratio;
     GLLoadShaders(gl_state);
 
     // Vertex Array Object Creation
@@ -367,58 +367,37 @@ internal void GLLoadViewMatrix(f32* view_transform, v3 pos, quat orientation) {
     // clang-format on
 }
 
-internal void GLFixProjection(gl_renderer_state* gl_state,
-                              winplat_dimensions window,
-                              winplat_dimensions display,
-                              f32                display_aspect) {
-
-    u32 dest_width  = window.width;
-    u32 dest_height = window.height;
+internal void GLFixProjection(gl_renderer_state* gl_state, winplat_dimensions window) {
 
     f32 window_aspect_ratio = (f32)window.width / (f32)window.height;
+    gl_state->aspect_ratio  = window_aspect_ratio;
 
-    u32 dest_y = 0;
-    u32 dest_x = 0;
-
-    if (display_aspect >= window_aspect_ratio) {
-        dest_y      = dest_height;
-        dest_height = (u32)((f32)window.width / display_aspect);
-        dest_y      = (dest_y - dest_height) / 2;
-    } else {
-        dest_x     = dest_width;
-        dest_width = (u32)((f32)window.height * display_aspect);
-        dest_x     = (dest_x - dest_width) / 2;
-    }
-
-    glViewport(dest_x, dest_y, dest_width, dest_height);
-    glScissor(dest_x, dest_y, dest_width, dest_height);
+    glViewport(0, 0, window.width, window.height);
 }
 
 RNDR_INIT_FRAME(InitFrame) {
 
-    glUseProgram(GLBL_opengl_state.program_handles[General]);
+    glUseProgram(ogl_state.program_handles[General]);
 
-    glDisable(GL_SCISSOR_TEST);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glEnable(GL_SCISSOR_TEST);
 
 
     f32 proj[16] = {};
 #define Z_NEAR -0.1f
 #define Z_FAR  -1000.0f
-    GLLoadProjectionMatrix(proj, GLBL_opengl_state.aspect_ratio, DegToRad(60.0f), Z_NEAR, Z_FAR);
+    GLLoadProjectionMatrix(proj, ogl_state.aspect_ratio, DegToRad(60.0f), Z_NEAR, Z_FAR);
 
 
     f32* uniforms[EnumCount(uniform_kind)] = {0};
     uniforms[ProjMat]                      = proj;
-    uniforms[ViewMat]                      = push_buffer.view_mat.arr;
+    uniforms[ViewMat]                      = push_buffer->view_mat.arr;
 
     // clang-format off
     for EachEnumVal(shader_program_kind, shdr) {
 		for EachEnumVal(uniform_kind, u) {
 
 			// One has to load the program to load a uniform into it
-			glUseProgram(GLBL_opengl_state.program_handles[shdr]);
+			glUseProgram(ogl_state.program_handles[shdr]);
 			glUniformMatrix4fv(u, 1, GL_FALSE, uniforms[u]);
 		}
     }
@@ -431,13 +410,13 @@ RNDR_INIT_FRAME(InitFrame) {
 //  Renderer utils : ----------------------------------------------------------------- (section)  //
 void RenderClear(RC_clear2d cmd) {
 
-    glUseProgram(GLBL_opengl_state.program_handles[General]);
+    glUseProgram(ogl_state.program_handles[General]);
     glClearBufferfv(GL_COLOR, 0, (GLfloat*)cmd.color.arr);
 }
 
 
 void RenderCubes(RG_cube rg) {
-    glUseProgram(GLBL_opengl_state.program_handles[Cube]);
+    glUseProgram(ogl_state.program_handles[Cube]);
 
     // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     for (u32 idx = 0; idx < rg.count; idx++) {
@@ -454,7 +433,7 @@ void RenderCubes(RG_cube rg) {
 }
 
 void RenderCubesWF(RG_cube_wf rg) {
-    glUseProgram(GLBL_opengl_state.program_handles[CubeWireFrame]);
+    glUseProgram(ogl_state.program_handles[CubeWireFrame]);
 
     for (u32 idx = 0; idx < rg.count; idx++) {
 
@@ -471,8 +450,8 @@ void RenderCubesWF(RG_cube_wf rg) {
 RNDR_RENDER(Render) {
     InitFrame(push_buffer);
 
-    RenderClear(push_buffer.clear);
-    RenderCubes(push_buffer.cube_buffer);
-    RenderCubesWF(push_buffer.cube_wf_buffer);
+    RenderClear(push_buffer->clear);
+    RenderCubes(push_buffer->cube_buffer);
+    RenderCubesWF(push_buffer->cube_wf_buffer);
 }
 //  (section) ----------------------------------------------------------------- : Renderer utils  //

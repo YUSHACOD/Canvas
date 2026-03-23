@@ -112,7 +112,7 @@ typedef struct {
     bool is_valid;
 } gl_renderer_state;
 
-global gl_renderer_state GLBL_opengl_state;
+global gl_renderer_state ogl_state;
 
 //  (section) -------------------------------------------------------------- : Opengl interfaces  //
 #endif

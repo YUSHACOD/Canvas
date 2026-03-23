@@ -46,34 +46,35 @@
 
 //  globals : ------------------------------------------------------------------------ (section)  //
 #define MAX_CANVAS_PATH 1028
-#define WINDOW_STYLE    (WS_TILEDWINDOW & ~WS_MINIMIZEBOX)
+#define WINDOW_STYLE    (WS_OVERLAPPEDWINDOW & ~(WS_MINIMIZEBOX | WS_MAXIMIZEBOX))
 
 // Predefined
-global char* GLBL_game_dll_name = Text("canvas.dll");
+global char* wp_game_dll_name = Text("canvas.dll");
 
 // Infered at runtime
-global HDC                       GLBL_device_ctx;
-global winplat_dimensions        GLBL_display_size;
-global f32                       GLBL_aspect_ratio;
-global winplat_off_screen_buffer GLBL_offscreen_buffer;
-global bool                      GLBL_is_running;
-global WINDOWPLACEMENT           GLBL_prev_wnd_placement;
+global HDC                       wp_device_ctx;
+global winplat_dimensions        wp_display_size;
+global f32                       wp_aspect_ratio;
+global winplat_off_screen_buffer wp_offscreen_buffer;
+global bool                      wp_is_running;
+global WINDOWPLACEMENT           wp_prev_wnd_placement;
+global winplat_main_ctx          wp_ctx;
 
 // TODO: Special Path Handling Check
 // Am I being piggy here?
-global char GLBL_module_path[MAX_CANVAS_PATH];
-global i32  GLBL_module_path_len;
+global char wp_module_path[MAX_CANVAS_PATH];
+global i32  wp_module_path_len;
 
 internal void LoadModulePath(char* path) {
-    for (i32 i = GLBL_module_path_len; i < MAX_CANVAS_PATH; i += 1) {
-        if (path[i - GLBL_module_path_len] == 0) {
+    for (i32 i = wp_module_path_len; i < MAX_CANVAS_PATH; i += 1) {
+        if (path[i - wp_module_path_len] == 0) {
             break;
         }
-        GLBL_module_path[i] = path[i - GLBL_module_path_len];
+        wp_module_path[i] = path[i - wp_module_path_len];
     }
 }
 
-internal void UnloadModulePath() { GLBL_module_path[GLBL_module_path_len] = '\0'; }
+internal void UnloadModulePath() { wp_module_path[wp_module_path_len] = '\0'; }
 //  (section) ------------------------------------------------------------------------ : globals  //
 
 //  xinput loading : ----------------------------------------------------------------- (section)  //
@@ -125,8 +126,8 @@ internal winplat_game_code WinPlatLoadGameCode(char* source_dll_path) {
 #if DEBUG
     char temp_dll_path[MAX_CANVAS_PATH] = {0};
     i32  temp_idx;
-    for (temp_idx = 0; temp_idx < GLBL_module_path_len; temp_idx += 1) {
-        temp_dll_path[temp_idx] = GLBL_module_path[temp_idx];
+    for (temp_idx = 0; temp_idx < wp_module_path_len; temp_idx += 1) {
+        temp_dll_path[temp_idx] = wp_module_path[temp_idx];
     }
     char temp_suffix[] = "temp_canvas.dll";
     for (i32 i = 0; temp_suffix[i] != '\0'; i += 1) {
@@ -410,7 +411,6 @@ WinPlatProcessXInput(canvas_input* inputs, canvas_input* old_input, canvas_input
 //  (section) -------------------------------------------------------------- : xinput processing  //
 
 
-//  wm message processing : ---------------------------------------------------------- (section)  //
 
 // Raymond Cheng toggle fullscreen function
 internal void ToggleFullScreen(HWND window_handle) {
@@ -421,7 +421,7 @@ internal void ToggleFullScreen(HWND window_handle) {
 
         MONITORINFO monitor_info = {sizeof(monitor_info)};
 
-        if (GetWindowPlacement(window_handle, &GLBL_prev_wnd_placement) &&
+        if (GetWindowPlacement(window_handle, &wp_prev_wnd_placement) &&
             GetMonitorInfo(MonitorFromWindow(window_handle, MONITOR_DEFAULTTOPRIMARY),
                            &monitor_info)) {
             SetWindowLong(window_handle, GWL_STYLE, window_style & ~WINDOW_STYLE);
@@ -435,7 +435,7 @@ internal void ToggleFullScreen(HWND window_handle) {
         }
     } else {
         SetWindowLong(window_handle, GWL_STYLE, window_style | WINDOW_STYLE);
-        SetWindowPlacement(window_handle, &GLBL_prev_wnd_placement);
+        SetWindowPlacement(window_handle, &wp_prev_wnd_placement);
         SetWindowPos(window_handle,
                      NULL,
                      0,
@@ -497,7 +497,91 @@ internal void WinPlatProcessWindowMessages(canvas_keyboard_input* keyboard,
 }
 
 
+//  Totat Update : ------------------------------------------------------------------- (section)  //
+//
+//  the show_cmd should be 0 always but the first time
+internal void WinPlatUpdate(winplat_main_ctx* ctx) {
 
+    // Input Processing
+    for (u32 idx = 0; idx < ArrayLen(ctx->old_input->keyboard.Buttons); idx += 1) {
+        ctx->new_input->keyboard.Buttons[idx].ended_down =
+            ctx->old_input->keyboard.Buttons[idx].ended_down;
+    }
+    WinPlatProcessWindowMessages(&ctx->new_input->keyboard, ctx->window_handle, &wp_is_running);
+    WinPlatProcessXInput(ctx->inputs, ctx->old_input, ctx->new_input);
+
+
+    //  game layer call : ------------------------------------------------ (section)  //
+    ctx->game_code.update_and_draw(
+        &ctx->memory, &ctx->r_push_buffer, ctx->new_input, ctx->time_elapsed, &wp_is_running);
+
+
+    Render(&ctx->r_push_buffer);
+    ClearPushBuffer(&ctx->r_push_buffer);
+
+    // Double buffering input state
+    Swap(canvas_input*, ctx->old_input, ctx->new_input);
+
+    SwapBuffers(wp_device_ctx);
+
+    //  timing : --------------------------------------------------------- (section)  //
+    winplat_time_counter end = {};
+    WinPlatTimeQuery(&end);
+
+
+    f64 mega_cylces_elapsed =
+        (((f64)end.cycle_count - (f64)ctx->last.cycle_count) / (1000.0f * 1000.0f));
+
+    i64 counter_elapsed = end.counter - ctx->last.counter;
+
+    f64 time_elapsed_for_frame = (f64)counter_elapsed / (f64)ctx->perf_counter_freq;
+
+#if 0
+#define THIRTY_FPS (1.0f / 30.f)
+                if (time_elapsed_for_frame > THIRTY_FPS) {
+                    OutputDebugStringA("======== TOO SLOW ========");
+                    Assert(0);
+                }
+#endif
+
+    // TODO(Timing): this is a mess
+    if (time_elapsed_for_frame <= ctx->max_time_per_frame) {
+        if (ctx->is_time_proper) {
+            DWORD SleepTime = (DWORD)(1000.0f * (ctx->max_time_per_frame - time_elapsed_for_frame));
+            Sleep(SleepTime);
+        }
+        while (time_elapsed_for_frame < ctx->max_time_per_frame) {
+            counter_elapsed        = WinPlatGetTime() - ctx->last.counter;
+            time_elapsed_for_frame = (f32)counter_elapsed / (f32)ctx->perf_counter_freq;
+        }
+    } else {
+    }
+
+    i64 temp              = ctx->last.counter;
+    ctx->last.counter     = WinPlatGetTime();
+    ctx->last.cycle_count = end.cycle_count;
+#ifdef DEBUG
+    counter_elapsed   = WinPlatGetTime() - temp;
+    f64 ms_per_frame  = (1000.0f * (f64)counter_elapsed) / (f64)ctx->perf_counter_freq;
+    ctx->time_elapsed = ms_per_frame;
+    f64  fps          = 1000.0f / ms_per_frame;
+    char buffer[256];
+
+    sprintf(buffer, "%.03fms, %.03ffps, %.03fMC/F \n", ms_per_frame, fps, mega_cylces_elapsed);
+    // OutputDebugStringA(buffer);
+#endif
+
+    // showing window after one frame is painted
+    if (!ctx->window_shown) {
+        ShowWindow(ctx->window_handle, SW_SHOWDEFAULT);
+        ctx->window_shown = true;
+    }
+}
+//  (section) ------------------------------------------------------------------- : Totat Update  //
+
+
+
+//  wm message processing : ---------------------------------------------------------- (section)  //
 internal LRESULT WinPlatWindowCallBack(HWND   window_handle,
                                        UINT   message,
                                        WPARAM wParam,
@@ -514,32 +598,32 @@ internal LRESULT WinPlatWindowCallBack(HWND   window_handle,
         } break;
 
         case WM_DESTROY: {
-            GLBL_is_running = false;
+            wp_is_running = false;
         } break;
 
         case WM_CLOSE: {
-            GLBL_is_running = false;
+            wp_is_running = false;
         } break;
 
         case WM_ACTIVATEAPP: {
         } break;
 
-        case WM_SYSCOMMAND: {
-            if (wParam == SC_MAXIMIZE) {
-                ToggleFullScreen(window_handle);
-            }
-			if (wParam == SC_CLOSE) {
-				GLBL_is_running = false;
-			}
-        } break;
+            // case WM_SYSCOMMAND: {
+            //     if (wParam == SC_MAXIMIZE) {
+            //         ToggleFullScreen(window_handle);
+            //     }
+            //     if (wParam == SC_CLOSE) {
+            //         wp_is_running = false;
+            //     }
+            // } break;
 
 
         case WM_SIZE: {
-
 #if OPENGL
-            if (GLBL_opengl_state.is_valid) {
+            if (ogl_state.is_valid) {
                 winplat_dimensions dim = WinPlatGetDimensions(window_handle);
-                GLFixProjection(&GLBL_opengl_state, dim, GLBL_display_size, GLBL_aspect_ratio);
+                GLFixProjection(&ogl_state, dim);
+                WinPlatUpdate(&wp_ctx);
             }
 #else
 #endif
@@ -559,14 +643,15 @@ internal LRESULT WinPlatWindowCallBack(HWND   window_handle,
             PAINTSTRUCT paint;
             BeginPaint(window_handle, &paint);
             // Todo: Just render here, this flushing should not occur
-            { // Flushing the window with BLACKNESS
-                i64 x      = paint.rcPaint.left;
-                i64 y      = paint.rcPaint.top;
-                i64 width  = paint.rcPaint.right - x;
-                i64 height = paint.rcPaint.bottom - y;
-
-                PatBlt(GLBL_device_ctx, (i32)x, (i32)y, (i32)width, (i32)height, BLACKNESS);
-            }
+            // { // Flushing the window with BLACKNESS
+            //     i64 x      = paint.rcPaint.left;
+            //     i64 y      = paint.rcPaint.top;
+            //     i64 width  = paint.rcPaint.right - x;
+            //     i64 height = paint.rcPaint.bottom - y;
+            //
+            //     PatBlt(wp_device_ctx, (i32)x, (i32)y, (i32)width, (i32)height, BLACKNESS);
+            // }
+            WinPlatUpdate(&wp_ctx);
             EndPaint(window_handle, &paint);
         } break;
 
@@ -615,27 +700,27 @@ internal LRESULT WinPlatWindowCallBack(HWND   window_handle,
 
 
 //  main entry point : --------------------------------------------------------------- (section)  //
-i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int show_cmd) {
+i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, i32 show_cmd) {
 
 
-    GLBL_module_path_len = GetCurrentDirectoryA(MAX_CANVAS_PATH, GLBL_module_path);
-    GLBL_module_path[GLBL_module_path_len++] = '\\';
-    Assert(GLBL_module_path_len != 0);
+    wp_module_path_len                   = GetCurrentDirectoryA(MAX_CANVAS_PATH, wp_module_path);
+    wp_module_path[wp_module_path_len++] = '\\';
+    Assert(wp_module_path_len != 0);
 
     // Frequency
     LARGE_INTEGER freq_struct_result = {};
     QueryPerformanceFrequency(&freq_struct_result);
-    i64 perf_counter_freq = freq_struct_result.QuadPart;
+    wp_ctx.perf_counter_freq = freq_struct_result.QuadPart;
 
     // Time Validity
 #define SCHEDULAR_GRANULARITY 1
-    bool is_time_proper = (timeBeginPeriod(SCHEDULAR_GRANULARITY) == TIMERR_NOERROR);
+    wp_ctx.is_time_proper = (timeBeginPeriod(SCHEDULAR_GRANULARITY) == TIMERR_NOERROR);
 
     // Frame Timing
     DEVMODEA device_mode = {};
     EnumDisplaySettingsA(0, ENUM_CURRENT_SETTINGS, &device_mode);
-    u64 refresh_rate       = (u64)device_mode.dmDisplayFrequency;
-    f64 max_time_per_frame = 1.0f / (f64)refresh_rate;
+    u64 refresh_rate          = (u64)device_mode.dmDisplayFrequency;
+    wp_ctx.max_time_per_frame = 1.0f / (f64)refresh_rate;
 
     WinPlatLoadXInput();
 
@@ -651,203 +736,114 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
 
     if (RegisterClassA(&window_class)) {
 
-        HWND window_handle = CreateWindowExA(0,
-                                             window_class_name,
-                                             "Canvas",
-                                             WINDOW_STYLE,
-                                             CW_USEDEFAULT,
-                                             CW_USEDEFAULT,
-                                             1280,
-                                             720,
-                                             0,
-                                             0,
-                                             instance,
-                                             0);
+        wp_ctx.window_handle = CreateWindowExA(0,
+                                               window_class_name,
+                                               "Canvas",
+                                               WINDOW_STYLE,
+                                               CW_USEDEFAULT,
+                                               CW_USEDEFAULT,
+                                               1280,
+                                               720,
+                                               0,
+                                               0,
+                                               instance,
+                                               0);
 
-        if (window_handle) {
+        if (wp_ctx.window_handle) {
 
-            HMONITOR    monitor = MonitorFromWindow(window_handle, MONITOR_DEFAULTTONEAREST);
+            HMONITOR    monitor = MonitorFromWindow(wp_ctx.window_handle, MONITOR_DEFAULTTONEAREST);
             MONITORINFO info;
             info.cbSize = sizeof(MONITORINFO);
             GetMonitorInfo(monitor, &info);
-            GLBL_display_size.width  = info.rcMonitor.right - info.rcMonitor.left;
-            GLBL_display_size.height = info.rcMonitor.bottom - info.rcMonitor.top;
-            GLBL_aspect_ratio        = (f32)GLBL_display_size.width / (f32)GLBL_display_size.height;
+            wp_display_size.width  = info.rcMonitor.right - info.rcMonitor.left;
+            wp_display_size.height = info.rcMonitor.bottom - info.rcMonitor.top;
+            wp_aspect_ratio        = (f32)wp_display_size.width / (f32)wp_display_size.height;
 
-            GLBL_device_ctx = GetDC(window_handle);
+            wp_device_ctx = GetDC(wp_ctx.window_handle);
 
             //  opengl pipeline setup : ---------------------------------------------- (section)  //
 #if OPENGL
 
-            GLPipeLineSetup(&GLBL_opengl_state, GLBL_aspect_ratio, 1);
+            GLPipeLineSetup(&ogl_state, wp_aspect_ratio, 1);
 
-            glEnable(GL_SCISSOR_TEST);
-
-            winplat_dimensions dim = WinPlatGetDimensions(window_handle);
-            GLFixProjection(&GLBL_opengl_state, dim, GLBL_display_size, GLBL_aspect_ratio);
+            winplat_dimensions dim = WinPlatGetDimensions(wp_ctx.window_handle);
+            GLFixProjection(&ogl_state, dim);
 #else
             WinPlatCreateDibSection(&Global_OffScreenBuffer, Global_DiplaySize);
             canvas_bitmap bitmap   = {};
-            bitmap.memory          = GLBL_offscreen_buffer.memory;
-            bitmap.width           = GLBL_offscreen_buffer.width;
-            bitmap.height          = GLBL_offscreen_buffer.height;
-            bitmap.size            = GLBL_offscreen_buffer.size;
-            bitmap.pitch           = GLBL_offscreen_buffer.pitch;
-            bitmap.bytes_per_pixel = GLBL_offscreen_buffer.bytes_per_pixel;
+            bitmap.memory          = wp_offscreen_buffer.memory;
+            bitmap.width           = wp_offscreen_buffer.width;
+            bitmap.height          = wp_offscreen_buffer.height;
+            bitmap.size            = wp_offscreen_buffer.size;
+            bitmap.pitch           = wp_offscreen_buffer.pitch;
+            bitmap.bytes_per_pixel = wp_offscreen_buffer.bytes_per_pixel;
 #endif
 
 
             //  game memory allocations : -------------------------------------------- (section)  //
-            canvas_memory memory = {};
+            canvas_memory* memory = &wp_ctx.memory;
 
-            memory.is_valid   = false;
-            memory.perma_size = MegaBytes(64);
+            memory->is_valid   = false;
+            memory->perma_size = MegaBytes(64);
 #ifdef DEBUG
             LPVOID base_address = (LPVOID)TeraBytes(2);
 #else
             LPVOID base_address = 0;
 #endif
-            memory.trans_size  = GigaBytes(1);
-            memory.perma_store = VirtualAlloc(base_address,
-                                              memory.perma_size + memory.trans_size,
-                                              MEM_RESERVE | MEM_COMMIT,
-                                              PAGE_READWRITE);
-            memory.trans_store = (u8*)memory.perma_store + memory.perma_size;
+            memory->trans_size  = GigaBytes(1);
+            memory->perma_store = VirtualAlloc(base_address,
+                                               memory->perma_size + memory->trans_size,
+                                               MEM_RESERVE | MEM_COMMIT,
+                                               PAGE_READWRITE);
+            memory->trans_store = (u8*)memory->perma_store + memory->perma_size;
 #ifdef DEBUG
-            memory.DBG_PlatReadEntireFile  = DBG_PlatReadEntireFile;
-            memory.DBG_PlatFreeFileMemory  = DBG_PlatFreeFilememory;
-            memory.DBG_PlatWriteEntireFile = DBG_PlatWriteEntireFile;
+            memory->DBG_PlatReadEntireFile  = DBG_PlatReadEntireFile;
+            memory->DBG_PlatFreeFileMemory  = DBG_PlatFreeFilememory;
+            memory->DBG_PlatWriteEntireFile = DBG_PlatWriteEntireFile;
 
 #endif
-            render_push_buffer r_push_buffer  = {};
-            r_push_buffer.cube_buffer.size    = 300;
-            r_push_buffer.cube_wf_buffer.size = 600;
-            AllocatePushBuffer(&r_push_buffer);
+            render_push_buffer* r_push_buffer  = &wp_ctx.r_push_buffer;
+            r_push_buffer->cube_buffer.size    = 300;
+            r_push_buffer->cube_wf_buffer.size = 600;
+            AllocatePushBuffer(r_push_buffer);
 
             // If arena is valid and nothing crashed until now then run
-            GLBL_is_running = (memory.perma_store && memory.trans_store);
+            wp_is_running = (memory->perma_store && memory->trans_store);
 
             //  input init : --------------------------------------------------------- (section)  //
-            canvas_input  inputs[2] = {};
-            canvas_input* old_input = &inputs[0];
-            canvas_input* new_input = &inputs[1];
+            wp_ctx.old_input = &wp_ctx.inputs[0];
+            wp_ctx.new_input = &wp_ctx.inputs[1];
 
             //  gamecode init : ------------------------------------------------------ (section)  //
-            winplat_game_code game_code;
-            DeferLoop(LoadModulePath(GLBL_game_dll_name), UnloadModulePath()) {
-                game_code = WinPlatLoadGameCode(GLBL_module_path);
+            winplat_game_code* game_code = &wp_ctx.game_code;
+            DeferLoop(LoadModulePath(wp_game_dll_name), UnloadModulePath()) {
+                *game_code = WinPlatLoadGameCode(wp_module_path);
             }
-
-            bool window_shown = false;
 
 
             //  timing init : -------------------------------------------------------- (section)  //
-            winplat_time_counter last = {};
-            WinPlatTimeQuery(&last);
+            WinPlatTimeQuery(&wp_ctx.last);
 
-
-            f64 time_elapsed = 0.0f;
+            wp_ctx.time_elapsed = 0.0f;
+            wp_ctx.window_shown = false;
 
             //  main loop : ---------------------------------------------------------- (section)  //
-            while (GLBL_is_running) {
+            while (wp_is_running) {
 
 #ifdef DEBUG
-                FILETIME new_write_time = WinPlatGetLastWriteTime(GLBL_game_dll_name);
-                if (CompareFileTime(&new_write_time, &game_code.last_write_time) != 0) {
-                    WinPlatFreeGameCode(&game_code);
-                    game_code = WinPlatLoadGameCode(GLBL_game_dll_name);
+                FILETIME new_write_time = WinPlatGetLastWriteTime(wp_game_dll_name);
+                if (CompareFileTime(&new_write_time, &wp_ctx.game_code.last_write_time) != 0) {
+                    WinPlatFreeGameCode(&wp_ctx.game_code);
+                    wp_ctx.game_code = WinPlatLoadGameCode(wp_game_dll_name);
                 }
 #endif
-
-                // Input Processing
-                for (u32 idx = 0; idx < ArrayLen(old_input->keyboard.Buttons); idx += 1) {
-                    new_input->keyboard.Buttons[idx].ended_down =
-                        old_input->keyboard.Buttons[idx].ended_down;
-                }
-                WinPlatProcessWindowMessages(&new_input->keyboard, window_handle, &GLBL_is_running);
-                WinPlatProcessXInput(inputs, old_input, new_input);
-
-
-                //  game layer call : ------------------------------------------------ (section)  //
-                V3_vecd(v, 4, -2, -1);
-                v3 sol = normal(v);
-                game_code.update_and_draw(
-                    &memory, &r_push_buffer, new_input, time_elapsed, &GLBL_is_running);
-
-
-                Render(r_push_buffer);
-
-                ClearPushBuffer(&r_push_buffer);
-
-                // Double buffering input state
-                Swap(canvas_input*, old_input, new_input);
-                SwapBuffers(GLBL_device_ctx);
-
-                //  timing : --------------------------------------------------------- (section)  //
-                winplat_time_counter end = {};
-                WinPlatTimeQuery(&end);
-
-
-                f64 mega_cylces_elapsed =
-                    (((f64)end.cycle_count - (f64)last.cycle_count) / (1000.0f * 1000.0f));
-
-                i64 counter_elapsed = end.counter - last.counter;
-
-                f64 time_elapsed_for_frame = (f64)counter_elapsed / (f64)perf_counter_freq;
-
-#if 0
-#define THIRTY_FPS (1.0f / 30.f)
-                if (time_elapsed_for_frame > THIRTY_FPS) {
-                    OutputDebugStringA("======== TOO SLOW ========");
-                    Assert(0);
-                }
-#endif
-
-                // TODO(Timing): this is a mess
-                if (time_elapsed_for_frame <= max_time_per_frame) {
-                    if (is_time_proper) {
-                        DWORD SleepTime =
-                            (DWORD)(1000.0f * (max_time_per_frame - time_elapsed_for_frame));
-                        Sleep(SleepTime);
-                    }
-                    while (time_elapsed_for_frame < max_time_per_frame) {
-                        counter_elapsed        = WinPlatGetTime() - last.counter;
-                        time_elapsed_for_frame = (f32)counter_elapsed / (f32)perf_counter_freq;
-                    }
-                } else {
-                }
-
-                i64 temp         = last.counter;
-                last.counter     = WinPlatGetTime();
-                last.cycle_count = end.cycle_count;
-#ifdef DEBUG
-                counter_elapsed  = WinPlatGetTime() - temp;
-                f64 ms_per_frame = (1000.0f * (f64)counter_elapsed) / (f64)perf_counter_freq;
-                time_elapsed     = ms_per_frame;
-                f64  fps         = 1000.0f / ms_per_frame;
-                char buffer[256];
-
-                sprintf(buffer,
-                        "%.03fms, %.03ffps, %.03fMC/F \n",
-                        ms_per_frame,
-                        fps,
-                        mega_cylces_elapsed);
-                // OutputDebugStringA(buffer);
-#endif
-
-                // showing window after one frame is painted
-                if (!window_shown) {
-                    ShowWindow(window_handle, show_cmd);
-                    window_shown = true;
-                }
+                WinPlatUpdate(&wp_ctx);
             }
 
             //  cleanup : ------------------------------------------------------------ (section)  //
 #if OPENGL
-            GLDeInit(window_handle);
-            GlPipelineDelete(&GLBL_opengl_state);
-
-
+            GLDeInit(wp_ctx.window_handle);
+            GlPipelineDelete(&ogl_state);
 #else
 #endif
         } else {

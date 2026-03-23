@@ -5,7 +5,7 @@
 #include <base/include.cpp>
 
 #define PIECE_SIZE      25.0f
-#define PIECE_MOVE_TIME 180.f
+#define PIECE_MOVE_TIME 150.f
 
 typedef struct {
     u8 x;
