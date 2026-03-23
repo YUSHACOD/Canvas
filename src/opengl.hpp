@@ -6,7 +6,7 @@
 #include <windows.h>
 #include <GL\gl.h>
 
-#include "base/include.cpp"
+#include <base/include.cpp>
 
 typedef char GLchar;
 
@@ -21,6 +21,8 @@ typedef char GLchar;
 
 
 //  gl types : ----------------------------------------------------------------------- (section)  //
+typedef BOOL(WINAPI wgl_choose_pixel_format_arb)(HDC, const int*, const FLOAT*, UINT, int*, UINT*);
+typedef HGLRC(WINAPI wgl_create_context_attribs_arb)(HDC, HGLRC, const int*);
 typedef BOOL   wgl_swap_interval_ext(int interval);
 typedef GLuint gl_create_shader(GLenum type);
 typedef void
@@ -49,34 +51,39 @@ typedef void
 gl_get_program_info_log(GLuint program, GLsizei bufSize, GLsizei* length, GLchar* infoLog);
 typedef void gl_validate_program(GLuint program);
 typedef void gl_vertex_attrib3fv(GLuint index, const GLfloat* v);
+
+typedef void gl_generate_mipmap(GLenum target);
 //  (section) ----------------------------------------------------------------------- : gl types  //
 
 
 //  gl globals : --------------------------------------------------------------------- (section)  //
-global wgl_swap_interval_ext*   wglSwapIntervalEXT;
-global gl_create_shader*        glCreateShader;
-global gl_shader_source*        glShaderSource;
-global gl_compile_shader*       glCompileShader;
-global gl_create_program*       glCreateProgram;
-global gl_attach_shader*        glAttachShader;
-global gl_link_program*         glLinkProgram;
-global gl_delete_shader*        glDeleteShader;
-global gl_delete_program*       glDeleteProgram;
-global gl_create_vertex_arrays* glCreateVertexArrays;
-global gl_bind_vertex_array*    glBindVertexArray;
-global gl_delete_vertex_arrays* glDeleteVertexArrays;
-global gl_use_program*          glUseProgram;
-global gl_get_shaderiv*         glGetShaderiv;
-global gl_get_shader_info_log*  glGetShaderInfoLog;
-global gl_clear_bufferfv*       glClearBufferfv;
-global gl_vertex_attrib4fv*     glVertexAttrib4fv;
-global gl_vertex_attrib1f*      glVertexAttrib1f;
-global gl_uniform_matrix4fv*    glUniformMatrix4fv;
-global gl_get_uniform_location* glGetUniformLocation;
-global gl_get_programiv*        glGetProgramiv;
-global gl_get_program_info_log* glGetProgramInfoLog;
-global gl_validate_program*     glValidateProgram;
-global gl_vertex_attrib3fv*     glVertexAttrib3fv;
+global wgl_choose_pixel_format_arb*    wglChoosePixelFormatARB;
+global wgl_create_context_attribs_arb* wglCreateContextAttribsARB;
+global wgl_swap_interval_ext*          wglSwapIntervalEXT;
+global gl_create_shader*               glCreateShader;
+global gl_shader_source*               glShaderSource;
+global gl_compile_shader*              glCompileShader;
+global gl_create_program*              glCreateProgram;
+global gl_attach_shader*               glAttachShader;
+global gl_link_program*                glLinkProgram;
+global gl_delete_shader*               glDeleteShader;
+global gl_delete_program*              glDeleteProgram;
+global gl_create_vertex_arrays*        glCreateVertexArrays;
+global gl_bind_vertex_array*           glBindVertexArray;
+global gl_delete_vertex_arrays*        glDeleteVertexArrays;
+global gl_use_program*                 glUseProgram;
+global gl_get_shaderiv*                glGetShaderiv;
+global gl_get_shader_info_log*         glGetShaderInfoLog;
+global gl_clear_bufferfv*              glClearBufferfv;
+global gl_vertex_attrib4fv*            glVertexAttrib4fv;
+global gl_vertex_attrib1f*             glVertexAttrib1f;
+global gl_uniform_matrix4fv*           glUniformMatrix4fv;
+global gl_get_uniform_location*        glGetUniformLocation;
+global gl_get_programiv*               glGetProgramiv;
+global gl_get_program_info_log*        glGetProgramInfoLog;
+global gl_validate_program*            glValidateProgram;
+global gl_vertex_attrib3fv*            glVertexAttrib3fv;
+global gl_generate_mipmap*             glGenerateMipmap;
 //  (section) --------------------------------------------------------------------- : gl globals  //
 
 
@@ -97,6 +104,8 @@ typedef struct {
     GLuint vao_len;
     GLuint vao_handle;
     f32    aspect_ratio;
+
+    GLuint texture_handle;
 
     GLuint program_handles[EnumCount(shader_program_kind)];
 

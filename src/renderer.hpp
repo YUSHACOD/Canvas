@@ -2,7 +2,7 @@
 #define RENDERER_H
 //  Renderer interfaces : ------------------------------------------------------------ (section)  //
 
-#include "base/include.cpp"
+#include <base/include.cpp>
 
 Enum(render_group_kind, RCK_Clear, RCK_Cube, RCK_CubeWF);
 

@@ -1,5 +1,6 @@
 Ray-Tracer/
 build/
+res/
 
 *.exe
 *.obj

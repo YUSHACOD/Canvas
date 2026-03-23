@@ -528,7 +528,11 @@ internal LRESULT WinPlatWindowCallBack(HWND   window_handle,
             if (wParam == SC_MAXIMIZE) {
                 ToggleFullScreen(window_handle);
             }
+			if (wParam == SC_CLOSE) {
+				GLBL_is_running = false;
+			}
         } break;
+
 
         case WM_SIZE: {
 
@@ -546,8 +550,8 @@ internal LRESULT WinPlatWindowCallBack(HWND   window_handle,
         case WM_KEYUP:
         case WM_SYSKEYDOWN:
         case WM_SYSKEYUP: {
-            Assert(!"Wrong Channel to get Keyboard input, should be from Message dispatches in "
-                    "Main Loop");
+            // Assert(!"Wrong Channel to get Keyboard input, should be from Message dispatches in "
+            //         "Main Loop");
         } break;
 
 
@@ -717,7 +721,7 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
 #endif
             render_push_buffer r_push_buffer  = {};
             r_push_buffer.cube_buffer.size    = 300;
-            r_push_buffer.cube_wf_buffer.size = 300;
+            r_push_buffer.cube_wf_buffer.size = 600;
             AllocatePushBuffer(&r_push_buffer);
 
             // If arena is valid and nothing crashed until now then run
@@ -735,7 +739,6 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
             }
 
             bool window_shown = false;
-            ShowCursor(false);
 
 
             //  timing init : -------------------------------------------------------- (section)  //
@@ -820,8 +823,8 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, int sho
 #ifdef DEBUG
                 counter_elapsed  = WinPlatGetTime() - temp;
                 f64 ms_per_frame = (1000.0f * (f64)counter_elapsed) / (f64)perf_counter_freq;
-                time_elapsed = ms_per_frame;
-                f64  fps = 1000.0f / ms_per_frame;
+                time_elapsed     = ms_per_frame;
+                f64  fps         = 1000.0f / ms_per_frame;
                 char buffer[256];
 
                 sprintf(buffer,

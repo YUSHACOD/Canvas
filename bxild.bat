@@ -11,7 +11,7 @@ if not "%~1"=="" set "Target=%~1"
 :: Global settings
 :: -------------------------------
 set CC=cl
-set CFLAGS=-nologo -GR- -Gm- -MT -Zi -EHsc -EHa- -W4 -WX -Fm -DCANVXS=1
+set CFLAGS=-nologo -IC:\Includes -GR- -Gm- -MT -Zi -EHsc -EHa- -W4 -WX -Fm -DCANVXS=1 
 
 set LINKER_FLAGS=/link -incremental:no -opt:ref
 

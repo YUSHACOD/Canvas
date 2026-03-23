@@ -1,11 +1,13 @@
 // raddbg 0.9.25 project file
 
+recent_file: path: "src/windows.cpp"
+recent_file: path: "src/opengl.cpp"
+recent_file: path: "../graphics_api_test/vulkan/v2/triangle.c"
+recent_file: path: "D:/a/_work/1/s/src/vctools/crt/vcstartup/src/misc/amd64/chkstk.asm"
+recent_file: path: "src/renderer.cpp"
 recent_file: path: "src/canvas.cpp"
 recent_file: path: "D:/a/_work/1/s/src/vctools/crt/vcstartup/src/gs/amd64/amdsecgs.asm"
 recent_file: path: "D:/HeavyPrograms/VisualStudio2026/VC/Tools/MSVC/14.50.35717/include/cmath"
-recent_file: path: "src/renderer.cpp"
-recent_file: path: "src/windows.cpp"
-recent_file: path: "src/opengl.cpp"
 recent_file: path: "d:/os/obj/amd64fre/minkernel/crts/ucrt/src/appcrt/tran/mt/objfre/amd64/minkernel/crts/ucrt/src/appcrt/tran/amd64/cos.asm"
 recent_file: path: "d:/os/obj/amd64fre/minkernel/crts/ucrt/src/appcrt/tran/mt/objfre/amd64/minkernel/crts/ucrt/src/appcrt/tran/amd64/sin.asm"
 recent_file: path: "E:/tmp/proj-mini/p7/hookdll/hooks.hpp"
@@ -17,10 +19,20 @@ recent_file: path: "d:/os/obj/amd64fre/minkernel/crts/ucrt/src/appcrt/startup/mt
 debug_info:
 {
   path: "C:/Users/91724/cpp/canvas/build/debug/Canvxs.pdb"
-  timestamp: 66209693335910
+  timestamp: 66210050762597
 }
 debug_info:
 {
   path: "C:/Users/91724/cpp/canvas/build/debug/canvas.pdb"
-  timestamp: 66209694807760
+  timestamp: 66210051081946
+}
+debug_info:
+{
+  path: "C:/Users/91724/cpp/graphics_api_test/vulkan/v2/triangle.pdb"
+  timestamp: 66209980010919
+}
+debug_info:
+{
+  path: "C:/VulkanSDK/1.4.341.1/Bin/VkLayer_khronos_validation.pdb"
+  timestamp: 66205613755476
 }

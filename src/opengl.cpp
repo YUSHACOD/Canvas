@@ -1,4 +1,7 @@
 
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb/stb_image.h>
+
 #include "opengl.hpp"
 #include "renderer.hpp"
 #include "windows.hpp"
@@ -34,6 +37,7 @@ internal void GL_load_function_globals() {
     glGetProgramiv       = (gl_get_programiv*)wglGetProcAddress("glGetProgramiv");
     glGetProgramInfoLog  = (gl_get_program_info_log*)wglGetProcAddress("glGetProgramInfoLog");
     glValidateProgram    = (gl_validate_program*)wglGetProcAddress("glValidateProgram");
+    glGenerateMipmap     = (gl_generate_mipmap*)wglGetProcAddress("glGenerateMipmap");
 }
 //  (section) --------------------------------------------------------------- : loading gl funcs  //
 
@@ -41,28 +45,76 @@ internal void GL_load_function_globals() {
 //  opengl init : -------------------------------------------------------------------- (section)  //
 internal void GLInit(HWND window_handle) {
 
-    PIXELFORMATDESCRIPTOR pixel_format_desc = {};
+    // NOTE: Bootstrap a dummy context to load WGL extension functions,
+    //       which are required to create a Core Profile context for RenderDoc.
+    {
+        HWND dummy_window = CreateWindowExA(0, "STATIC", "", WS_POPUP, 0, 0, 1, 1, 0, 0, 0, 0);
+        HDC  dummy_dc     = GetDC(dummy_window);
 
-    pixel_format_desc.nSize      = sizeof(PIXELFORMATDESCRIPTOR);
-    pixel_format_desc.nVersion   = 1;
-    pixel_format_desc.dwFlags    = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
-    pixel_format_desc.iPixelType = PFD_TYPE_RGBA;
-    pixel_format_desc.cColorBits = 24;
-    pixel_format_desc.cRedBits   = 8;
-    pixel_format_desc.cGreenBits = 8;
-    pixel_format_desc.cBlueBits  = 8;
-    pixel_format_desc.cAlphaBits = 8;
+        PIXELFORMATDESCRIPTOR dummy_pfd = {};
+        dummy_pfd.nSize                 = sizeof(PIXELFORMATDESCRIPTOR);
+        dummy_pfd.nVersion              = 1;
+        dummy_pfd.dwFlags               = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL;
+        dummy_pfd.iPixelType            = PFD_TYPE_RGBA;
+        dummy_pfd.cColorBits            = 32;
 
-    HDC device_ctx    = GetDC(window_handle);
-    i32 pixel_fmt_idx = ChoosePixelFormat(device_ctx, &pixel_format_desc);
+        SetPixelFormat(dummy_dc, ChoosePixelFormat(dummy_dc, &dummy_pfd), &dummy_pfd);
+
+        HGLRC dummy_ctx = wglCreateContext(dummy_dc);
+        wglMakeCurrent(dummy_dc, dummy_ctx);
+
+        wglChoosePixelFormatARB =
+            (wgl_choose_pixel_format_arb*)wglGetProcAddress("wglChoosePixelFormatARB");
+        wglCreateContextAttribsARB =
+            (wgl_create_context_attribs_arb*)wglGetProcAddress("wglCreateContextAttribsARB");
+
+        wglMakeCurrent(dummy_dc, 0);
+        wglDeleteContext(dummy_ctx);
+        ReleaseDC(dummy_window, dummy_dc);
+        DestroyWindow(dummy_window);
+    }
+
+    HDC device_ctx = GetDC(window_handle);
+
+    // NOTE: Must use wglChoosePixelFormatARB (not ChoosePixelFormat) when
+    //       going through the ARB context creation path.
+    const int pf_attribs[] = {0x2001,
+                              1, // WGL_DRAW_TO_WINDOW_ARB
+                              0x2010,
+                              1, // WGL_SUPPORT_OPENGL_ARB
+                              0x2011,
+                              1, // WGL_DOUBLE_BUFFER_ARB
+                              0x2013,
+                              0x202B, // WGL_PIXEL_TYPE_ARB = WGL_TYPE_RGBA_ARB
+                              0x2014,
+                              32, // WGL_COLOR_BITS_ARB
+                              0x2022,
+                              24, // WGL_DEPTH_BITS_ARB
+                              0x2023,
+                              8, // WGL_STENCIL_BITS_ARB
+                              0};
+
+    i32  pixel_fmt_idx = 0;
+    UINT num_formats   = 0;
+    wglChoosePixelFormatARB(device_ctx, pf_attribs, 0, 1, &pixel_fmt_idx, &num_formats);
 
     PIXELFORMATDESCRIPTOR pixel_fmt_desc_final = {};
     DescribePixelFormat(
         device_ctx, pixel_fmt_idx, sizeof(PIXELFORMATDESCRIPTOR), &pixel_fmt_desc_final);
-
     SetPixelFormat(device_ctx, pixel_fmt_idx, &pixel_fmt_desc_final);
 
-    HGLRC rendering_context = wglCreateContext(device_ctx);
+    // NOTE: Core Profile flag is the critical piece RenderDoc hooks into.
+    const int ctx_attribs[] = {0x2091,
+                               4, // WGL_CONTEXT_MAJOR_VERSION_ARB
+                               0x2092,
+                               6, // WGL_CONTEXT_MINOR_VERSION_ARB
+                               0x9126,
+                               0x00000001, // WGL_CONTEXT_PROFILE_MASK_ARB  = CORE
+                               0x2094,
+                               0x00000002, // WGL_CONTEXT_FLAGS_ARB         = DEBUG
+                               0};
+
+    HGLRC rendering_context = wglCreateContextAttribsARB(device_ctx, 0, ctx_attribs);
     if (rendering_context) {
         if (wglMakeCurrent(device_ctx, rendering_context)) {
 
@@ -114,7 +166,7 @@ internal char* GLLoadShaderSource(shader_program_kind kind, char* suffix) {
 }
 #endif
 
-internal void GLLoadPrograms(gl_renderer_state* gl_state) {
+internal void GLLoadShaders(gl_renderer_state* gl_state) {
         for
             EachEnumVal(shader_program_kind, idx) {
                 GLchar* vertex_source;
@@ -199,15 +251,41 @@ internal void GLLoadPrograms(gl_renderer_state* gl_state) {
             }
 }
 
+internal void GLLoadTextures(gl_renderer_state* rs) {
+    glGenTextures(1, &rs->texture_handle);
+    glBindTexture(GL_TEXTURE_2D, rs->texture_handle);
+
+    // set the texture wrapping/filtering options (on the currently bound texture object)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    // load and generate the texture
+    i32 width, height, nrChannels;
+    stbi_set_flip_vertically_on_load(true);
+    // escher.png
+    u8* data = stbi_load("../../res/escher.jpg", &width, &height, &nrChannels, 0);
+    if (data) {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+    } else {
+        OutputDebugStringA("Failed to load texture");
+    }
+    stbi_image_free(data);
+}
+
 internal void GLPipeLineSetup(gl_renderer_state* gl_state, f32 aspect_ratio, GLuint vao_len) {
 
     GLBL_opengl_state.vao_len      = vao_len;
     GLBL_opengl_state.aspect_ratio = aspect_ratio;
-    GLLoadPrograms(gl_state);
+    GLLoadShaders(gl_state);
 
     // Vertex Array Object Creation
     glCreateVertexArrays(gl_state->vao_len, &gl_state->vao_handle);
     glBindVertexArray(gl_state->vao_handle);
+
+    GLLoadTextures(gl_state);
 
     glEnable(GL_DEPTH_TEST);
     gl_state->is_valid = true;

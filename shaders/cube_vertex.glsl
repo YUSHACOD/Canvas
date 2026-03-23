@@ -10,6 +10,7 @@ layout(location = 1) uniform mat4 view;
 
 out VS_OUT {
     vec4 color;
+	vec2 texture_coord;
 } vs_out;
 
 
@@ -64,6 +65,19 @@ void main(void) {
             1, 2, 6, 6, 5, 1 // right
         );
 
+	const vec2 text_coord[6] = vec2[](
+			// left triangle
+			vec2(0, 0),
+			vec2(1, 0),
+			vec2(1, 1),
+
+
+			// right triangle
+			vec2(1, 1),
+			vec2(0, 1),
+			vec2(0, 0)
+			);
+
     vec3 vert = positions[indices[gl_VertexID]];
 
 	mat4 transform = createModelMatrix(pos, scale, quat);
@@ -73,6 +87,7 @@ void main(void) {
 
 	// Gradient Cube
     vs_out.color = vec4(0.5, 0.5, 0.5, 0.0) + vec4(vert, 1.0);
+	vs_out.texture_coord = text_coord[gl_VertexID % 6];
 
     // vs_out.color = color;
 }

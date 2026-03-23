@@ -2,10 +2,10 @@
 #define CANVXS_GAME_H
 //  Game related stuff : ------------------------------------------------------------- (section)  //
 
-#include "base/include.cpp"
+#include <base/include.cpp>
 
-#define PIECE_SIZE      20.0f
-#define PIECE_MOVE_TIME 500.f
+#define PIECE_SIZE      25.0f
+#define PIECE_MOVE_TIME 180.f
 
 typedef struct {
     u8 x;
@@ -45,6 +45,8 @@ typedef struct {
 
     Piece          piece;
     PieceAnimation p_anim;
+
+	u8 interp_type;
 
     bool debug_camera_mode;
 } canvas_state;
