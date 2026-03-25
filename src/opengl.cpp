@@ -367,6 +367,15 @@ internal void GL_load_view_matrix(f32* view_transform, v3 pos, quat orientation)
     // clang-format on
 }
 
+inline internal void GL_load_view_matrix(mat4 *v, render_camera* cam) {
+
+    V3_veci(v->vec1, cam->side.x, cam->up.x, -cam->front.x);
+    V3_veci(v->vec2, cam->side.y, cam->up.y, -cam->front.y);
+    V3_veci(v->vec3, cam->side.z, cam->up.z, -cam->front.z);
+
+    V3_veci(v->vec4, -(cam->side * cam->pos), -(cam->up * cam->pos), (cam->front * cam->pos));
+}
+
 internal void GL_FixProjection(gl_renderer_state* gl_state, winplat_dimensions window) {
 
     f32 window_aspect_ratio = (f32)window.width / (f32)window.height;
@@ -375,7 +384,7 @@ internal void GL_FixProjection(gl_renderer_state* gl_state, winplat_dimensions w
     glViewport(0, 0, window.width, window.height);
 }
 
-void GL_init_frame(render_push_buffer* push_buffer) {
+internal void GL_init_frame(render_push_buffer* push_buffer) {
 
     glUseProgram(ogl_state.program_handles[General]);
 
@@ -387,10 +396,12 @@ void GL_init_frame(render_push_buffer* push_buffer) {
 #define Z_FAR  -1000.0f
     GL_load_projection_matrix(proj, ogl_state.aspect_ratio, DegToRad(60.0f), Z_NEAR, Z_FAR);
 
+    Mat4_di(view_mat);
+	GL_load_view_matrix(&view_mat, &push_buffer->cam);
 
     f32* uniforms[EnumCount(uniform_kind)] = {0};
     uniforms[ProjMat]                      = proj;
-    uniforms[ViewMat]                      = push_buffer->view_mat.arr;
+    uniforms[ViewMat]                      = view_mat.arr;
 
     // clang-format off
     for EachEnumVal(shader_program_kind, shdr) {
@@ -408,14 +419,14 @@ void GL_init_frame(render_push_buffer* push_buffer) {
 
 
 //  Renderer utils : ----------------------------------------------------------------- (section)  //
-void GL_render_clear(RC_clear2d cmd) {
+internal void GL_render_clear(RC_clear2d cmd) {
 
     glUseProgram(ogl_state.program_handles[General]);
     glClearBufferfv(GL_COLOR, 0, (GLfloat*)cmd.color.arr);
 }
 
 
-void GL_render_cubes(RG_cube rg) {
+internal void GL_render_cubes(RG_cube rg) {
     glUseProgram(ogl_state.program_handles[Cube]);
 
     // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -432,7 +443,7 @@ void GL_render_cubes(RG_cube rg) {
     // glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 }
 
-void GL_render_cubes_wf(RG_cube_wf rg) {
+internal void GL_render_cubes_wf(RG_cube_wf rg) {
     glUseProgram(ogl_state.program_handles[CubeWireFrame]);
 
     for (u32 idx = 0; idx < rg.count; idx++) {

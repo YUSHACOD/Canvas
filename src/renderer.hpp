@@ -2,6 +2,7 @@
 #define RENDERER_H
 //  Renderer interfaces : ------------------------------------------------------------ (section)  //
 
+#include "base/interfaces.hpp"
 #include <base/include.cpp>
 
 Enum(render_group_kind, RCK_Clear, RCK_Cube, RCK_CubeWF);
@@ -37,16 +38,19 @@ typedef struct {
 } RG_cube_wf;
 
 typedef struct {
-    f32  fov;
-    v3   pos;
-    quat orientation;
+    f32 fov;
+    v3  pos;
+    v3  front;
+    v3  side;
+    v3  up;
 } render_camera;
 
 typedef struct {
-    RG_cube    cube_buffer;
-    RG_cube_wf cube_wf_buffer;
-    RC_clear2d clear;
-    mat4       view_mat;
+    RG_cube       cube_buffer;
+    RG_cube_wf    cube_wf_buffer;
+    RC_clear2d    clear;
+    mat4          view_mat;
+    render_camera cam;
 } render_push_buffer;
 
 //  platform layer declares : -------------------------------------------------------- (section)  //

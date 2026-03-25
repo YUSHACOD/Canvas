@@ -19,7 +19,7 @@
 inline void
 camera_control(canvas_state* state, canvas_input* input, render_push_buffer* push_buffer) {
 
-    Mat4_I(view_mat);
+    Mat4_di(view_mat);
     V3_vecd(pos, -state->x_off, -state->y_off, -state->z_off);
 
     view_mat.vec4 = pos;
@@ -27,23 +27,18 @@ camera_control(canvas_state* state, canvas_input* input, render_push_buffer* pus
     push_buffer->view_mat = view_mat;
 }
 
-inline void set_camera_to_look_at(render_push_buffer* push_buffer, v3 at, v3 from) {
+inline void set_camera_to_look_at(render_push_buffer* push_buffer, v3 at, v3 pos) {
 
     V3_vecd(up, 0.0f, 1.0f, 0.0f);
 
-    v3 z_a = normal(at - from);
-    v3 x_a = normal(z_a ^ up);
-    v3 y_a = normal(x_a ^ z_a);
+    v3 front = normal(at - pos);
+    v3 side  = normal(front ^ up);
+    v3 n_up  = normal(side ^ front);
 
-    Mat4_I(view_mat);
-
-    V3_veci(view_mat.vec1, x_a.x, y_a.x, -z_a.x);
-    V3_veci(view_mat.vec2, x_a.y, y_a.y, -z_a.y);
-    V3_veci(view_mat.vec3, x_a.z, y_a.z, -z_a.z);
-
-    V3_veci(view_mat.vec4, -(x_a * from), -(y_a * from), (z_a * from));
-
-    push_buffer->view_mat = view_mat;
+    push_buffer->cam.pos   = pos;
+    push_buffer->cam.front = front;
+    push_buffer->cam.side  = side;
+    push_buffer->cam.up    = n_up;
 }
 
 internal v3 grid_to_world_pos(Grid grid, GridPos pos) {
@@ -67,7 +62,7 @@ internal void draw_grid3d(render_push_buffer* push_buffer, Grid grid) {
 
     f32 size = grid.cube_size;
 
-	f32 grey = 0.6f;
+    f32 grey = 0.6f;
 
     for (u32 y = 0; y < grid.layers; y += 1) {
         for (u32 z = 0; z < grid.rows; z += 1) {
@@ -115,16 +110,15 @@ internal void draw_piece(canvas_state* state, render_push_buffer* push_buffer) {
         }
         lerp_off = ClampTop(lerp_off, 1);
 
-		lerp_off  = interps[state->interp_type](lerp_off);
+        lerp_off = interps[state->interp_type](lerp_off);
 
         piece.pos = lerp(grid_to_world_pos(state->grid, state->piece.pos),
                          state->p_anim.prev_position,
                          lerp_off);
 
 
-        piece.scale = lerp(
-				{PIECE_SIZE, PIECE_SIZE, PIECE_SIZE},
-				{PIECE_SIZE - 10.f, PIECE_SIZE - 10.f, PIECE_SIZE - 10.f},
+        piece.scale = lerp({PIECE_SIZE, PIECE_SIZE, PIECE_SIZE},
+                           {PIECE_SIZE - 10.f, PIECE_SIZE - 10.f, PIECE_SIZE - 10.f},
                            lerp_off);
 
     } else {
@@ -137,13 +131,13 @@ internal void draw_piece(canvas_state* state, render_push_buffer* push_buffer) {
 }
 
 f32 triangle_wave(f32 time_ms, f32 period_ms) {
-    f32 t = time_ms / period_ms;   // normalize time to cycles
-    f32 phase = t - (int)t;        // fract(t)
+    f32 t     = time_ms / period_ms; // normalize time to cycles
+    f32 phase = t - (int)t;          // fract(t)
 
     if (phase < 0.5f) {
-        return phase * 2.0f;         // rising 0 → 1
+        return phase * 2.0f; // rising 0 → 1
     } else {
-        return 2.0f - phase * 2.0f;  // falling 1 → 0
+        return 2.0f - phase * 2.0f; // falling 1 → 0
     }
 }
 
@@ -271,7 +265,7 @@ extern "C" CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRender) {
 
     //  test updates and draws : ----------------------------------------------------- (section)  //
     state->dt += (f32)time_elapsed * 0.0005f;
-	state->interp_type = IK_OutSine;
+    state->interp_type = IK_OutSine;
 
     // Update clear color
     f32 red_shift      = ((f32)sin(state->dt) * 0.5f + 0.5f);
@@ -285,13 +279,13 @@ extern "C" CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRender) {
     // Draw clear
     RC_clear2d clear = {0};
     // clear.color      = corn_blue;
-	// V4_colori(clear.color, 0.1f, .1f, .1f, 1.f);
+    // V4_colori(clear.color, 0.1f, .1f, .1f, 1.f);
     R_PushClear(push_buffer, clear);
 
 
     // f32 t = ((f32)cos(state->dt) * 0.5f + 0.5f);
     f32 t = triangle_wave(state->dt, 8.f);
-	t = interps[state->interp_type](t);
+    t     = interps[state->interp_type](t);
 
     V3_vecd(pos, 0.0f, 0.0f, 0.0f);
     draw_grid3d(push_buffer, state->grid);
