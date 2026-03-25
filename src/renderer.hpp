@@ -38,7 +38,7 @@ typedef struct {
 } RG_cube_wf;
 
 typedef struct {
-    f32 fov;
+    f32 fov_radians;
     v3  pos;
     v3  front;
     v3  side;

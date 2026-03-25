@@ -288,8 +288,8 @@ internal void WP_display_bitmap(HDC                        device_ctx,
 //  xinput processing : -------------------------------------------------------------- (section)  //
 internal void
 WP_process_xinput_button(canvas_button_state* prev, canvas_button_state* next, bool is_set) {
-    next->ended_down = is_set;
-    next->transition += (prev->ended_down ^ next->ended_down) ? 1 : 0;
+    next->down = is_set;
+    next->flips += (prev->down ^ next->down) ? 1 : 0;
 }
 
 internal void
@@ -473,16 +473,16 @@ WP_process_window_messages(canvas_keyboard_input* keyboard, HWND window_handle, 
 
                 if (is_down != was_down) {
                     // Key state changed
-                    keyboard->Buttons[VKCode].ended_down = is_down;
-                    keyboard->Buttons[VKCode].transition++;
+                    keyboard->Buttons[VKCode].down = is_down;
+                    keyboard->Buttons[VKCode].flips++;
                 }
 
                 // Optional: Handle special cases
-                if (keyboard->Escape.ended_down) {
+                if (keyboard->Escape.down) {
                     *is_running = false;
                 }
 
-                if (keyboard->F11.ended_down) {
+                if (keyboard->F11.down) {
                     WP_toggle_full_screen(window_handle);
                 }
             } break;
@@ -503,16 +503,22 @@ internal void WP_update(winplat_main_ctx* ctx) {
 
     // Input Processing
     for (u32 idx = 0; idx < ArrayLen(ctx->old_input->keyboard.Buttons); idx += 1) {
-        ctx->new_input->keyboard.Buttons[idx].ended_down =
-            ctx->old_input->keyboard.Buttons[idx].ended_down;
+        ctx->new_input->keyboard.Buttons[idx].down =
+            ctx->old_input->keyboard.Buttons[idx].down;
+		ctx->new_input->keyboard.Buttons[idx].flips = 0;
     }
     WP_process_window_messages(&ctx->new_input->keyboard, ctx->window_handle, &wp_is_running);
+
     WP_process_xinput(ctx->inputs, ctx->old_input, ctx->new_input);
 
 
     //  game layer call : ------------------------------------------------ (section)  //
-    ctx->game_code.update_and_draw(
-        &ctx->memory, &ctx->r_push_buffer, ctx->new_input, ctx->time_elapsed, &wp_is_running);
+    ctx->game_code.update_and_draw(&ctx->memory,
+                                   &ctx->r_push_buffer,
+                                   ctx->new_input,
+                                   ctx->time_elapsed,
+                                   !ctx->window_shown,
+                                   &wp_is_running);
 
 
     R_Render(&ctx->r_push_buffer);

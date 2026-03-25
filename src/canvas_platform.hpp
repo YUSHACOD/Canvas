@@ -17,8 +17,8 @@ typedef struct {
 } canvas_bitmap;
 
 typedef struct {
-    u32  transition;
-    bool ended_down;
+    u32  flips;
+    bool down;
 } canvas_button_state;
 
 typedef struct {
@@ -314,7 +314,8 @@ typedef struct {
     void name(canvas_memory*      memory,                                                          \
               render_push_buffer* push_buffer,                                                     \
               canvas_input*       input,                                                           \
-              f64                 time_elapsed,                                                    \
+              f64                 dt,                                                              \
+              bool                is_first_time,                                                   \
               bool*               running)
 typedef CANVAS_UPDATE_AND_RENDER(canvas_update_and_draw);
 CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRenderStub);

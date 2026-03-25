@@ -16,18 +16,9 @@
 #include "canvas_math.cpp"
 #include "renderer.cpp"
 
-inline void
-camera_control(canvas_state* state, canvas_input* input, render_push_buffer* push_buffer) {
 
-    Mat4_di(view_mat);
-    V3_vecd(pos, -state->x_off, -state->y_off, -state->z_off);
-
-    view_mat.vec4 = pos;
-
-    push_buffer->view_mat = view_mat;
-}
-
-inline void set_camera_to_look_at(render_push_buffer* push_buffer, v3 at, v3 pos) {
+//  Camera control : ----------------------------------------------------------------- (section)  //
+inline void set_camera_to_look_at(render_camera* cam, v3 at, v3 pos) {
 
     V3_vecd(up, 0.0f, 1.0f, 0.0f);
 
@@ -35,11 +26,12 @@ inline void set_camera_to_look_at(render_push_buffer* push_buffer, v3 at, v3 pos
     v3 side  = normal(front ^ up);
     v3 n_up  = normal(side ^ front);
 
-    push_buffer->cam.pos   = pos;
-    push_buffer->cam.front = front;
-    push_buffer->cam.side  = side;
-    push_buffer->cam.up    = n_up;
+    cam->pos   = pos;
+    cam->front = front;
+    cam->side  = side;
+    cam->up    = n_up;
 }
+//  (section) ----------------------------------------------------------------- : Camera control  //
 
 internal v3 grid_to_world_pos(Grid grid, GridPos pos) {
 
@@ -141,6 +133,19 @@ f32 triangle_wave(f32 time_ms, f32 period_ms) {
     }
 }
 
+internal void load_default_cam(render_camera* cam) {
+    // default cam state
+    cam->fov_radians = DegToRad(60);
+    // V3_vecd(vp, -250.0f, 400.0f, 250.0f);
+    V3_vecd(vp, 0, 200.0f, 250.0f);
+    set_camera_to_look_at(cam, {0}, vp);
+}
+
+internal void reload_game_state(canvas_state* state) {
+    memset(state, 0, sizeof(canvas_state));
+    load_default_cam(&state->cam);
+}
+
 //  main game entry : ---------------------------------------------------------------- (section)  //
 //
 extern "C" CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRender) {
@@ -149,10 +154,19 @@ extern "C" CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRender) {
     Assert(sizeof(canvas_state) <= memory->perma_size);
 #endif
 
+	//  unpacking stuff : ------------------------------------------------------------ (section)  //
     canvas_state* state = (canvas_state*)memory->perma_store;
     if (!memory->is_valid) {
         memory->is_valid = true;
     }
+
+    canvas_keyboard_input*   key_b = &input->keyboard;
+    canvas_controller_input* gmpds = input->gamepads;
+
+    canvas_controller_input* ctrl1 = &input->gamepads[0];
+
+    render_camera* cam = &state->cam;
+
 
     //  game state init : ------------------------------------------------------------ (section)  //
     state->grid.cube_size = 30.f;
@@ -160,117 +174,139 @@ extern "C" CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRender) {
     state->grid.cols      = 8;
     state->grid.layers    = 1;
 
+    if (is_first_time) {
+        load_default_cam(cam);
+    }
+
+
 
     //  input handling : ------------------------------------------------------------- (section)  //
-    canvas_controller_input* input1 = &input->gamepads[0];
-
-
-
     f32 input_factor = 1.0f;
-    state->x_off -= (input1->Left.ended_down) ? input_factor : 0.0f;
-    state->x_off += (input1->Right.ended_down) ? input_factor : 0.0f;
+    state->x_off -= (ctrl1->Left.down) ? input_factor : 0.0f;
+    state->x_off += (ctrl1->Right.down) ? input_factor : 0.0f;
 
-    state->y_off += (input1->Up.ended_down) ? input_factor : 0.0f;
-    state->y_off -= (input1->Down.ended_down) ? input_factor : 0.0f;
+    state->y_off += (ctrl1->Up.down) ? input_factor : 0.0f;
+    state->y_off -= (ctrl1->Down.down) ? input_factor : 0.0f;
 
 
-    if (input1->Stop.ended_down) {
+    if (ctrl1->Stop.down) {
         *running = false;
     }
 
-    state->x_off -= (input->keyboard.A.ended_down) ? input_factor : 0.0f;
-    state->x_off += (input->keyboard.D.ended_down) ? input_factor : 0.0f;
+    state->x_off -= (key_b->A.down) ? input_factor : 0.0f;
+    state->x_off += (key_b->D.down) ? input_factor : 0.0f;
 
-    state->y_off += (input->keyboard.Q.ended_down) ? input_factor : 0.0f;
-    state->y_off -= (input->keyboard.E.ended_down) ? input_factor : 0.0f;
+    state->y_off += (key_b->Q.down) ? input_factor : 0.0f;
+    state->y_off -= (key_b->E.down) ? input_factor : 0.0f;
 
-    state->z_off += (input->keyboard.S.ended_down) ? input_factor : 0.0f;
-    state->z_off -= (input->keyboard.W.ended_down) ? input_factor : 0.0f;
+    state->z_off += (key_b->S.down) ? input_factor : 0.0f;
+    state->z_off -= (key_b->W.down) ? input_factor : 0.0f;
 
-    state->interp_type = (input->keyboard.I.ended_down)
-                             ? ((state->interp_type + 1) % EnumCount(Interpolation_Kind))
-                             : (state->interp_type);
-
-    if (!state->p_anim.active) {
-        if (input->keyboard.D.ended_down) {
-            if (state->piece.pos.x < (state->grid.cols - 1)) {
-                state->p_anim.t += (f32)time_elapsed;
-                state->p_anim.active        = true;
-                state->p_anim.prev_position = grid_to_world_pos(state->grid, state->piece.pos);
-                state->piece.pos.x += 1;
-            }
-        }
-        if (input->keyboard.A.ended_down) {
-            if (state->piece.pos.x >= 1) {
-                state->p_anim.t += (f32)time_elapsed;
-                state->p_anim.active        = true;
-                state->p_anim.prev_position = grid_to_world_pos(state->grid, state->piece.pos);
-                state->piece.pos.x -= 1;
-            }
-        }
-        if (input->keyboard.W.ended_down) {
-            if (state->piece.pos.z < (state->grid.rows - 1)) {
-                state->p_anim.t += (f32)time_elapsed;
-                state->p_anim.active        = true;
-                state->p_anim.prev_position = grid_to_world_pos(state->grid, state->piece.pos);
-                state->piece.pos.z += 1;
-            }
-        }
-        if (input->keyboard.S.ended_down) {
-            if (state->piece.pos.z >= 1) {
-                state->p_anim.t += (f32)time_elapsed;
-                state->p_anim.active        = true;
-                state->p_anim.prev_position = grid_to_world_pos(state->grid, state->piece.pos);
-                state->piece.pos.z -= 1;
-            }
-        }
-        if (input->keyboard.Q.ended_down) {
-            if (state->piece.pos.y < (state->grid.layers - 1)) {
-                state->p_anim.t += (f32)time_elapsed;
-                state->p_anim.active        = true;
-                state->p_anim.prev_position = grid_to_world_pos(state->grid, state->piece.pos);
-                state->piece.pos.y += 1;
-            }
-        }
-        if (input->keyboard.E.ended_down) {
-            if (state->piece.pos.y >= 1) {
-                state->p_anim.t += (f32)time_elapsed;
-                state->p_anim.active        = true;
-                state->p_anim.prev_position = grid_to_world_pos(state->grid, state->piece.pos);
-                state->piece.pos.y -= 1;
-            }
-        }
-    } else {
-        state->p_anim.t += (f32)time_elapsed;
+    if (key_b->I.down && key_b->I.flips > 0) {
+        state->interp_type = ((state->interp_type + 1) % EnumCount(Interpolation_Kind));
     }
 
-    if (input->keyboard.Control.ended_down && input->keyboard.R.ended_down) {
-        memset(state, 0, sizeof(canvas_state));
+    if (key_b->F2.flips > 0 && key_b->F2.down) {
+        state->in_debug_mode = !(state->in_debug_mode);
+    }
+
+    if (!state->in_debug_mode) {
+        if (!state->p_anim.active) {
+            if (key_b->D.down) {
+                if (state->piece.pos.x < (state->grid.cols - 1)) {
+                    state->p_anim.t += (f32)dt;
+                    state->p_anim.active        = true;
+                    state->p_anim.prev_position = grid_to_world_pos(state->grid, state->piece.pos);
+                    state->piece.pos.x += 1;
+                }
+            }
+            if (key_b->A.down) {
+                if (state->piece.pos.x >= 1) {
+                    state->p_anim.t += (f32)dt;
+                    state->p_anim.active        = true;
+                    state->p_anim.prev_position = grid_to_world_pos(state->grid, state->piece.pos);
+                    state->piece.pos.x -= 1;
+                }
+            }
+            if (key_b->W.down) {
+                if (state->piece.pos.z < (state->grid.rows - 1)) {
+                    state->p_anim.t += (f32)dt;
+                    state->p_anim.active        = true;
+                    state->p_anim.prev_position = grid_to_world_pos(state->grid, state->piece.pos);
+                    state->piece.pos.z += 1;
+                }
+            }
+            if (key_b->S.down) {
+                if (state->piece.pos.z >= 1) {
+                    state->p_anim.t += (f32)dt;
+                    state->p_anim.active        = true;
+                    state->p_anim.prev_position = grid_to_world_pos(state->grid, state->piece.pos);
+                    state->piece.pos.z -= 1;
+                }
+            }
+            if (key_b->Q.down) {
+                if (state->piece.pos.y < (state->grid.layers - 1)) {
+                    state->p_anim.t += (f32)dt;
+                    state->p_anim.active        = true;
+                    state->p_anim.prev_position = grid_to_world_pos(state->grid, state->piece.pos);
+                    state->piece.pos.y += 1;
+                }
+            }
+            if (key_b->E.down) {
+                if (state->piece.pos.y >= 1) {
+                    state->p_anim.t += (f32)dt;
+                    state->p_anim.active        = true;
+                    state->p_anim.prev_position = grid_to_world_pos(state->grid, state->piece.pos);
+                    state->piece.pos.y -= 1;
+                }
+            }
+        } else {
+            state->p_anim.t += (f32)dt;
+        }
+    }
+
+    if (key_b->Control.down && key_b->R.down) {
+        reload_game_state(state);
     }
 
 
     //  todo(debug camera) : --------------------------------------------------------- (section)  //
-    // state->debug_camera_mode =
-    //     (input->keyboard.Control.ended_down && input->keyboard.Num4.ended_down)
 
-    //         ? !(state->debug_camera_mode)
-    //         : (state->debug_camera_mode);
+    if (state->in_debug_mode) {
+        if (key_b->W.down) {
+            cam->pos = cam->pos + (CAM_SPEED * (f32)dt) * cam->front;
+        }
+        if (key_b->S.down) {
+            cam->pos = cam->pos - (CAM_SPEED * (f32)dt) * cam->front;
+        }
 
-    // if (state->debug_camera_mode) {
-    // camera_control(state, input, push_buffer);
-    // }
+        if (key_b->D.down) {
+            cam->pos = cam->pos + (CAM_SPEED * (f32)dt) * cam->side;
+        }
+        if (key_b->A.down) {
+            cam->pos = cam->pos - (CAM_SPEED * (f32)dt) * cam->side;
+        }
+
+        if (key_b->Q.down) {
+            cam->pos = cam->pos + (CAM_SPEED * (f32)dt) * cam->up;
+        }
+        if (key_b->E.down) {
+            cam->pos = cam->pos - (CAM_SPEED * (f32)dt) * cam->up;
+        }
+    }
+
     //  ----------------------------------------------------------------------------------------  //
 
 
 
     //  test updates and draws : ----------------------------------------------------- (section)  //
-    state->dt += (f32)time_elapsed * 0.0005f;
+    state->time_elapsed += (f32)dt * 0.0005f;
     state->interp_type = IK_OutSine;
 
     // Update clear color
-    f32 red_shift      = ((f32)sin(state->dt) * 0.5f + 0.5f);
+    f32 red_shift      = ((f32)sin(state->time_elapsed) * 0.5f + 0.5f);
     f32 green_shift    = 0.0f;
-    f32 blue_shift     = ((f32)cos(state->dt) * 0.5f + 0.5f);
+    f32 blue_shift     = ((f32)cos(state->time_elapsed) * 0.5f + 0.5f);
     v4  changing_color = {red_shift, green_shift, blue_shift, 1.0f};
 
     // v4 color = {0.1f, 0.1f, 0.1f, 1.0f};
@@ -284,15 +320,11 @@ extern "C" CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRender) {
 
 
     // f32 t = ((f32)cos(state->dt) * 0.5f + 0.5f);
-    f32 t = triangle_wave(state->dt, 8.f);
+    f32 t = triangle_wave(state->time_elapsed, 8.f);
     t     = interps[state->interp_type](t);
 
-    V3_vecd(pos, 0.0f, 0.0f, 0.0f);
     draw_grid3d(push_buffer, state->grid);
 
-    // V3_vecd(vp, -250.0f, 400.0f, 250.0f);
-    V3_vecd(vp, 0, 200.0f, 250.0f);
-    set_camera_to_look_at(push_buffer, pos, vp);
 
     draw_piece(state, push_buffer);
 
@@ -305,7 +337,14 @@ extern "C" CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRender) {
 
         f32 r = 200.0f;
         // V3_vecd(vantage_point, 25.f, -52.f, Lerp(t, -320.f, 320.f));
-        set_camera_to_look_at(push_buffer, pos, quad_bezier(a, b, c, t));
+        set_camera_to_look_at(cam, {0}, quad_bezier(a, b, c, t));
     }
+
+    //  Draw : ----------------------------------------------------------------------- (section)  //
+
+    // I am stupid to directly update the cam state in push_buffer
+    // I should've always done that in game state and then at last
+    // pushed it to the buffer, I am stupid
+    push_buffer->cam = state->cam;
 }
 //  (section) ---------------------------------------------------------------- : main game entry  //

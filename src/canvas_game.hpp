@@ -4,8 +4,12 @@
 
 #include <base/include.cpp>
 
+#include "renderer.hpp"
+
 #define PIECE_SIZE      25.0f
 #define PIECE_MOVE_TIME 150.f
+
+#define CAM_SPEED 0.1f
 
 typedef struct {
     u8 x;
@@ -14,13 +18,13 @@ typedef struct {
 } GridPos;
 
 typedef struct {
-    f32     t;
-    v3 prev_position;
-    bool    active;
+    f32  t;
+    v3   prev_position;
+    bool active;
 } PieceAnimation;
 
 typedef struct {
-	GridPos pos;
+    GridPos pos;
 } Piece;
 
 typedef struct {
@@ -38,7 +42,7 @@ typedef struct {
     f32 y_off;
     f32 z_off;
 
-    f32 dt;
+    f32 time_elapsed;
 #endif
 
     Grid grid;
@@ -46,9 +50,11 @@ typedef struct {
     Piece          piece;
     PieceAnimation p_anim;
 
-	u8 interp_type;
+    u8 interp_type;
 
-    bool debug_camera_mode;
+    render_camera cam;
+
+    bool in_debug_mode;
 } canvas_state;
 
 //  (section) ------------------------------------------------------------- : Game related stuff  //
