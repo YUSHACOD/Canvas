@@ -21,6 +21,11 @@ typedef struct {
     bool down;
 } canvas_button_state;
 
+#define Held(button) ((button).down)
+#define Pushed(button) ((button).down && (button).flips > 0)
+#define Released(button) (!(button).down && (button).flips > 0)
+
+
 typedef struct {
     f32 min;
     f32 max;

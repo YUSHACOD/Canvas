@@ -18,6 +18,24 @@
 
 
 //  Camera control : ----------------------------------------------------------------- (section)  //
+
+internal void rot_cam_euler(render_camera* cam, f32 ax_radi, f32 ay_radi, f32 az_radi) {
+
+    f32 cx = cosf(ax_radi), sx = sinf(ax_radi);
+    f32 cy = cosf(ay_radi), sy = sinf(ay_radi);
+    f32 cz = cosf(az_radi), sz = sinf(az_radi);
+
+    // Combined rotation matrix R = Rz * Ry * Rx
+    mat3 m = {0};
+    V3_veci(m.vec1, cy * cz, cz * sx * sy - cx * sz, cx * cz * sy + sx * sz);
+    V3_veci(m.vec2, cy * sz, cx * cz + sx * sy * sz, cx * sy * sz - cz * sx);
+    V3_veci(m.vec3, -sy, cy * sx, cx * cy);
+
+    cam->front = m * (cam->front);
+    cam->side  = m * (cam->side);
+    cam->up    = m * (cam->up);
+}
+
 inline void set_camera_to_look_at(render_camera* cam, v3 at, v3 pos) {
 
     V3_vecd(up, 0.0f, 1.0f, 0.0f);
@@ -154,7 +172,7 @@ extern "C" CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRender) {
     Assert(sizeof(canvas_state) <= memory->perma_size);
 #endif
 
-	//  unpacking stuff : ------------------------------------------------------------ (section)  //
+    //  unpacking stuff : ------------------------------------------------------------ (section)  //
     canvas_state* state = (canvas_state*)memory->perma_store;
     if (!memory->is_valid) {
         memory->is_valid = true;
@@ -182,124 +200,176 @@ extern "C" CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRender) {
 
     //  input handling : ------------------------------------------------------------- (section)  //
     f32 input_factor = 1.0f;
-    state->x_off -= (ctrl1->Left.down) ? input_factor : 0.0f;
-    state->x_off += (ctrl1->Right.down) ? input_factor : 0.0f;
+    state->x_off -= Held(ctrl1->Left) ? input_factor : 0.0f;
+    state->x_off += Held(ctrl1->Right) ? input_factor : 0.0f;
 
-    state->y_off += (ctrl1->Up.down) ? input_factor : 0.0f;
-    state->y_off -= (ctrl1->Down.down) ? input_factor : 0.0f;
+    state->y_off += Held(ctrl1->Up) ? input_factor : 0.0f;
+    state->y_off -= Held(ctrl1->Down) ? input_factor : 0.0f;
 
 
-    if (ctrl1->Stop.down) {
+    if (Held(ctrl1->Stop)) {
         *running = false;
     }
 
-    state->x_off -= (key_b->A.down) ? input_factor : 0.0f;
-    state->x_off += (key_b->D.down) ? input_factor : 0.0f;
+    state->x_off -= Held(key_b->A) ? input_factor : 0.0f;
+    state->x_off += Held(key_b->D) ? input_factor : 0.0f;
 
-    state->y_off += (key_b->Q.down) ? input_factor : 0.0f;
-    state->y_off -= (key_b->E.down) ? input_factor : 0.0f;
+    state->y_off += Held(key_b->Q) ? input_factor : 0.0f;
+    state->y_off -= Held(key_b->E) ? input_factor : 0.0f;
 
-    state->z_off += (key_b->S.down) ? input_factor : 0.0f;
-    state->z_off -= (key_b->W.down) ? input_factor : 0.0f;
+    state->z_off += Held(key_b->S) ? input_factor : 0.0f;
+    state->z_off -= Held(key_b->W) ? input_factor : 0.0f;
 
-    if (key_b->I.down && key_b->I.flips > 0) {
+    if Pushed (key_b->N) {
         state->interp_type = ((state->interp_type + 1) % EnumCount(Interpolation_Kind));
     }
 
-    if (key_b->F2.flips > 0 && key_b->F2.down) {
+    if Pushed (key_b->F2) {
         state->in_debug_mode = !(state->in_debug_mode);
     }
 
     if (!state->in_debug_mode) {
-        if (!state->p_anim.active) {
-            if (key_b->D.down) {
-                if (state->piece.pos.x < (state->grid.cols - 1)) {
+        if Pushed (key_b->D) {
+            if (state->piece.pos.x < (state->grid.cols - 1)) {
+                if (state->p_anim.active) {
+                    state->p_anim.t = (f32)dt;
+                } else {
                     state->p_anim.t += (f32)dt;
-                    state->p_anim.active        = true;
-                    state->p_anim.prev_position = grid_to_world_pos(state->grid, state->piece.pos);
-                    state->piece.pos.x += 1;
                 }
+                state->p_anim.active        = true;
+                state->p_anim.prev_position = grid_to_world_pos(state->grid, state->piece.pos);
+                state->piece.pos.x += 1;
             }
-            if (key_b->A.down) {
-                if (state->piece.pos.x >= 1) {
+        }
+        if Pushed (key_b->A) {
+            if (state->piece.pos.x >= 1) {
+                if (state->p_anim.active) {
+                    state->p_anim.t = (f32)dt;
+                } else {
                     state->p_anim.t += (f32)dt;
-                    state->p_anim.active        = true;
-                    state->p_anim.prev_position = grid_to_world_pos(state->grid, state->piece.pos);
-                    state->piece.pos.x -= 1;
                 }
+                state->p_anim.active        = true;
+                state->p_anim.prev_position = grid_to_world_pos(state->grid, state->piece.pos);
+                state->piece.pos.x -= 1;
             }
-            if (key_b->W.down) {
-                if (state->piece.pos.z < (state->grid.rows - 1)) {
+        }
+        if Pushed (key_b->W) {
+            if (state->piece.pos.z < (state->grid.rows - 1)) {
+                if (state->p_anim.active) {
+                    state->p_anim.t = (f32)dt;
+                } else {
                     state->p_anim.t += (f32)dt;
-                    state->p_anim.active        = true;
-                    state->p_anim.prev_position = grid_to_world_pos(state->grid, state->piece.pos);
-                    state->piece.pos.z += 1;
                 }
+                state->p_anim.active        = true;
+                state->p_anim.prev_position = grid_to_world_pos(state->grid, state->piece.pos);
+                state->piece.pos.z += 1;
             }
-            if (key_b->S.down) {
-                if (state->piece.pos.z >= 1) {
+        }
+        if Pushed (key_b->S) {
+            if (state->piece.pos.z >= 1) {
+                if (state->p_anim.active) {
+                    state->p_anim.t = (f32)dt;
+                } else {
                     state->p_anim.t += (f32)dt;
-                    state->p_anim.active        = true;
-                    state->p_anim.prev_position = grid_to_world_pos(state->grid, state->piece.pos);
-                    state->piece.pos.z -= 1;
                 }
+                state->p_anim.active        = true;
+                state->p_anim.prev_position = grid_to_world_pos(state->grid, state->piece.pos);
+                state->piece.pos.z -= 1;
             }
-            if (key_b->Q.down) {
-                if (state->piece.pos.y < (state->grid.layers - 1)) {
+        }
+        if Pushed (key_b->Q) {
+            if (state->piece.pos.y < (state->grid.layers - 1)) {
+                if (state->p_anim.active) {
+                    state->p_anim.t = (f32)dt;
+                } else {
                     state->p_anim.t += (f32)dt;
-                    state->p_anim.active        = true;
-                    state->p_anim.prev_position = grid_to_world_pos(state->grid, state->piece.pos);
-                    state->piece.pos.y += 1;
                 }
+                state->p_anim.active        = true;
+                state->p_anim.prev_position = grid_to_world_pos(state->grid, state->piece.pos);
+                state->piece.pos.y += 1;
             }
-            if (key_b->E.down) {
-                if (state->piece.pos.y >= 1) {
+        }
+        if Pushed (key_b->E) {
+            if (state->piece.pos.y >= 1) {
+                if (state->p_anim.active) {
+                    state->p_anim.t = (f32)dt;
+                } else {
                     state->p_anim.t += (f32)dt;
-                    state->p_anim.active        = true;
-                    state->p_anim.prev_position = grid_to_world_pos(state->grid, state->piece.pos);
-                    state->piece.pos.y -= 1;
                 }
+                state->p_anim.active        = true;
+                state->p_anim.prev_position = grid_to_world_pos(state->grid, state->piece.pos);
+                state->piece.pos.y -= 1;
             }
-        } else {
+        }
+
+        if (state->p_anim.active) {
             state->p_anim.t += (f32)dt;
         }
     }
 
-    if (key_b->Control.down && key_b->R.down) {
+    if (Held(key_b->Control) && Held(key_b->R)) {
         reload_game_state(state);
     }
 
 
-    //  todo(debug camera) : --------------------------------------------------------- (section)  //
+    //  todo(debug camera) : --------------------------------------------------------- (section)
+    //  //
 
     if (state->in_debug_mode) {
-        if (key_b->W.down) {
-            cam->pos = cam->pos + (CAM_SPEED * (f32)dt) * cam->front;
+
+        // translation
+        if Held (key_b->W) {
+            cam->pos = cam->pos + (CAM_TRANSLATION_SPEED * (f32)dt) * cam->front;
         }
-        if (key_b->S.down) {
-            cam->pos = cam->pos - (CAM_SPEED * (f32)dt) * cam->front;
+        if Held (key_b->S) {
+            cam->pos = cam->pos - (CAM_TRANSLATION_SPEED * (f32)dt) * cam->front;
         }
 
-        if (key_b->D.down) {
-            cam->pos = cam->pos + (CAM_SPEED * (f32)dt) * cam->side;
+        if Held (key_b->D) {
+            cam->pos = cam->pos + (CAM_TRANSLATION_SPEED * (f32)dt) * cam->side;
         }
-        if (key_b->A.down) {
-            cam->pos = cam->pos - (CAM_SPEED * (f32)dt) * cam->side;
+        if Held (key_b->A) {
+            cam->pos = cam->pos - (CAM_TRANSLATION_SPEED * (f32)dt) * cam->side;
         }
 
-        if (key_b->Q.down) {
-            cam->pos = cam->pos + (CAM_SPEED * (f32)dt) * cam->up;
+        if Held (key_b->Q) {
+            cam->pos = cam->pos + (CAM_TRANSLATION_SPEED * (f32)dt) * cam->up;
         }
-        if (key_b->E.down) {
-            cam->pos = cam->pos - (CAM_SPEED * (f32)dt) * cam->up;
+        if Held (key_b->E) {
+            cam->pos = cam->pos - (CAM_TRANSLATION_SPEED * (f32)dt) * cam->up;
+        }
+
+
+        // orientation
+        if Held (key_b->I) {
+            rot_cam_euler(cam, CAM_ORIENTATION_SPEED * (f32)dt, 0, 0);
+        }
+        if Held (key_b->K) {
+            rot_cam_euler(cam, -CAM_ORIENTATION_SPEED * (f32)dt, 0, 0);
+        }
+
+        if Held (key_b->J) {
+            rot_cam_euler(cam, 0, CAM_ORIENTATION_SPEED * (f32)dt, 0);
+        }
+        if Held (key_b->L) {
+            rot_cam_euler(cam, 0, -CAM_ORIENTATION_SPEED * (f32)dt, 0);
+        }
+
+        if Held (key_b->U) {
+            rot_cam_euler(cam, 0, 0, CAM_ORIENTATION_SPEED * (f32)dt);
+        }
+        if Held (key_b->O) {
+            rot_cam_euler(cam, 0, 0, -CAM_ORIENTATION_SPEED * (f32)dt);
         }
     }
 
-    //  ----------------------------------------------------------------------------------------  //
+    //  ----------------------------------------------------------------------------------------
+    //  //
 
 
 
-    //  test updates and draws : ----------------------------------------------------- (section)  //
+    //  test updates and draws : ----------------------------------------------------- (section)
+    //  //
     state->time_elapsed += (f32)dt * 0.0005f;
     state->interp_type = IK_OutSine;
 
@@ -340,11 +410,13 @@ extern "C" CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRender) {
         set_camera_to_look_at(cam, {0}, quad_bezier(a, b, c, t));
     }
 
-    //  Draw : ----------------------------------------------------------------------- (section)  //
+    //  Draw : ----------------------------------------------------------------------- (section)
+    //  //
 
     // I am stupid to directly update the cam state in push_buffer
     // I should've always done that in game state and then at last
     // pushed it to the buffer, I am stupid
     push_buffer->cam = state->cam;
 }
-//  (section) ---------------------------------------------------------------- : main game entry  //
+//  (section) ---------------------------------------------------------------- : main game entry
+//  //
