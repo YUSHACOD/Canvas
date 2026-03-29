@@ -21,8 +21,8 @@ typedef struct {
     bool down;
 } canvas_button_state;
 
-#define Held(button) ((button).down)
-#define Pushed(button) ((button).down && (button).flips > 0)
+#define Held(button)     ((button).down)
+#define Pushed(button)   ((button).down && (button).flips > 0)
 #define Released(button) (!(button).down && (button).flips > 0)
 
 
@@ -314,16 +314,19 @@ typedef struct {
 } canvas_memory;
 
 
+#define CANVAS_GAME_INIT(name) void name(canvas_memory* memory)
+typedef CANVAS_GAME_INIT(canvas_game_init);
+extern "C" CANVAS_GAME_INIT(CanvasGameInit);
+
 
 #define CANVAS_UPDATE_AND_RENDER(name)                                                             \
     void name(canvas_memory*      memory,                                                          \
               render_push_buffer* push_buffer,                                                     \
               canvas_input*       input,                                                           \
               f64                 dt,                                                              \
-              bool                is_first_time,                                                   \
               bool*               running)
 typedef CANVAS_UPDATE_AND_RENDER(canvas_update_and_draw);
-CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRenderStub);
+extern "C" CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRenderStub);
 
 //  (section) ----------------------------------------------------------- : Game code interfaces  //
 #endif

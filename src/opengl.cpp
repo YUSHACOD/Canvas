@@ -38,6 +38,7 @@ internal void GL_load_function_globals() {
     glGetProgramInfoLog  = (gl_get_program_info_log*)wglGetProcAddress("glGetProgramInfoLog");
     glValidateProgram    = (gl_validate_program*)wglGetProcAddress("glValidateProgram");
     glGenerateMipmap     = (gl_generate_mipmap*)wglGetProcAddress("glGenerateMipmap");
+    glUniform3fv         = (gl_uniform3fv*)wglGetProcAddress("glUniform3fv");
 }
 //  (section) --------------------------------------------------------------- : loading gl funcs  //
 
@@ -148,6 +149,7 @@ internal void GL_Release(HWND window_handle) {
 
 
 //  gl pipeline init : --------------------------------------------------------------- (section)  //
+//
 #if DEBUG
 internal char* GL_load_shader_source(shader_program_kind kind, char* suffix) {
     char buffer[512]  = "../../shaders/";
@@ -306,8 +308,8 @@ internal void GL_PipelineDelete(gl_renderer_state* gl_state) {
 
 
 //  frame setup : -------------------------------------------------------------------- (section)  //
-internal void
-GL_load_projection_matrix(f32* proj, f32 aspect_ratio, f32 fov_angle_radians, f32 z_near, f32 z_far) {
+internal void GL_load_projection_matrix(
+    f32* proj, f32 aspect_ratio, f32 fov_angle_radians, f32 z_near, f32 z_far) {
 
     f32 fov = 1.0f / tan(fov_angle_radians / 2.0f);
 
@@ -367,7 +369,7 @@ internal void GL_load_view_matrix(f32* view_transform, v3 pos, quat orientation)
     // clang-format on
 }
 
-inline internal void GL_load_view_matrix(mat4 *v, render_camera* cam) {
+inline internal void GL_load_view_matrix(mat4* v, render_camera* cam) {
 
     V3_veci(v->vec1, cam->side.x, cam->up.x, -cam->front.x);
     V3_veci(v->vec2, cam->side.y, cam->up.y, -cam->front.y);
@@ -397,7 +399,7 @@ internal void GL_init_frame(render_push_buffer* push_buffer) {
     GL_load_projection_matrix(proj, ogl_state.aspect_ratio, DegToRad(60.0f), Z_NEAR, Z_FAR);
 
     Mat4_di(view_mat);
-	GL_load_view_matrix(&view_mat, &push_buffer->cam);
+    GL_load_view_matrix(&view_mat, &push_buffer->cam);
 
     f32* uniforms[EnumCount(uniform_kind)] = {0};
     uniforms[ProjMat]                      = proj;
@@ -427,7 +429,6 @@ internal void GL_render_clear(RC_clear2d cmd) {
 
 
 internal void GL_render_cubes(RG_cube rg) {
-    glUseProgram(ogl_state.program_handles[Cube]);
 
     // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     for (u32 idx = 0; idx < rg.count; idx++) {
@@ -444,7 +445,7 @@ internal void GL_render_cubes(RG_cube rg) {
 }
 
 internal void GL_render_cubes_wf(RG_cube_wf rg) {
-    glUseProgram(ogl_state.program_handles[CubeWireFrame]);
+	glUseProgram(ogl_state.program_handles[CubeWireFrame]);
 
     for (u32 idx = 0; idx < rg.count; idx++) {
 
@@ -462,7 +463,14 @@ R_RENDER(R_Render) {
     GL_init_frame(push_buffer);
 
     GL_render_clear(push_buffer->clear);
+
+    glUseProgram(ogl_state.program_handles[Cube]);
+
+    glUniform3fv(2, 1, push_buffer->light.pos.arr);
+    glUniform3fv(3, 1, push_buffer->light.color.arr);
+
     GL_render_cubes(push_buffer->cube_buffer);
+
     GL_render_cubes_wf(push_buffer->cube_wf_buffer);
 }
 //  (section) ----------------------------------------------------------------- : Renderer utils  //

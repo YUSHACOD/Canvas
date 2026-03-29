@@ -27,6 +27,7 @@ typedef struct {
 
 typedef struct {
     HMODULE                 game_lib;
+    canvas_game_init*       init;
     canvas_update_and_draw* update_and_draw;
     bool                    is_valid;
     FILETIME                last_write_time;
@@ -55,7 +56,6 @@ typedef struct {
     i64                  perf_counter_freq;
     f64                  max_time_per_frame;
     bool                 is_time_proper;
-    bool                 window_shown;
 } winplat_main_ctx;
 
 //  (section) ------------------------------------------------------------- : Windows interfaces  //

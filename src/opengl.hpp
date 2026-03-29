@@ -51,8 +51,8 @@ typedef void
 gl_get_program_info_log(GLuint program, GLsizei bufSize, GLsizei* length, GLchar* infoLog);
 typedef void gl_validate_program(GLuint program);
 typedef void gl_vertex_attrib3fv(GLuint index, const GLfloat* v);
-
 typedef void gl_generate_mipmap(GLenum target);
+typedef void gl_uniform3fv(GLint location, GLsizei count, const GLfloat* value);
 //  (section) ----------------------------------------------------------------------- : gl types  //
 
 
@@ -84,6 +84,7 @@ global gl_get_program_info_log*        glGetProgramInfoLog;
 global gl_validate_program*            glValidateProgram;
 global gl_vertex_attrib3fv*            glVertexAttrib3fv;
 global gl_generate_mipmap*             glGenerateMipmap;
+global gl_uniform3fv*                  glUniform3fv;
 //  (section) --------------------------------------------------------------------- : gl globals  //
 
 

@@ -6,7 +6,7 @@
 
 #include "renderer.hpp"
 
-#define PIECE_SIZE      25.0f
+#define PIECE_SIZE      45.0f
 #define PIECE_MOVE_TIME 250.f
 
 #define CAM_TRANSLATION_SPEED 0.1f

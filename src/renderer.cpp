@@ -5,6 +5,8 @@
 
 R_PUSH_CLEAR(R_PushClear) { push_buffer->clear.color = clear.color; }
 
+R_PUSH_P_LIGHT(R_PushPointLight) { push_buffer->light = light; }
+
 R_PUSH_CUBE(R_PushCube) {
     u32 idx = push_buffer->cube_buffer.count;
 

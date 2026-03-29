@@ -26,6 +26,11 @@ typedef struct {
 } RC_cube_wf;
 
 typedef struct {
+    v3 pos;
+    v3 color;
+} RC_point_light;
+
+typedef struct {
     RC_cube* cubes;
     u32      size;
     u32      count;
@@ -46,11 +51,12 @@ typedef struct {
 } render_camera;
 
 typedef struct {
-    RG_cube       cube_buffer;
-    RG_cube_wf    cube_wf_buffer;
-    RC_clear2d    clear;
-    mat4          view_mat;
-    render_camera cam;
+    RG_cube        cube_buffer;
+    RG_cube_wf     cube_wf_buffer;
+    RC_clear2d     clear;
+    RC_point_light light;
+    mat4           view_mat;
+    render_camera  cam;
 } render_push_buffer;
 
 //  platform layer declares : -------------------------------------------------------- (section)  //
@@ -66,6 +72,10 @@ R_CLEAR_PUSH_BUFFER(R_ClearPushBuffer);
 //  renderer utils : ----------------------------------------------------------------- (section)  //
 #define R_PUSH_CLEAR(name) void name(render_push_buffer* push_buffer, RC_clear2d clear)
 R_PUSH_CLEAR(R_PushClear);
+
+
+#define R_PUSH_P_LIGHT(name) void name(render_push_buffer* push_buffer, RC_point_light light)
+R_PUSH_P_LIGHT(R_PushPointLight);
 
 #define R_PUSH_CUBE(name) void name(render_push_buffer* push_buffer, RC_cube cube)
 R_PUSH_CUBE(R_PushCube);

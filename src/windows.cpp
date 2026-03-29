@@ -14,7 +14,7 @@
  * - Bug: input clear when window is not focused
  * - Buffering projection, model-view mats
  * - world limit definition
- * - debug camera
+ * - debug camera(mouse input handling)
  * - maze generation from cubes
  *
  *
@@ -118,6 +118,7 @@ internal FILETIME WP_get_last_writeTime(char* filename) {
 }
 
 CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRenderStub) {}
+CANVAS_GAME_INIT(CanvasGameInit) {}
 internal winplat_game_code WP_load_game_code(char* source_dll_path) {
 
     winplat_game_code result = {};
@@ -142,6 +143,9 @@ internal winplat_game_code WP_load_game_code(char* source_dll_path) {
 
     if (result.game_lib) {
         result.last_write_time = WP_get_last_writeTime(source_dll_path);
+
+        result.init = (canvas_game_init*)GetProcAddress(result.game_lib, "CanvasGameInit");
+
         result.update_and_draw =
             (canvas_update_and_draw*)GetProcAddress(result.game_lib, "CanvasUpdateAndRender");
 
@@ -419,7 +423,8 @@ internal void WP_toggle_full_screen(HWND window_handle) {
 
     if (window_style & WINDOW_STYLE) {
 
-        MONITORINFO monitor_info = {sizeof(monitor_info)};
+        MONITORINFO monitor_info = {};
+        monitor_info.cbSize      = sizeof(monitor_info);
 
         if (GetWindowPlacement(window_handle, &wp_prev_wnd_placement) &&
             GetMonitorInfo(MonitorFromWindow(window_handle, MONITOR_DEFAULTTOPRIMARY),
@@ -503,9 +508,8 @@ internal void WP_update(winplat_main_ctx* ctx) {
 
     // Input Processing
     for (u32 idx = 0; idx < ArrayLen(ctx->old_input->keyboard.Buttons); idx += 1) {
-        ctx->new_input->keyboard.Buttons[idx].down =
-            ctx->old_input->keyboard.Buttons[idx].down;
-		ctx->new_input->keyboard.Buttons[idx].flips = 0;
+        ctx->new_input->keyboard.Buttons[idx].down  = ctx->old_input->keyboard.Buttons[idx].down;
+        ctx->new_input->keyboard.Buttons[idx].flips = 0;
     }
     WP_process_window_messages(&ctx->new_input->keyboard, ctx->window_handle, &wp_is_running);
 
@@ -513,12 +517,8 @@ internal void WP_update(winplat_main_ctx* ctx) {
 
 
     //  game layer call : ------------------------------------------------ (section)  //
-    ctx->game_code.update_and_draw(&ctx->memory,
-                                   &ctx->r_push_buffer,
-                                   ctx->new_input,
-                                   ctx->time_elapsed,
-                                   !ctx->window_shown,
-                                   &wp_is_running);
+    ctx->game_code.update_and_draw(
+        &ctx->memory, &ctx->r_push_buffer, ctx->new_input, ctx->time_elapsed, &wp_is_running);
 
 
     R_Render(&ctx->r_push_buffer);
@@ -575,12 +575,6 @@ internal void WP_update(winplat_main_ctx* ctx) {
     sprintf(buffer, "%.03fms, %.03ffps, %.03fMC/F \n", ms_per_frame, fps, mega_cylces_elapsed);
     // OutputDebugStringA(buffer);
 #endif
-
-    // showing window after one frame is painted
-    if (!ctx->window_shown) {
-        ShowWindow(ctx->window_handle, SW_SHOWDEFAULT);
-        ctx->window_shown = true;
-    }
 }
 //  (section) ------------------------------------------------------------------- : Totat Update  //
 
@@ -828,9 +822,13 @@ i32 WinMain(HINSTANCE instance, HINSTANCE prev_instance, LPSTR cmd_line, i32 sho
 
             //  timing init : -------------------------------------------------------- (section)  //
             WP_time_query(&wp_ctx.last);
-
             wp_ctx.time_elapsed = 0.0f;
-            wp_ctx.window_shown = false;
+
+            // First run to show window
+            WP_update(&wp_ctx);
+            game_code->init(&wp_ctx.memory);
+            ShowWindow(wp_ctx.window_handle, show_cmd);
+
 
             //  main loop : ---------------------------------------------------------- (section)  //
             while (wp_is_running) {
