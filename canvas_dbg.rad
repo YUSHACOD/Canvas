@@ -1,8 +1,8 @@
 // raddbg 0.9.25 project file
 
 recent_file: path: "src/opengl.cpp"
-recent_file: path: "src/canvas.cpp"
 recent_file: path: "src/windows.cpp"
+recent_file: path: "src/canvas.cpp"
 recent_file: path: "D:/a/_work/1/s/src/vctools/crt/vcstartup/src/gs/amd64/amdsecgs.asm"
 recent_file: path: "src/renderer.cpp"
 recent_file: path: "../graphics_api_test/vulkan/v2/triangle.c"
@@ -19,12 +19,12 @@ recent_file: path: "d:/os/obj/amd64fre/minkernel/crts/ucrt/src/appcrt/startup/mt
 debug_info:
 {
   path: "C:/Users/91724/cpp/canvas/build/debug/Canvxs.pdb"
-  timestamp: 66210600390800
+  timestamp: 66210844668586
 }
 debug_info:
 {
   path: "C:/Users/91724/cpp/canvas/build/debug/canvas.pdb"
-  timestamp: 66210600941746
+  timestamp: 66210844668932
 }
 debug_info:
 {
@@ -35,4 +35,36 @@ debug_info:
 {
   path: "C:/VulkanSDK/1.4.341.1/Bin/VkLayer_khronos_validation.pdb"
   timestamp: 66205613755476
+}
+breakpoint:
+{
+  source_location: "src/windows.cpp:508:1"
+  hit_count: 0
+  label: main_update
+  enabled: 0
+}
+breakpoint:
+{
+  source_location: "src/windows.cpp:520:1"
+  hit_count: 0
+  label: game_update_entry_call
+  enabled: 0
+}
+breakpoint:
+{
+  source_location: "src/canvas.cpp:202:1"
+  label: game_update_entry
+  enabled: 0
+  hit_count: 0
+}
+breakpoint:
+{
+  source_location: "src/canvas.cpp:459:1"
+  enabled: 0
+  hit_count: 0
+}
+breakpoint:
+{
+  source_location: "src/opengl.cpp:391:1"
+  hit_count: 1
 }

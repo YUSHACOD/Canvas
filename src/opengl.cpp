@@ -39,6 +39,7 @@ internal void GL_load_function_globals() {
     glValidateProgram    = (gl_validate_program*)wglGetProcAddress("glValidateProgram");
     glGenerateMipmap     = (gl_generate_mipmap*)wglGetProcAddress("glGenerateMipmap");
     glUniform3fv         = (gl_uniform3fv*)wglGetProcAddress("glUniform3fv");
+    glUniform1f          = (gl_uniform1f*)wglGetProcAddress("glUniform1f");
 }
 //  (section) --------------------------------------------------------------- : loading gl funcs  //
 
@@ -445,7 +446,7 @@ internal void GL_render_cubes(RG_cube rg) {
 }
 
 internal void GL_render_cubes_wf(RG_cube_wf rg) {
-	glUseProgram(ogl_state.program_handles[CubeWireFrame]);
+    glUseProgram(ogl_state.program_handles[CubeWireFrame]);
 
     for (u32 idx = 0; idx < rg.count; idx++) {
 
@@ -468,6 +469,12 @@ R_RENDER(R_Render) {
 
     glUniform3fv(2, 1, push_buffer->light.pos.arr);
     glUniform3fv(3, 1, push_buffer->light.color.arr);
+
+    glUniform3fv(4, 1, push_buffer->material.ambient.arr);
+    glUniform3fv(5, 1, push_buffer->material.specular.arr);
+    glUniform3fv(6, 1, push_buffer->material.diffuse.arr);
+
+    glUniform1f(7, push_buffer->material.shine);
 
     GL_render_cubes(push_buffer->cube_buffer);
 

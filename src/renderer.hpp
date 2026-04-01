@@ -31,6 +31,13 @@ typedef struct {
 } RC_point_light;
 
 typedef struct {
+    v3  ambient;
+    v3  diffuse;
+    v3  specular;
+    f32 shine;
+} material;
+
+typedef struct {
     RC_cube* cubes;
     u32      size;
     u32      count;
@@ -57,6 +64,7 @@ typedef struct {
     RC_point_light light;
     mat4           view_mat;
     render_camera  cam;
+    material       material;
 } render_push_buffer;
 
 //  platform layer declares : -------------------------------------------------------- (section)  //
@@ -76,6 +84,10 @@ R_PUSH_CLEAR(R_PushClear);
 
 #define R_PUSH_P_LIGHT(name) void name(render_push_buffer* push_buffer, RC_point_light light)
 R_PUSH_P_LIGHT(R_PushPointLight);
+
+
+#define R_PUSH_MATERIAL(name) void name(render_push_buffer* push_buffer, material material)
+R_PUSH_MATERIAL(R_PushMaterial);
 
 #define R_PUSH_CUBE(name) void name(render_push_buffer* push_buffer, RC_cube cube)
 R_PUSH_CUBE(R_PushCube);

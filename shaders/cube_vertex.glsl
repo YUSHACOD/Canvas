@@ -9,12 +9,20 @@ layout(location = 0) uniform mat4 proj;
 layout(location = 1) uniform mat4 view;
 layout(location = 2) uniform vec3 light_pos;
 layout(location = 3) uniform vec3 light_color;
+layout(location = 4) uniform vec3 ambient;
+layout(location = 5) uniform vec3 diffuse;
+layout(location = 6) uniform vec3 specular;
+layout(location = 7) uniform float shine;
 
 out VS_OUT {
     vec3 light_pos;
     vec3 light_color;
     vec3 frag_pos;
     vec3 normal;
+    vec3 ambient;
+    vec3 diffuse;
+    vec3 specular;
+    float shine;
     vec4 color;
     vec2 texture_coord;
 } vs_out;
@@ -62,8 +70,7 @@ mat4 createModelMatrix(vec3 pos, vec3 scale, vec4 quat) {
 
 vec3 getFaceNormal(int face) {
     int base = face * 6;
-    // Sum the 4 unique corners of the quad to get the face center direction,
-    // skipping index +3 since it duplicates +2 in the (0,1,2, 2,3,0) winding
+
     return positions[indices[base]]
         + positions[indices[base + 1]]
         + positions[indices[base + 2]]
@@ -81,8 +88,13 @@ void main(void) {
 
     vs_out.color = color;
     vs_out.texture_coord = tex_coords[gl_VertexID % 6];
+
     vs_out.frag_pos = vec3(view * vertex);
     vs_out.normal = normal_matrix * normalize(getFaceNormal(face));
     vs_out.light_pos = vec3(view * vec4(light_pos, 1.0));
     vs_out.light_color = light_color;
+
+    vs_out.ambient = ambient;
+    vs_out.diffuse = diffuse;
+    vs_out.specular = specular;
 }

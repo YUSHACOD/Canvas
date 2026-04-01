@@ -172,8 +172,8 @@ inline internal void load_game_state(canvas_state* state) {
     state->grid.cols      = 5;
     state->grid.layers    = 1;
 
-	state->piece.pos.x = 2;
-	state->piece.pos.z = 2;
+    state->piece.pos.x = 2;
+    state->piece.pos.z = 2;
 
     load_default_cam(cam);
 }
@@ -249,7 +249,7 @@ extern "C" CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRender) {
     }
 
     // if (!state->in_debug_mode) {
-	if (0) {
+    if (0) {
         if Pushed (keys->D) {
             if (state->piece.pos.x < (state->grid.cols - 1)) {
                 if (state->p_anim.active) {
@@ -408,8 +408,8 @@ extern "C" CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRender) {
 
 
     // f32 t = ((f32)cos(state->dt) * 0.5f + 0.5f);
-    f32 t = triangle_wave(state->time_elapsed, 8.f);
-    t     = interps[state->interp_type](t);
+    f32 t = triangle_wave(state->time_elapsed * 1.5f, 8.f);
+    // t     = interps[state->interp_type](t);
 
     // draw_grid3d(push_buffer, state->grid);
 
@@ -435,16 +435,27 @@ extern "C" CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRender) {
     // pushed it to the buffer, I am stupid
     push_buffer->cam = state->cam;
 
-	V3_vecd(light_pos, state->x_off, state->y_off,  state->z_off);
-	// V3_vecd(light_pos, 50.f, 30.f,  70.f);
+    V3_vecd(light_pos,
+            (f32)cos(state->time_elapsed * 2.5f) * 60.f,
+            (f32)sin(state->time_elapsed * 2.5f) * 60.f,
+            (f32)cos(state->time_elapsed * 2.5f) * 60.f);
+    // V3_vecd(light_pos, 50.f, 30.f,  70.f);
 
-	RC_cube_wf light_cwf = {};
-	light_cwf.pos = light_pos;
-	light_cwf.color = {1.0f, 1.0f, 1.0f, 0.f};
-	light_cwf.scale = {20.f, 20.f, 20.f};
-	R_PushCubeWF(push_buffer, light_cwf);
+    v3         color     = {1.0f, 1.0f, 1.0f};
+    RC_cube_wf light_cwf = {};
+    light_cwf.pos        = light_pos;
+    V3_veci(light_cwf.color, color.r, color.g, color.b);
+    light_cwf.scale = {20.f, 20.f, 20.f};
+    R_PushCubeWF(push_buffer, light_cwf);
 
     push_buffer->light.pos   = light_pos;
-    push_buffer->light.color = {1.0f, 1.0f, 1.0f};
+    push_buffer->light.color = color;
+
+    material mat = {};
+    V3_veci(mat.ambient, 1.0f, 0.5f, 0.31f);
+    V3_veci(mat.diffuse, 1.0f, 0.5f, 0.31f);
+    V3_veci(mat.specular, 0.5f, 0.5f, 0.5f);
+    mat.shine = 32.0f;
+    R_PushMaterial(push_buffer, mat);
 }
 //  (section) ---------------------------------------------------------------- : main game entry  //
