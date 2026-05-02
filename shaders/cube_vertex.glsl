@@ -97,4 +97,5 @@ void main(void) {
     vs_out.ambient = ambient;
     vs_out.diffuse = diffuse;
     vs_out.specular = specular;
+	vs_out.shine = shine;
 }

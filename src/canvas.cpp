@@ -1,7 +1,6 @@
 
 #include <base/include.cpp>
 
-#include "base/interfaces.hpp"
 #include "canvas_platform.hpp"
 #include "canvas_game.hpp"
 
@@ -435,11 +434,14 @@ extern "C" CANVAS_UPDATE_AND_RENDER(CanvasUpdateAndRender) {
     // pushed it to the buffer, I am stupid
     push_buffer->cam = state->cam;
 
-    V3_vecd(light_pos,
-            (f32)cos(state->time_elapsed * 2.5f) * 60.f,
-            (f32)sin(state->time_elapsed * 2.5f) * 60.f,
-            (f32)cos(state->time_elapsed * 2.5f) * 60.f);
+    // V3_vecd(light_pos,
+    //         (f32)cos(state->time_elapsed * 2.5f) * 60.f,
+    //         (f32)sin(state->time_elapsed * 2.5f) * 60.f,
+    //         (f32)cos(state->time_elapsed * 2.5f) * 60.f)
+
     // V3_vecd(light_pos, 50.f, 30.f,  70.f);
+	
+    V3_vecd(light_pos, state->x_off, state->y_off,  state->z_off);
 
     v3         color     = {1.0f, 1.0f, 1.0f};
     RC_cube_wf light_cwf = {};

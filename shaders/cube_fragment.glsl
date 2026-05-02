@@ -18,12 +18,13 @@ in VS_OUT {
 } fs_in;
 
 vec3 calcLighting(vec3 normal, vec3 light_dir, vec3 light_color) {
-    vec3 ambient = light_color * fs_in.ambient;
+    // vec3 ambient = light_color * fs_in.ambient;
+    vec3 ambient = vec3(0.2, 0.2, 0.2) * fs_in.ambient;
 
     float incident_angle = dot(normal, light_dir);
     float diff = max(incident_angle, 0.0);
-    vec3 diffuse = light_color * (diff * fs_in.diffuse);
-
+    // vec3 diffuse = light_color * (diff * fs_in.diffuse);
+    vec3 diffuse = vec3(0.5, 0.5, 0.5) * (diff * fs_in.diffuse);
     return ambient + diffuse;
 }
 
@@ -35,7 +36,8 @@ void main(void) {
     vec3 reflect_dir = reflect(-light_dir, normal);
 
     float spec = pow(max(dot(view_dir, reflect_dir), 0.0), fs_in.shine);
-    vec3 specular = fs_in.light_color * (spec * fs_in.specular);
+    // vec3 specular = fs_in.light_color * (spec * fs_in.specular);
+    vec3 specular = vec3(1.0, 1.0, 1.0)  * (spec * fs_in.specular);
 
     vec3 light = calcLighting(normal, light_dir, fs_in.light_color) + specular;
     // vec3 light = calcLighting(normal, light_dir, fs_in.light_color);
