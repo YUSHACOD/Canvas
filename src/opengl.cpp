@@ -11,39 +11,6 @@
 
 #include <cmath>
 
-
-//  loading gl funcs : --------------------------------------------------------------- (section)  //
-internal void GL_load_function_globals() {
-    glCreateShader       = (gl_create_shader*)wglGetProcAddress("glCreateShader");
-    glShaderSource       = (gl_shader_source*)wglGetProcAddress("glShaderSource");
-    glCompileShader      = (gl_compile_shader*)wglGetProcAddress("glCompileShader");
-    glCreateProgram      = (gl_create_program*)wglGetProcAddress("glCreateProgram");
-    glAttachShader       = (gl_attach_shader*)wglGetProcAddress("glAttachShader");
-    glLinkProgram        = (gl_link_program*)wglGetProcAddress("glLinkProgram");
-    glDeleteShader       = (gl_delete_shader*)wglGetProcAddress("glDeleteShader");
-    glDeleteProgram      = (gl_delete_program*)wglGetProcAddress("glDeleteProgram");
-    glCreateVertexArrays = (gl_create_vertex_arrays*)wglGetProcAddress("glCreateVertexArrays");
-    glBindVertexArray    = (gl_bind_vertex_array*)wglGetProcAddress("glBindVertexArray");
-    glDeleteVertexArrays = (gl_delete_vertex_arrays*)wglGetProcAddress("glDeleteVertexArrays");
-    glUseProgram         = (gl_use_program*)wglGetProcAddress("glUseProgram");
-    glGetShaderiv        = (gl_get_shaderiv*)wglGetProcAddress("glGetShaderiv");
-    glGetShaderInfoLog   = (gl_get_shader_info_log*)wglGetProcAddress("glGetShaderInfoLog");
-    glClearBufferfv      = (gl_clear_bufferfv*)wglGetProcAddress("glClearBufferfv");
-    glVertexAttrib3fv    = (gl_vertex_attrib3fv*)wglGetProcAddress("glVertexAttrib3fv");
-    glVertexAttrib4fv    = (gl_vertex_attrib4fv*)wglGetProcAddress("glVertexAttrib4fv");
-    glVertexAttrib1f     = (gl_vertex_attrib1f*)wglGetProcAddress("glVertexAttrib1f");
-    glUniformMatrix4fv   = (gl_uniform_matrix4fv*)wglGetProcAddress("glUniformMatrix4fv");
-    glGetUniformLocation = (gl_get_uniform_location*)wglGetProcAddress("glGetUniformLocation");
-    glGetProgramiv       = (gl_get_programiv*)wglGetProcAddress("glGetProgramiv");
-    glGetProgramInfoLog  = (gl_get_program_info_log*)wglGetProcAddress("glGetProgramInfoLog");
-    glValidateProgram    = (gl_validate_program*)wglGetProcAddress("glValidateProgram");
-    glGenerateMipmap     = (gl_generate_mipmap*)wglGetProcAddress("glGenerateMipmap");
-    glUniform3fv         = (gl_uniform3fv*)wglGetProcAddress("glUniform3fv");
-    glUniform1f          = (gl_uniform1f*)wglGetProcAddress("glUniform1f");
-}
-//  (section) --------------------------------------------------------------- : loading gl funcs  //
-
-
 //  opengl init : -------------------------------------------------------------------- (section)  //
 internal void GL_Init(HWND window_handle) {
 
@@ -65,10 +32,10 @@ internal void GL_Init(HWND window_handle) {
         HGLRC dummy_ctx = wglCreateContext(dummy_dc);
         wglMakeCurrent(dummy_dc, dummy_ctx);
 
-        wglChoosePixelFormatARB =
-            (wgl_choose_pixel_format_arb*)wglGetProcAddress("wglChoosePixelFormatARB");
-        wglCreateContextAttribsARB =
-            (wgl_create_context_attribs_arb*)wglGetProcAddress("wglCreateContextAttribsARB");
+        wglChoosePixelFormatArb =
+            (wgl_choose_pixel_format_arb_ft*)wglGetProcAddress("wglChoosePixelFormatARB");
+        wglCreateContextAttribsArb =
+            (wgl_create_context_attribs_arb_ft*)wglGetProcAddress("wglCreateContextAttribsARB");
 
         wglMakeCurrent(dummy_dc, 0);
         wglDeleteContext(dummy_ctx);
@@ -98,7 +65,7 @@ internal void GL_Init(HWND window_handle) {
 
     i32  pixel_fmt_idx = 0;
     UINT num_formats   = 0;
-    wglChoosePixelFormatARB(device_ctx, pf_attribs, 0, 1, &pixel_fmt_idx, &num_formats);
+    wglChoosePixelFormatArb(device_ctx, pf_attribs, 0, 1, &pixel_fmt_idx, &num_formats);
 
     PIXELFORMATDESCRIPTOR pixel_fmt_desc_final = {};
     DescribePixelFormat(
@@ -116,7 +83,7 @@ internal void GL_Init(HWND window_handle) {
                                0x00000002, // WGL_CONTEXT_FLAGS_ARB         = DEBUG
                                0};
 
-    HGLRC rendering_context = wglCreateContextAttribsARB(device_ctx, 0, ctx_attribs);
+    HGLRC rendering_context = wglCreateContextAttribsArb(device_ctx, 0, ctx_attribs);
     if (rendering_context) {
         if (wglMakeCurrent(device_ctx, rendering_context)) {
 
@@ -125,9 +92,9 @@ internal void GL_Init(HWND window_handle) {
         }
     }
 
-    wglSwapIntervalEXT = (wgl_swap_interval_ext*)wglGetProcAddress("wglSwapIntervalEXT");
-    if (wglSwapIntervalEXT) {
-        wglSwapIntervalEXT(1);
+    wglSwapIntervalExt = (wgl_swap_interval_ext_ft*)wglGetProcAddress("wglSwapIntervalEXT");
+    if (wglSwapIntervalExt) {
+        wglSwapIntervalExt(1);
     }
 
     GL_load_function_globals();

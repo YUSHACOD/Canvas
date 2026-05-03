@@ -20,73 +20,79 @@ typedef char GLchar;
 
 
 
+//  generated includes : ------------------------------------------------------------- (section)  //
+#include "generated/gl_api.c"
+//  (section) ------------------------------------------------------------- : generated includes  //
+
+
+
 //  gl types : ----------------------------------------------------------------------- (section)  //
-typedef BOOL(WINAPI wgl_choose_pixel_format_arb)(HDC, const int*, const FLOAT*, UINT, int*, UINT*);
-typedef HGLRC(WINAPI wgl_create_context_attribs_arb)(HDC, HGLRC, const int*);
-typedef BOOL   wgl_swap_interval_ext(int interval);
-typedef GLuint gl_create_shader(GLenum type);
-typedef void
-gl_shader_source(GLuint shader, GLsizei count, const GLchar* const* string, const GLint* length);
-typedef void   gl_compile_shader(GLuint shader);
-typedef GLuint gl_create_program(void);
-typedef void   gl_attach_shader(GLuint program, GLuint shader);
-typedef void   gl_link_program(GLuint program);
-typedef void   gl_delete_shader(GLuint shader);
-typedef void   gl_delete_program(GLuint program);
-typedef void   gl_create_vertex_arrays(GLsizei n, GLuint* arrays);
-typedef void   gl_bind_vertex_array(GLuint array);
-typedef void   gl_delete_vertex_arrays(GLsizei n, const GLuint* arrays);
-typedef void   gl_use_program(GLuint program);
-typedef void   gl_get_shaderiv(GLuint shader, GLenum pname, GLint* params);
-typedef void
-gl_get_shader_info_log(GLuint shader, GLsizei bufSize, GLsizei* length, GLchar* infoLog);
-typedef void gl_clear_bufferfv(GLenum buffer, GLint drawbuffer, const GLfloat* value);
-typedef void gl_vertex_attrib4fv(GLuint index, const GLfloat* v);
-typedef void gl_vertex_attrib1f(GLuint index, const GLfloat x);
-typedef void
-gl_uniform_matrix4fv(GLint location, GLsizei count, GLboolean transpose, const GLfloat* value);
-typedef GLint gl_get_uniform_location(GLuint program, const GLchar* name);
-typedef void  gl_get_programiv(GLuint program, GLenum pname, GLint* params);
-typedef void
-gl_get_program_info_log(GLuint program, GLsizei bufSize, GLsizei* length, GLchar* infoLog);
-typedef void gl_validate_program(GLuint program);
-typedef void gl_vertex_attrib3fv(GLuint index, const GLfloat* v);
-typedef void gl_generate_mipmap(GLenum target);
-typedef void gl_uniform3fv(GLint location, GLsizei count, const GLfloat* value);
-typedef void gl_uniform1f(GLint location, GLfloat value);
+// typedef BOOL(WINAPI wgl_choose_pixel_format_arb)(HDC, const int*, const FLOAT*, UINT, int*, UINT*);
+// typedef HGLRC(WINAPI wgl_create_context_attribs_arb)(HDC, HGLRC, const int*);
+// typedef BOOL   wgl_swap_interval_ext(int interval);
+// typedef GLuint gl_create_shader(GLenum type);
+// typedef void
+// gl_shader_source(GLuint shader, GLsizei count, const GLchar* const* string, const GLint* length);
+// typedef void   gl_compile_shader(GLuint shader);
+// typedef GLuint gl_create_program(void);
+// typedef void   gl_attach_shader(GLuint program, GLuint shader);
+// typedef void   gl_link_program(GLuint program);
+// typedef void   gl_delete_shader(GLuint shader);
+// typedef void   gl_delete_program(GLuint program);
+// typedef void   gl_create_vertex_arrays(GLsizei n, GLuint* arrays);
+// typedef void   gl_bind_vertex_array(GLuint array);
+// typedef void   gl_delete_vertex_arrays(GLsizei n, const GLuint* arrays);
+// typedef void   gl_use_program(GLuint program);
+// typedef void   gl_get_shaderiv(GLuint shader, GLenum pname, GLint* params);
+// typedef void
+// gl_get_shader_info_log(GLuint shader, GLsizei bufSize, GLsizei* length, GLchar* infoLog);
+// typedef void gl_clear_bufferfv(GLenum buffer, GLint drawbuffer, const GLfloat* value);
+// typedef void gl_vertex_attrib4fv(GLuint index, const GLfloat* v);
+// typedef void gl_vertex_attrib1f(GLuint index, const GLfloat x);
+// typedef void
+// gl_uniform_matrix4fv(GLint location, GLsizei count, GLboolean transpose, const GLfloat* value);
+// typedef GLint gl_get_uniform_location(GLuint program, const GLchar* name);
+// typedef void  gl_get_programiv(GLuint program, GLenum pname, GLint* params);
+// typedef void
+// gl_get_program_info_log(GLuint program, GLsizei bufSize, GLsizei* length, GLchar* infoLog);
+// typedef void gl_validate_program(GLuint program);
+// typedef void gl_vertex_attrib3fv(GLuint index, const GLfloat* v);
+// typedef void gl_generate_mipmap(GLenum target);
+// typedef void gl_uniform3fv(GLint location, GLsizei count, const GLfloat* value);
+// typedef void gl_uniform1f(GLint location, GLfloat value);
 //  (section) ----------------------------------------------------------------------- : gl types  //
 
 
 //  gl globals : --------------------------------------------------------------------- (section)  //
-global wgl_choose_pixel_format_arb*    wglChoosePixelFormatARB;
-global wgl_create_context_attribs_arb* wglCreateContextAttribsARB;
-global wgl_swap_interval_ext*          wglSwapIntervalEXT;
-global gl_create_shader*               glCreateShader;
-global gl_shader_source*               glShaderSource;
-global gl_compile_shader*              glCompileShader;
-global gl_create_program*              glCreateProgram;
-global gl_attach_shader*               glAttachShader;
-global gl_link_program*                glLinkProgram;
-global gl_delete_shader*               glDeleteShader;
-global gl_delete_program*              glDeleteProgram;
-global gl_create_vertex_arrays*        glCreateVertexArrays;
-global gl_bind_vertex_array*           glBindVertexArray;
-global gl_delete_vertex_arrays*        glDeleteVertexArrays;
-global gl_use_program*                 glUseProgram;
-global gl_get_shaderiv*                glGetShaderiv;
-global gl_get_shader_info_log*         glGetShaderInfoLog;
-global gl_clear_bufferfv*              glClearBufferfv;
-global gl_vertex_attrib4fv*            glVertexAttrib4fv;
-global gl_vertex_attrib1f*             glVertexAttrib1f;
-global gl_uniform_matrix4fv*           glUniformMatrix4fv;
-global gl_get_uniform_location*        glGetUniformLocation;
-global gl_get_programiv*               glGetProgramiv;
-global gl_get_program_info_log*        glGetProgramInfoLog;
-global gl_validate_program*            glValidateProgram;
-global gl_vertex_attrib3fv*            glVertexAttrib3fv;
-global gl_generate_mipmap*             glGenerateMipmap;
-global gl_uniform3fv*                  glUniform3fv;
-global gl_uniform1f*                   glUniform1f;
+// global wgl_choose_pixel_format_arb*    wglChoosePixelFormatARB;
+// global wgl_create_context_attribs_arb* wglCreateContextAttribsARB;
+// global wgl_swap_interval_ext*          wglSwapIntervalEXT;
+// global gl_create_shader*               glCreateShader;
+// global gl_shader_source*               glShaderSource;
+// global gl_compile_shader*              glCompileShader;
+// global gl_create_program*              glCreateProgram;
+// global gl_attach_shader*               glAttachShader;
+// global gl_link_program*                glLinkProgram;
+// global gl_delete_shader*               glDeleteShader;
+// global gl_delete_program*              glDeleteProgram;
+// global gl_create_vertex_arrays*        glCreateVertexArrays;
+// global gl_bind_vertex_array*           glBindVertexArray;
+// global gl_delete_vertex_arrays*        glDeleteVertexArrays;
+// global gl_use_program*                 glUseProgram;
+// global gl_get_shaderiv*                glGetShaderiv;
+// global gl_get_shader_info_log*         glGetShaderInfoLog;
+// global gl_clear_bufferfv*              glClearBufferfv;
+// global gl_vertex_attrib4fv*            glVertexAttrib4fv;
+// global gl_vertex_attrib1f*             glVertexAttrib1f;
+// global gl_uniform_matrix4fv*           glUniformMatrix4fv;
+// global gl_get_uniform_location*        glGetUniformLocation;
+// global gl_get_programiv*               glGetProgramiv;
+// global gl_get_program_info_log*        glGetProgramInfoLog;
+// global gl_validate_program*            glValidateProgram;
+// global gl_vertex_attrib3fv*            glVertexAttrib3fv;
+// global gl_generate_mipmap*             glGenerateMipmap;
+// global gl_uniform3fv*                  glUniform3fv;
+// global gl_uniform1f*                   glUniform1f;
 //  (section) --------------------------------------------------------------------- : gl globals  //
 
 
