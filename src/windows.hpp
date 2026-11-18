@@ -4,7 +4,7 @@
 
 #include <windows.h>
 
-#include <base/include.cpp>
+#include "base/interfaces.hpp"
 #include "canvas_platform.hpp"
 
 

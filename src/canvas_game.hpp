@@ -2,7 +2,7 @@
 #define CANVXS_GAME_H
 //  Game related stuff : ------------------------------------------------------------- (section)  //
 
-#include <base/include.cpp>
+#include "base/interfaces.hpp"
 
 #include "renderer.hpp"
 

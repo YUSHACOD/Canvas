@@ -1,8 +1,8 @@
 #ifndef WIN_DEBUG
 #define WIN_DEBUG
 //  windows debug code interfaces : -------------------------------------------------- (section)  //
-
-#include <base/include.cpp>
+//
+#include "base/interfaces.hpp"
 
 typedef struct {
     void* memory;

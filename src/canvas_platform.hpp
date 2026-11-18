@@ -2,7 +2,8 @@
 #define CANVAS_H
 //  Game code interfaces : ----------------------------------------------------------- (section)  //
 
-#include <base/include.cpp>
+#include "base/interfaces.hpp"
+
 #include "windows_debug.hpp"
 #include "renderer.hpp"
 

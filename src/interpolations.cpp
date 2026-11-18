@@ -2,7 +2,9 @@
 #define INTERPOLANTS_CPP
 //  interpolants of various kind : --------------------------------------------------- (section)  //
 
-#include <base/include.cpp>
+#include "base/interfaces.hpp"
+
+#include <math.h>
 
 Enum(Interpolation_Kind,
     IK_InSine,

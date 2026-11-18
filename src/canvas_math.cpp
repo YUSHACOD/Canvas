@@ -1,5 +1,7 @@
 
-#include <base/include.cpp>
+#include "base/interfaces.hpp"
+
+#include "math.cpp"
 
 v3 quad_bezier(v3 a, v3 b, v3 c, f32 t) {
 

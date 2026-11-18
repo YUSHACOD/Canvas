@@ -1,13 +1,16 @@
 
 #define STB_IMAGE_IMPLEMENTATION
-#include <stb/stb_image.h>
+#include "stb/stb_image.h"
 
 #include "opengl.hpp"
 #include "renderer.hpp"
 #include "windows.hpp"
 #include "windows_debug.hpp"
 
+#include "math.cpp"
+
 #include "windows_debug.cpp"
+
 
 #include <cmath>
 

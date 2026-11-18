@@ -1,5 +1,6 @@
 
-#include <base/include.cpp>
+#include "base/interfaces.hpp"
+#include "math.cpp"
 
 #include "canvas_platform.hpp"
 #include "canvas_game.hpp"

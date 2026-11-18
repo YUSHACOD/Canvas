@@ -1,4 +1,4 @@
-// raddbg 0.9.26 project file
+// raddbg 0.9.29 project file
 
 recent_file: path: "src/windows.cpp"
 recent_file: path: "src/opengl.cpp"
@@ -16,26 +16,6 @@ recent_file: path: "E:/tmp/proj-mini/p7/sample_targets/MessageBox.cpp"
 recent_file: path: "E:/tmp/proj-mini/p7/Detours/src/detours.cpp"
 recent_file: path: "D:/a/_work/1/s/src/vctools/crt/vcstartup/src/startup/dll_dllmain.cpp"
 recent_file: path: "d:/os/obj/amd64fre/minkernel/crts/ucrt/src/appcrt/startup/mt/objfre/amd64/minkernel/crts/ucrt/src/appcrt/startup/initterm.cpp"
-debug_info:
-{
-  path: "C:/Users/91724/cpp/canvas/build/debug/Canvxs.pdb"
-  timestamp: 66213743079176
-}
-debug_info:
-{
-  path: "C:/Users/91724/cpp/canvas/build/debug/canvas.pdb"
-  timestamp: 66213743079421
-}
-debug_info:
-{
-  path: "C:/Users/91724/cpp/graphics_api_test/vulkan/v2/triangle.pdb"
-  timestamp: 66209980010919
-}
-debug_info:
-{
-  path: "C:/VulkanSDK/1.4.341.1/Bin/VkLayer_khronos_validation.pdb"
-  timestamp: 66205613755476
-}
 breakpoint:
 {
   source_location: "src/windows.cpp:508:1"

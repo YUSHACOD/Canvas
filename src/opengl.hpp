@@ -6,7 +6,7 @@
 #include <windows.h>
 #include <GL\gl.h>
 
-#include <base/include.cpp>
+#include "base/interfaces.hpp"
 
 typedef char GLchar;
 

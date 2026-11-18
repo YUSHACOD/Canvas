@@ -3,7 +3,6 @@
 //  Renderer interfaces : ------------------------------------------------------------ (section)  //
 
 #include "base/interfaces.hpp"
-#include <base/include.cpp>
 
 Enum(render_group_kind, RCK_Clear, RCK_Cube, RCK_CubeWF);
 
